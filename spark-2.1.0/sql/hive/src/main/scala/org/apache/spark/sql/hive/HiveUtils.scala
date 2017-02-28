@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets
 import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap
 import scala.language.implicitConversions
 
@@ -50,6 +51,8 @@ private[spark] object HiveUtils extends Logging {
     sc.conf.set(CATALOG_IMPLEMENTATION.key, "hive")
     sc
   }
+
+  val CRUD_VIRTUAL_COLUMN_NAME: String = "vid_crud__column_name"
 
   /** The version of hive used internally by Spark SQL. */
   val hiveExecutionVersion: String = "1.2.1"

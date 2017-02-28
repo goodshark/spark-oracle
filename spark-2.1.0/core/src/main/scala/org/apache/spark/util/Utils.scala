@@ -45,7 +45,7 @@ import com.google.common.io.{ByteStreams, Files => GFiles}
 import com.google.common.net.InetAddresses
 import org.apache.commons.lang3.SystemUtils
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
+import org.apache.hadoop.fs.{FileStatus, FileSystem, FileUtil, Path}
 import org.apache.hadoop.security.UserGroupInformation
 import org.apache.log4j.PropertyConfigurator
 import org.eclipse.jetty.util.MultiException
@@ -1825,6 +1825,12 @@ private[spark] object Utils extends Logging {
    */
   def getHadoopFileSystem(path: String, conf: Configuration): FileSystem = {
     getHadoopFileSystem(new URI(path), conf)
+  }
+
+  def copyHdfsFile(srcFS: FileSystem, src: Path, dstFS: FileSystem,
+                   dst: Path, deleteSource: Boolean,
+                   overwrite: Boolean, conf: Configuration): Boolean = {
+    FileUtil.copy(srcFS, src, dstFS, dst, deleteSource, overwrite, conf)
   }
 
   /**

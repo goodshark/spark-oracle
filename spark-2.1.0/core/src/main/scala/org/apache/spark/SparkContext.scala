@@ -86,6 +86,9 @@ class SparkContext(config: SparkConf) extends Logging {
 
   val startTime = System.currentTimeMillis()
 
+  // record the operation  for crud table ,key:tableName values: operation
+  var crudTbOperationRecordMap: Map[String, String] = Map()
+
   private[spark] val stopped: AtomicBoolean = new AtomicBoolean(false)
 
   private[spark] def assertNotStopped(): Unit = {
@@ -1450,6 +1453,9 @@ class SparkContext(config: SparkConf) extends Logging {
     val scheme = new URI(schemeCorrectedPath).getScheme
     if (!Array("http", "https", "ftp").contains(scheme)) {
       val fs = hadoopPath.getFileSystem(hadoopConfiguration)
+      if (!fs.exists(hadoopPath)) {
+        throw new FileNotFoundException(s"Added file $hadoopPath does not exist.")
+      }
       val isDir = fs.getFileStatus(hadoopPath).isDirectory
       if (!isLocal && scheme == "file" && isDir) {
         throw new SparkException(s"addFile does not support local directories when not running " +
@@ -1737,6 +1743,50 @@ class SparkContext(config: SparkConf) extends Logging {
           // A JAR file which exists locally on every worker node
           case "local" =>
             "file:" + uri.getPath
+          case "hdfs" =>
+            val fileSystem = Utils.getHadoopFileSystem( path, _hadoopConfiguration )
+            if( fileSystem.exists( new Path(path) )) {
+              try{
+                var p = new Path(path)
+                while(!p.getParent.isRoot) {
+                  val pathPermission = new FsPermission(FsAction.ALL,
+                    FsAction.EXECUTE, FsAction.EXECUTE)
+                  fileSystem.setPermission(p.getParent, pathPermission)
+                  p = p.getParent
+                }
+              }catch {
+                case e: Exception => {
+                  logError("chomod pemission  error.", e)
+                }
+              }
+
+                  val userName = UserGroupInformation.getCurrentUser().getUserName()
+                  val fileName = new Path(uri.getPath).getName()
+                  val sparkJarPath = conf.get("spark.sql.jar.path", "/user/spark/") + "/" + userName + "/" + fileName
+                  logInfo( s"currentUserName is userName $userName, path $path " +
+                    s"in hdfs is exists,will add spark jar path :$sparkJarPath")
+                  val fsDefaultKey = org.apache.hadoop.fs.FileSystem.FS_DEFAULT_NAME_KEY
+                  val hadoopFsName = _hadoopConfiguration.get(fsDefaultKey)
+                  logInfo( s"fsDefaultKey is [ $fsDefaultKey ] ." +
+                    s"match file scheme is[  ${fileSystem.getScheme} ],hadoopFsName" +
+                    s" is[ $hadoopFsName ]")
+                  var rs = hadoopFsName + "/" + sparkJarPath
+                  try{
+                    Utils.copyHdfsFile(fileSystem, new Path(path), fileSystem,
+                      new Path(sparkJarPath), false,
+                      true, _hadoopConfiguration)
+                    val fsPermission = new FsPermission(FsAction.ALL, FsAction.ALL, FsAction.ALL)
+                    fileSystem.setPermission(new Path(sparkJarPath), fsPermission)
+                  } catch {
+                    case e: Exception => {
+                      logError("rename path error.", e)
+                      rs = null
+                    }
+                  }
+                  rs
+            } else {
+              null
+            }
           case _ =>
             path
         }

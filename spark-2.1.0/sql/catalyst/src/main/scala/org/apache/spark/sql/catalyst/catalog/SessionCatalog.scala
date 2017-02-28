@@ -291,6 +291,42 @@ class SessionCatalog(
   }
 
   /**
+    * check table is acid table
+    * @param tableMetadata
+    * @return
+    */
+  def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
+    var flag = true
+    if ( tableMetadata.bucketColumnNames.isEmpty ||
+      !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||
+      !tableMetadata.storage.outputFormat.
+        get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")
+      || !tableMetadata.storage.inputFormat.
+      get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcInputFormat")) {
+      flag = false
+    }
+    flag
+  }
+
+  /**
+    * get DbName
+    * @param name
+    * @return
+    */
+  def getDbName(name: TableIdentifier): String = {
+    formatDatabaseName(name.database.getOrElse(getCurrentDatabase))
+  }
+
+  /**
+    * get table name
+    * @param name
+    * @return
+    */
+  def getTableName(name: TableIdentifier): String = {
+    formatTableName(name.table)
+  }
+
+  /**
    * Retrieve the metadata of an existing metastore table.
    * If no database is specified, assume the table is in the current database.
    * If the specified table is not found in the database then return None if it doesn't exist.

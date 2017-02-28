@@ -147,7 +147,7 @@ case class DataSourceAnalysis(conf: CatalystConf) extends Rule[LogicalPlan] {
     // dynamic_partitioning_columns are partitioning columns that do not assigned
     // values in the PARTITION clause (e.g. c in the above example).
     case insert @ logical.InsertIntoTable(
-      relation @ LogicalRelation(t: HadoopFsRelation, _, _), parts, query, overwrite, false)
+      relation @ LogicalRelation(t: HadoopFsRelation, _, _), parts, query, overwrite, false, _, _)
       if query.resolved && parts.exists(_._2.isDefined) =>
 
       val projectList = convertStaticPartitions(
@@ -161,9 +161,9 @@ case class DataSourceAnalysis(conf: CatalystConf) extends Rule[LogicalPlan] {
       insert.copy(partition = parts.map(p => (p._1, None)), child = Project(projectList, query))
 
 
-    case logical.InsertIntoTable(
-      l @ LogicalRelation(t: HadoopFsRelation, _, table), _, query, overwrite, false)
-        if query.resolved && t.schema.sameType(query.schema) =>
+    case i @ logical.InsertIntoTable(
+           l @ LogicalRelation(t: HadoopFsRelation, _, _), part, query, overwrite, false, _, _)
+        if query.resolved && t.schema.asNullable == query.schema.asNullable =>
 
       // Sanity checks
       if (t.location.rootPaths.size != 1) {
@@ -305,7 +305,7 @@ class FindDataSourceTable(sparkSession: SparkSession) extends Rule[LogicalPlan] 
   }
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan transform {
-    case i @ logical.InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _)
+    case i @ logical.InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _)
         if DDLUtils.isDatasourceTable(s.metadata) =>
       i.copy(table = readDataSourceTable(sparkSession, s))
 
@@ -352,7 +352,7 @@ object DataSourceStrategy extends Strategy with Logging {
         None) :: Nil
 
     case i @ logical.InsertIntoTable(l @ LogicalRelation(t: InsertableRelation, _, _),
-      part, query, overwrite, false) if part.isEmpty =>
+      part, query, overwrite, false, _, _) if part.isEmpty =>
       ExecutedCommandExec(InsertIntoDataSourceCommand(l, query, overwrite)) :: Nil
 
     case _ => Nil

@@ -315,6 +315,20 @@ resource
 queryNoWith
     : insertInto? queryTerm queryOrganization                                              #singleInsertQuery
     | fromClause multiInsertQueryBody+                                                     #multiInsertQuery
+    | deleteStatement                                                                      #delete
+    | updateStatement                                                                      #update
+    ;
+
+deleteStatement
+    : DELETE FROM tableIdentifier (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    ;
+
+updateStatement
+    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    ;
+
+assignExpression
+    : identifier EQ expression
     ;
 
 queryOrganization

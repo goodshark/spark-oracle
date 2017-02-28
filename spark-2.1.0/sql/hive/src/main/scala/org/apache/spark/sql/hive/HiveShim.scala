@@ -238,6 +238,7 @@ private[hive] object HiveShim {
     f.setCompressType(w.compressType)
     f.setTableInfo(w.tableInfo)
     f.setDestTableId(w.destTableId)
+    f.setTransactionId(w.getTransactionId())
     f
   }
 
@@ -253,6 +254,7 @@ private[hive] object HiveShim {
     var compressCodec: String = _
     var compressType: String = _
     var destTableId: Int = _
+    var txnId: Long = 0
 
     def setCompressed(compressed: Boolean) {
       this.compressed = compressed
@@ -275,5 +277,11 @@ private[hive] object HiveShim {
     def setCompressType(intermediateCompressType: String) {
       compressType = intermediateCompressType
     }
+
+    def setTransactionId( id: Long) {
+      this.txnId = id
+    }
+
+    def getTransactionId() : Long = txnId
   }
 }

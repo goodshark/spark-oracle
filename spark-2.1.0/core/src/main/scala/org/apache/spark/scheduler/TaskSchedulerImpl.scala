@@ -35,6 +35,7 @@ import org.apache.spark.scheduler.TaskLocality.TaskLocality
 import org.apache.spark.scheduler.local.LocalSchedulerBackend
 import org.apache.spark.storage.BlockManagerId
 import org.apache.spark.util.{AccumulatorV2, ThreadUtils, Utils}
+import org.apache.spark.util.{Clock, SystemClock}
 
 /**
  * Schedules tasks for multiple types of clusters by acting through a SchedulerBackend.
@@ -71,6 +72,11 @@ private[spark] class TaskSchedulerImpl(
 
   private val speculationScheduler =
     ThreadUtils.newDaemonSingleThreadScheduledExecutor("task-scheduler-speculation")
+
+  val SPECULATION_BLACKHOST_DURATION = conf.getTimeAsMs("spark.blackhost.duration", "1800s")
+  val SPECULATION_BLACKHOST_INTER_MS = conf.getTimeAsMs("spark.blackhost.interval", "200ms")
+  private val hostSpeculator =
+    ThreadUtils.newDaemonSingleThreadScheduledExecutor("black-host-speculation")
 
   // Threshold above which we warn user initial TaskSet may be starved
   val STARVATION_TIMEOUT_MS = conf.getTimeAsMs("spark.starvation.timeout", "15s")
@@ -129,6 +135,37 @@ private[spark] class TaskSchedulerImpl(
   // This is a var so that we can reset it for testing purposes.
   private[spark] var taskResultGetter = new TaskResultGetter(sc.env, this)
 
+  // black hosts for slow hosts
+  val clock: Clock = new SystemClock()
+  val initBlackHosts = conf.get("spark.black.hosts", "")
+  var blackHosts = new HashMap[String, Long]()
+  for (blackhost <- initBlackHosts.split(",")) {
+    if (!blackhost.isEmpty) {
+      blackHosts(blackhost) = -1
+    }
+  }
+
+  def addBlackHost(host: String, time: Long)  {
+    blackHosts(host) = time
+  }
+
+  def isHostBanned(host: String): Boolean = {
+    logDebug(s"black hosts: ${blackHosts}")
+    val time = clock.getTimeMillis()
+    if (!blackHosts.contains(host)) {
+      return false
+    }
+    if (blackHosts(host) > 0 && time - blackHosts(host) > SPECULATION_BLACKHOST_DURATION) {
+      logInfo(s"balck host: $host is revive again, black hosts: ${blackHosts}")
+      blackHosts -= host
+    }
+    if (blackHosts.contains(host)) {
+      return true
+    } else {
+      return false
+    }
+  }
+
   override def setDAGScheduler(dagScheduler: DAGScheduler) {
     this.dagScheduler = dagScheduler
   }
@@ -162,6 +199,14 @@ private[spark] class TaskSchedulerImpl(
           checkSpeculatableTasks()
         }
       }, SPECULATION_INTERVAL_MS, SPECULATION_INTERVAL_MS, TimeUnit.MILLISECONDS)
+    }
+    if (conf.getBoolean("spark.blackhost.speculation", false)) {
+      logInfo("Starting blackhost speculative thread")
+      hostSpeculator.scheduleAtFixedRate(new Runnable{
+        override def run(): Unit = Utils.tryOrStopSparkContext(sc) {
+          checkBlackHost()
+        }
+      }, SPECULATION_BLACKHOST_INTER_MS, SPECULATION_BLACKHOST_INTER_MS, TimeUnit.MILLISECONDS)
     }
   }
 
@@ -259,7 +304,7 @@ private[spark] class TaskSchedulerImpl(
     for (i <- 0 until shuffledOffers.size) {
       val execId = shuffledOffers(i).executorId
       val host = shuffledOffers(i).host
-      if (availableCpus(i) >= CPUS_PER_TASK) {
+      if (availableCpus(i) >= CPUS_PER_TASK && !isHostBanned(host)) {
         try {
           for (task <- taskSet.resourceOffer(execId, host, maxLocality)) {
             tasks(i) += task
@@ -482,6 +527,12 @@ private[spark] class TaskSchedulerImpl(
     }
     if (shouldRevive) {
       backend.reviveOffers()
+    }
+  }
+
+  def checkBlackHost() {
+    synchronized {
+      rootPool.checkBlackHost()
     }
   }
 

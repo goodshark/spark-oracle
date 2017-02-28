@@ -333,7 +333,7 @@ case class PreWriteCheck(conf: SQLConf, catalog: SessionCatalog)
         }
 
       case logical.InsertIntoTable(
-          l @ LogicalRelation(t: InsertableRelation, _, _), partition, query, _, _) =>
+          l @ LogicalRelation(t: InsertableRelation, _, _), partition, query, _, _, _, _) =>
         // Right now, we do not support insert into a data source table with partition specs.
         if (partition.nonEmpty) {
           failAnalysis(s"Insert into a partition is not allowed because $l is not partitioned.")
@@ -351,7 +351,7 @@ case class PreWriteCheck(conf: SQLConf, catalog: SessionCatalog)
         }
 
       case logical.InsertIntoTable(
-        LogicalRelation(r: HadoopFsRelation, _, _), part, query, _, _) =>
+        LogicalRelation(r: HadoopFsRelation, _, _), part, query, _, _, _, _) =>
         // We need to make sure the partition columns specified by users do match partition
         // columns of the relation.
         val existingPartitionColumns = r.partitionSchema.fieldNames.toSet
@@ -379,7 +379,7 @@ case class PreWriteCheck(conf: SQLConf, catalog: SessionCatalog)
           // OK
         }
 
-      case logical.InsertIntoTable(l: LogicalRelation, _, _, _, _) =>
+      case logical.InsertIntoTable(l: LogicalRelation, _, _, _, _, _, _) =>
         // The relation in l is not an InsertableRelation.
         failAnalysis(s"$l does not allow insertion.")
 

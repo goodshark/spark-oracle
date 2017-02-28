@@ -161,6 +161,7 @@ object FunctionRegistry {
   val expressions: Map[String, (ExpressionInfo, FunctionBuilder)] = Map(
     // misc non-aggregate functions
     expression[Abs]("abs"),
+    expression[CreateArray]("array"),
     expression[Coalesce]("coalesce"),
     expression[Explode]("explode"),
     expression[Greatest]("greatest"),
@@ -171,6 +172,10 @@ object FunctionRegistry {
     expression[IsNull]("isnull"),
     expression[IsNotNull]("isnotnull"),
     expression[Least]("least"),
+    expression[CreateMap]("map"),
+    expression[MapKeys]("map_keys"),
+    expression[MapValues]("map_values"),
+    expression[CreateNamedStruct]("named_struct"),
     expression[NaNvl]("nanvl"),
     expression[NullIf]("nullif"),
     expression[Nvl]("nvl"),
@@ -179,6 +184,7 @@ object FunctionRegistry {
     expression[Rand]("rand"),
     expression[Randn]("randn"),
     expression[Stack]("stack"),
+    expression[CreateStruct]("struct"),
     expression[CaseWhen]("when"),
 
     // math functions
@@ -372,8 +378,8 @@ object FunctionRegistry {
     expression[InputFileName]("input_file_name"),
     expression[MonotonicallyIncreasingID]("monotonically_increasing_id"),
     expression[CurrentDatabase]("current_database"),
-    expression[CallMethodViaReflection]("reflect"),
-    expression[CallMethodViaReflection]("java_method"),
+    //expression[CallMethodViaReflection]("reflect"),
+    //expression[CallMethodViaReflection]("java_method"),
 
     // grouping sets
     expression[Cube]("cube"),
@@ -425,7 +431,23 @@ object FunctionRegistry {
     castAlias("date", DateType),
     castAlias("timestamp", TimestampType),
     castAlias("binary", BinaryType),
-    castAlias("string", StringType)
+    castAlias("string", StringType)，
+
+  //sql server functions support
+  expression[Length]("len"),
+  expression[StddevSamp]("stdev"),
+  expression[StddevPop]("stdevp"),
+  expression[VarianceSamp]("var"),
+  expression[VariancePop]("varp"),
+  expression[Count]("count_big"),
+  expression[CurrentTimestamp]("sysdatetime"),
+  expression[CurrentTimestamp]("current_timestamp"),
+  expression[CurrentTimestamp]("getdate"),
+  expression[LastDay]("eomonth"),
+  expression[Atan2]("ata2"),
+  expression[RegExpReplace]("replace"),
+  expression[FormatString]("format_string"),
+  expression[StringRepeat]("replicate")
   )
 
   val builtin: SimpleFunctionRegistry = {

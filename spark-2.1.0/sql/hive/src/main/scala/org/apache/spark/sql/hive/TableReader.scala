@@ -28,8 +28,9 @@ import org.apache.hadoop.hive.ql.exec.Utilities
 import org.apache.hadoop.hive.ql.metadata.{Partition => HivePartition, Table => HiveTable}
 import org.apache.hadoop.hive.ql.plan.TableDesc
 import org.apache.hadoop.hive.serde2.Deserializer
-import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspectorConverters, StructObjectInspector}
+import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspectorConverters, ObjectInspectorUtils, StructObjectInspector}
 import org.apache.hadoop.hive.serde2.objectinspector.primitive._
+import org.apache.hadoop.hive.serde2.typeinfo.{TypeInfoFactory, TypeInfoUtils}
 import org.apache.hadoop.io.Writable
 import org.apache.hadoop.mapred.{FileInputFormat, InputFormat, JobConf}
 
@@ -39,6 +40,7 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.{EmptyRDD, HadoopRDD, RDD, UnionRDD}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.catalog.{CatalogColumn, CatalogTable}
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.unsafe.types.UTF8String
@@ -80,7 +82,17 @@ class HadoopTableReader(
   SparkHadoopUtil.get.appendS3AndSparkHadoopConfigurations(
     sparkSession.sparkContext.conf, hadoopConf)
 
-  private val _broadcastedHadoopConf =
+
+  private val _broadcastedHadoopConf = {
+    if (sparkSession.sessionState.catalog.checkAcidTable(relation.catalogTable)) {
+      val partitionColumns: Seq[CatalogColumn] = relation.catalogTable.partitionColumns
+      if (null != partitionColumns) {
+        partitionColumns.foreach( p => {
+          hadoopConf.set("columns", hadoopConf.get("columns") +  ","  + p.name)
+          hadoopConf.set("columns.types", hadoopConf.get("columns.types") +  ","  + p.dataType)
+        })
+      }
+    }
     sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
 
   override def makeRDDForTable(hiveTable: HiveTable): RDD[InternalRow] =
@@ -119,14 +131,25 @@ class HadoopTableReader(
       .asInstanceOf[java.lang.Class[InputFormat[Writable, Writable]]]
     val hadoopRDD = createHadoopRdd(tableDesc, inputPathStr, ifc)
 
+    val checkAcidTableFlag = checkAcidTable(relation.catalogTable)
+
     val attrsWithIndex = attributes.zipWithIndex
     val mutableRow = new SpecificInternalRow(attributes.map(_.dataType))
 
     val deserializedHadoopRDD = hadoopRDD.mapPartitions { iter =>
       val hconf = broadcastedHadoopConf.value.value
       val deserializer = deserializerClass.newInstance()
+      // set Filed vid and FiledType
+     if (checkAcidTableFlag ) {
+        tableDesc.getProperties.setProperty("columns",
+          tableDesc.getProperties.get("columns")
+            .toString + "," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+        tableDesc.getProperties.setProperty("columns.types",
+          tableDesc.getProperties.get("columns.types").toString + ":string")
+       }
       deserializer.initialize(hconf, tableDesc.getProperties)
-      HadoopTableReader.fillObject(iter, deserializer, attrsWithIndex, mutableRow, deserializer)
+      HadoopTableReader.fillObject(iter, deserializer, attrsWithIndex,
+        mutableRow, deserializer, hconf)
     }
 
     deserializedHadoopRDD
@@ -136,6 +159,19 @@ class HadoopTableReader(
     val partitionToDeserializer = partitions.map(part =>
       (part, part.getDeserializer.getClass.asInstanceOf[Class[Deserializer]])).toMap
     makeRDDForPartitionedTable(partitionToDeserializer, filterOpt = None)
+  }
+
+  def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
+    var flag = true
+    if ( tableMetadata.bucketColumnNames.isEmpty ||
+      !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||
+      !tableMetadata.storage.outputFormat.
+        get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")
+      || !tableMetadata.storage.inputFormat.
+      get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcInputFormat")) {
+      flag = false
+    }
+    flag
   }
 
   /**
@@ -234,6 +270,7 @@ class HadoopTableReader(
       fillPartitionKeys(partValues, mutableRow)
 
       val tableProperties = relation.tableDesc.getProperties
+      val checkAcidTableFlag = checkAcidTable(relation.catalogTable)
 
       createHadoopRdd(tableDesc, inputPathStr, ifc).mapPartitions { iter =>
         val hconf = broadcastedHiveConf.value.value
@@ -247,9 +284,27 @@ class HadoopTableReader(
         partProps.asScala.foreach {
           case (key, value) => props.setProperty(key, value)
         }
+        // set Filed vid and FiledType
+        if ( checkAcidTableFlag) {
+          props.setProperty("columns",
+            props.get("columns")
+              .toString + "," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+          props.setProperty("columns.types",
+            props.get("columns.types").toString + ":string")
+        }
         deserializer.initialize(hconf, props)
         // get the table deserializer
         val tableSerDe = tableDesc.getDeserializerClass.newInstance()
+        if (checkAcidTableFlag ) {
+          tableDesc.getProperties.setProperty("columns",
+            tableDesc.getProperties.get("columns")
+              .toString + ","+ tableDesc.getProperties.get("partition_columns")
+              .toString.replaceAll("/",",") +"," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+          tableDesc.getProperties.setProperty("columns.types",
+            tableDesc.getProperties.get("columns.types").toString
+              +":"+tableDesc.getProperties.get("partition_columns.types")
+              .toString +":string")
+        }
         tableSerDe.initialize(hconf, tableDesc.getProperties)
 
         // fill the non partition key attributes
@@ -343,6 +398,9 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
     val bufferSize = System.getProperty("spark.buffer.size", "65536")
     jobConf.set("io.file.buffer.size", bufferSize)
   }
+  /** add for acid */
+  val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
+  val OPTION_TYPE: String = "OPTION_TYPE"
 
   /**
    * Transform all given raw `Writable`s into `Row`s.
@@ -359,8 +417,9 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
       iterator: Iterator[Writable],
       rawDeser: Deserializer,
       nonPartitionKeyAttrs: Seq[(Attribute, Int)],
-      mutableRow: InternalRow,
-      tableDeser: Deserializer): Iterator[InternalRow] = {
+      mutableRow: MutableRow,
+      tableDeser: Deserializer,
+      conf: Configuration = null ): Iterator[InternalRow] = {
 
     val soi = if (rawDeser.getObjectInspector.equals(tableDeser.getObjectInspector)) {
       rawDeser.getObjectInspector.asInstanceOf[StructObjectInspector]
@@ -371,10 +430,18 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
     }
 
     logDebug(soi.toString)
+    var vidIndex = -1
+    val vidKeyAttrs = nonPartitionKeyAttrs.filter(_._1.name == HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+    if(!vidKeyAttrs.isEmpty) {
+      vidIndex = vidKeyAttrs(0)._2
+    }
+    logDebug(s" vid index : is ${vidIndex}")
 
-    val (fieldRefs, fieldOrdinals) = nonPartitionKeyAttrs.map { case (attr, ordinal) =>
-      soi.getStructFieldRef(attr.name) -> ordinal
-    }.unzip
+    val (fieldRefs, fieldOrdinals) = nonPartitionKeyAttrs.filter(_._1.name !=
+      HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+      .map { case (attr, ordinal) =>
+        soi.getStructFieldRef(attr.name) -> ordinal
+      }.unzip
 
     /**
      * Builds specific unwrappers ahead of time according to object inspector
@@ -437,6 +504,14 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         i += 1
       }
 
+      if( null!=conf && conf.getBoolean(SPARK_TRANSACTION_ACID, false)) {
+        if (conf.get(OPTION_TYPE).equalsIgnoreCase("1")
+          || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
+          val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+          val vid = soi.getStructFieldData(raw, vidField).toString
+           mutableRow.update(vidIndex, UTF8String.fromString(vid))
+        }
+      }
       mutableRow: InternalRow
     }
   }

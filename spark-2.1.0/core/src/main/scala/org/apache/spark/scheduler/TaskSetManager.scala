@@ -53,11 +53,26 @@ private[spark] class TaskSetManager(
     val maxTaskFailures: Int,
     clock: Clock = new SystemClock()) extends Schedulable with Logging {
 
-  private val conf = sched.sc.conf
+  val conf = sched.sc.conf
+
+  /*
+   * Sometimes if an executor is dead or in an otherwise invalid state, the driver
+   * does not realize right away leading to repeated task failures. If enabled,
+   * this temporarily prevents a task from re-launching on an executor where
+   * it just failed.
+   */
+  private val EXECUTOR_TASK_BLACKLIST_TIMEOUT =
+    conf.getLong("spark.scheduler.executorTaskBlacklistTime", 0L)
 
   // Quantile of tasks at which to start speculation
   val SPECULATION_QUANTILE = conf.getDouble("spark.speculation.quantile", 0.75)
   val SPECULATION_MULTIPLIER = conf.getDouble("spark.speculation.multiplier", 1.5)
+
+  // Quantile of tasks at which to start check blackHost
+  val BLACKHOST_QUANTILE = conf.getDouble("spark.blackhost.quantile", 0.7)
+  val BLACKHOST_MULTPLIER = conf.getDouble("spark.blackhost.multiplier", 1.5)
+  val BLACKHOST_ACTION = conf.getBoolean("spark.blackhost.action", false)
+  val BLACKHOST_MAX = conf.getInt("spark.blackhost.max", 2)
 
   // Limit of bytes for total size of results (default is 1GB)
   val maxResultSize = Utils.getMaxResultSize(conf)
@@ -916,6 +931,51 @@ private[spark] class TaskSetManager(
       }
     }
     foundTasks
+  }
+
+  override def checkBlackHost(): Unit = {
+    if (numTasks <= 1) {
+      return
+    }
+    try {
+        val minFinishedTaskNum = (BLACKHOST_QUANTILE * numTasks).floor.toInt
+        logDebug(s"Checking for blackhost task minNums: $minFinishedTaskNum")
+        val tasksOkNums = taskInfos.values.filter(_.successful).size
+        //if (tasksSuccessful >= minFinishedTaskNum && tasksSuccessful > 0) {
+        if (tasksOkNums >= minFinishedTaskNum && tasksOkNums > 0) {
+          val time = clock.getTimeMillis()
+          val durations = taskInfos.values.filter(_.successful).map(_.duration).toArray
+          Arrays.sort(durations)
+          logDebug(s"check black host stageId: ${stageId}, durations size: ${durations.length}, " +
+                   s"task size: ${taskInfos.size}, tasksSuccessful: ${tasksSuccessful}" +
+                   s"val size: ${taskInfos.values.filter(_.successful).size}")
+          val medianDuration = durations(min((0.5 * tasksSuccessful).round.toInt, durations.length - 1))
+          val threshold = BLACKHOST_MULTPLIER * medianDuration
+          for ((tid, info) <- taskInfos) {
+            val index = info.index
+            if (!successful(index) && copiesRunning(index) == 1 && info.timeRunning(time) > threshold) {
+              if (BLACKHOST_ACTION) {
+                logDebug(s"add blackhost: ${info.host}, median: ${medianDuration}, " +
+                        s"stageId: ${stageId}, tid: ${tid}, duration: ${info.timeRunning(time)}")
+                if (sched.blackHosts.size < BLACKHOST_MAX) {
+                  logInfo(s"add blackhost ${info.host} success")
+                  sched.addBlackHost(info.host, time)
+                } else {
+                  logDebug(s"black hosts is out of threshold, do nothing, host: ${info.host}")
+                }
+              } else {
+                logDebug(s"check blackhost: ${info.host}, median: ${medianDuration}, " +
+                        s"stageId: ${stageId}, tid: ${tid}, duration: ${info.timeRunning(time)}")
+              }
+            }
+          }
+        }
+    } catch {
+        case e: Exception => {
+            logError(s"check black host: $e, taskok: $tasksSuccessful, " +
+                     s"taskInfonum: ${taskInfos.size}, stageId: ${stageId}")
+        }
+    }
   }
 
   private def getLocalityWait(level: TaskLocality.TaskLocality): Long = {

@@ -35,6 +35,7 @@ import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.catalog.CatalogTableType._
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
+import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan, UnaryNode}
 import org.apache.spark.sql.catalyst.util.quoteIdentifier
 import org.apache.spark.sql.execution.datasources.PartitioningUtils
 import org.apache.spark.sql.types._
@@ -840,8 +841,14 @@ case class ShowCreateTableCommand(table: TableIdentifier) extends RunnableComman
     }
 
     if (metadata.bucketSpec.isDefined) {
-      throw new UnsupportedOperationException(
-        "Creating Hive table with bucket spec is not supported yet.")
+      var bucketNum = metadata.numBuckets
+      /* throw new UnsupportedOperationException(
+         "Creating Hive table with bucket spec is not supported yet.") */
+      val bucketCols = metadata.bucketColumns
+      builder ++= bucketCols.mkString("CLUSTERED BY (", ", ", ")\n")
+      builder.append("  INTO  ")
+      builder.append( bucketNum )
+      builder.append(" BUCKETS ")
     }
   }
 

@@ -96,6 +96,12 @@ private[spark] class Pool(
     shouldRevive
   }
 
+  override def checkBlackHost(): Unit = {
+    for (schedulable <- schedulableQueue.asScala) {
+      schedulable.checkBlackHost()
+    }
+  }
+
   override def getSortedTaskSetQueue: ArrayBuffer[TaskSetManager] = {
     var sortedTaskSetQueue = new ArrayBuffer[TaskSetManager]
     val sortedSchedulableQueue =

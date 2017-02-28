@@ -34,11 +34,14 @@ import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd, SparkListenerJobStart}
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.hive.HiveUtils
+import org.apache.spark.sql.hive.{HiveSharedState, HiveUtils}
 import org.apache.spark.sql.hive.thriftserver.ReflectionUtils._
 import org.apache.spark.sql.hive.thriftserver.ui.ThriftServerTab
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.util.{ShutdownHookManager, Utils}
+
+import redis.clients.jedis.Jedis
+import scala.util.parsing.json.JSON
 
 /**
  * The main entry point for the Spark SQL port of HiveServer2.  Starts up a `SparkSQLContext` and a
@@ -173,6 +176,15 @@ object HiveThriftServer2 extends Logging {
     private val retainedSessions = conf.getConf(SQLConf.THRIFTSERVER_UI_SESSION_LIMIT)
     private var totalRunning = 0
 
+    private val redisHost = SparkSQLEnv.sparkContext.getConf.get("spark.clientlog.redishost", "localhost")
+    private val redisPort = SparkSQLEnv.sparkContext.getConf.getInt("spark.clientlog.redisport", 6379)
+    logInfo(s"spark-client-log<redis-thriftserver> host: $redisHost, port: $redisPort")
+    //private val redisConn = new Jedis(redisHost, redisPort)
+    private var redisConn: Jedis = null
+    private val keyTimeout = SparkSQLEnv.sparkContext.getConf.getInt("spark.clientlog.timeout", 86400)
+    private val priestPara = SparkSQLEnv.sparkContext.getConf.get("spark.clientlog.priest.para.reg", "priest.params")
+    private val priestParaPos = SparkSQLEnv.sparkContext.getConf.getInt("spark.clientlog.priest.para.pos", 0)
+
     def getOnlineSessionNum: Int = synchronized { onlineSessionNum }
 
     def getTotalRunning: Int = synchronized { totalRunning }
@@ -224,6 +236,40 @@ object HiveThriftServer2 extends Logging {
       sessionList(sessionId).totalExecution += 1
       executionList(id).groupId = groupId
       totalRunning += 1
+      try {
+          redisConn = new Jedis(redisHost, redisPort)
+          logInfo(s"spark-client-log<onStatementStart>: $executionList, size: ${executionList.size}")
+          redisConn.set(sessionId, id)
+          redisConn.expire(sessionId, keyTimeout)
+          logInfo(s"set sessionId($sessionId) to exeId($id)")
+          val patFind = """set\s+priest\.params\s*=.*""".r
+          val patRes = patFind.findPrefixOf(statement)
+          val jsVal = statement.substring(priestParaPos)
+          if (statement.length > priestParaPos && !patRes.isEmpty) {
+              logInfo(s"spark-client-log statement: $statement, js val: $jsVal")
+              val patMatch = """(set\s+priest\.params\s*=\s*)(.*)""".r
+              val patMatch(setPerfix, setSuffix) = statement
+              val priestVal = JSON.parseFull(setSuffix)
+              logInfo(s"spark-client-log priest val: $priestVal")
+              val mapVal = priestVal.get.asInstanceOf[Map[String, String]]
+              val execDate = mapVal("execdate")
+              val pid = mapVal("pid")
+              val tid = mapVal("tid")
+              val clientLog = s"spark_${pid}_${execDate}_${tid}"
+              logInfo(s"spark-client-log set clientLog key ${clientLog} to jobid ${id} start")
+              redisConn.set(clientLog, sessionId)
+              redisConn.expire(clientLog, keyTimeout)
+              logInfo(s"spark-client-log set clientLog key ${clientLog} to jobid ${id} success")
+          }
+      } catch {
+          case e: Exception => {
+              logError(s"spark-client-log set clientlog exception: $e")
+          }
+      } finally {
+          if (redisConn != null) {
+              redisConn.close()
+          }
+      }
     }
 
     def onStatementParsed(id: String, executionPlan: String): Unit = synchronized {

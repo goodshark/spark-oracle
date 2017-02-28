@@ -32,6 +32,9 @@ import org.apache.spark.storage.BlockManagerId
 import org.apache.spark.ui.SparkUI
 import org.apache.spark.ui.jobs.UIData._
 
+import redis.clients.jedis.Jedis
+import java.util.Date
+
 /**
  * :: DeveloperApi ::
  * Tracks task-level information to be displayed in the UI.
@@ -95,6 +98,13 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
   val retainedStages = conf.getInt("spark.ui.retainedStages", SparkUI.DEFAULT_RETAINED_STAGES)
   val retainedJobs = conf.getInt("spark.ui.retainedJobs", SparkUI.DEFAULT_RETAINED_JOBS)
   val retainedTasks = conf.get(UI_RETAINED_TASKS)
+  val redisHost = conf.get("spark.clientlog.redishost", "localhost")
+  val redisPort = conf.getInt("spark.clientlog.redisport", 6379)
+  val redisPass = conf.get("spark.clientlog.redispass", "")
+  val keyTimeout = conf.getInt("spark.clientlog.timeout", 86400)
+  logInfo(s"spark-client-log<redis-jobprocess> host: $redisHost, port: $redisPort, pass: $redisPass")
+  //val redisConn = new Jedis(redisHost, redisPort)
+  var redisConn: Jedis = null
 
   // We can test for memory leaks by ensuring that collections that track non-active jobs and
   // stages do not grow without bound and that collections for active jobs/stages eventually become
@@ -174,6 +184,82 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
     }
   }
 
+  /** $jobGrop-job-set: (1, 2, 3, ...) */
+  def redisLogSadd(data: JobUIData): Unit = {
+    try {
+      redisConn = new Jedis(redisHost, redisPort)
+      val jobGroup = data.jobGroup.getOrElse("100")
+      val jobSetKey = jobGroup + "-job-set"
+      val jobVal = s"${data.jobId}"
+      redisConn.sadd(jobSetKey, jobVal)
+      redisConn.expire(jobSetKey, keyTimeout)
+    } catch {
+      case e: Exception => {
+        logError(s"spark-client-log redis sadd exception: $e")
+      }
+    } finally {
+      if (redisConn != null) {
+        redisConn.close()
+      }
+    }
+  }
+
+  /**
+   * $jobGroup-log-$jobId: ["job1 start, task 0/100", "task 5/100, skip 10 tasks", ...]
+   * $jobGroup-precent-$jobId: "5/100"
+   */
+  def redisLogSet(data: JobUIData, info: String): Unit = {
+    try {
+      redisConn = new Jedis(redisHost, redisPort)
+      val jobGroup = data.jobGroup.getOrElse("100")
+      val jobLogKey = jobGroup + "-log-" + data.jobId
+      redisConn.rpush(jobLogKey, info)
+      redisConn.expire(jobLogKey, keyTimeout)
+      val jobPrecentKey = jobGroup + "-precent-" + data.jobId
+      val jobPrecent = s"${data.numCompletedTasks}/${data.numTasks}"
+      redisConn.set(jobPrecentKey, jobPrecent)
+      redisConn.expire(jobPrecentKey, keyTimeout)
+    } catch {
+      case e: Exception => {
+        logError(s"spark-client-log redis set exception: $e")
+      }
+    } finally {
+      if (redisConn != null) {
+        redisConn.close()
+      }
+    }
+  }
+
+  def redisLog(data: JobUIData, info: String, append: Boolean = true): Unit = {
+    try {
+        redisConn = new Jedis(redisHost, redisPort)
+        val rlog = redisConn.get(data.jobGroup.getOrElse("100"))
+        val clog = s"$rlog"
+        var newClog = ""
+        if (clog == "null") {
+          newClog = info
+        } else {
+          if (append)
+            newClog = clog + info
+          else {
+            val logArray = clog.split("\n")
+            logArray(0) = info
+            newClog = logArray.mkString("\n")
+          }
+        }
+        redisConn.set(data.jobGroup.getOrElse("100"), newClog)
+        redisConn.expire(data.jobGroup.getOrElse("100"), keyTimeout)
+    } catch {
+        case e: Exception => {
+            logError(s"spark-client-log redisLog get exception: $e")
+        }
+    } finally {
+        if (redisConn != null) {
+            redisConn.close()
+        }
+    }
+  }
+
   override def onJobStart(jobStart: SparkListenerJobStart): Unit = synchronized {
     val jobGroup = for (
       props <- Option(jobStart.properties);
@@ -210,6 +296,13 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
       stageIdToInfo.getOrElseUpdate(stageInfo.stageId, stageInfo)
       stageIdToData.getOrElseUpdate((stageInfo.stageId, stageInfo.attemptId), new StageUIData)
     }
+    val idLog = s"spark-client-log<onJobStart> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, stage: ${jobData.stageIds}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}"
+    val submitDate = new Date(jobData.submissionTime.get)
+    val curDate = new Date()
+    val cLog = s"${curDate} JobId ${jobData.jobId} start, Stage: [${jobData.stageIds.mkString(",")}], allTask: ${jobData.numTasks}, submissionTime: ${submitDate}\n"
+    logInfo(idLog)
+    redisLogSadd(jobData)
+    redisLogSet(jobData, cLog)
   }
 
   override def onJobEnd(jobEnd: SparkListenerJobEnd): Unit = synchronized {
@@ -248,6 +341,20 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
           }
         }
       }
+      val startDate = new Date(jobData.submissionTime.get)
+      val endDate = new Date(jobData.completionTime.get)
+      logInfo(s"spark-client-log<onJobEnd> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}, start: ${startDate}, end: ${endDate}, status: ${jobData.status}")
+      val curDate = new Date()
+      var elapseTime: Long = 0
+      try {
+        elapseTime = jobData.completionTime.get - jobData.submissionTime.get
+      } catch {
+        case e: Exception => {
+          logError(s"get elapseTime exception: $e")
+        }
+      }
+      val cLog = s"${curDate} jobid ${jobData.jobId} complete[${jobData.status}], alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, completionTime: ${endDate}, elapseTime: ${elapseTime}\n"
+      redisLogSet(jobData, cLog)
     }
   }
 
@@ -277,6 +384,17 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
       trimStagesIfNecessary(failedStages)
     }
 
+    var stageCostTime: Double = 0
+    val exectorTime = stageData.executorRunTime
+    val inputB = stageData.inputBytes
+    val outputB = stageData.outputBytes
+    val inputR = stageData.inputRecords
+    val outputR = stageData.outputRecords
+    val shuffleR = stageData.shuffleReadTotalBytes
+    val shuffleW = stageData.shuffleWriteBytes
+    val shuffleRR = stageData.shuffleReadRecords
+    val shuffleWR = stageData.shuffleWriteRecords
+
     for (
       activeJobsDependentOnStage <- stageIdToActiveJobIds.get(stage.stageId);
       jobId <- activeJobsDependentOnStage;
@@ -290,6 +408,10 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
       } else {
         jobData.numFailedStages += 1
       }
+      logInfo(s"spark-client-log<onStageCompleted> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}, stageCostTime: ${stageCostTime}, exetor-time: ${exectorTime}, input: [${inputB}, ${inputR}], output: [${outputB}, ${outputR}], shuffle: [${shuffleR}, ${shuffleW}, ${shuffleRR}, ${shuffleWR}]")
+      val curDate = new Date()
+      val cLog = s"${curDate} jobid ${jobData.jobId} [stage ${stage.stageId} completed - total time ${exectorTime}ms], alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, input: ${inputB}, output: ${outputB}, shuffleRead: ${shuffleR}, shuffleWrite: ${shuffleW}\n"
+      redisLogSet(jobData, cLog)
     }
   }
 
@@ -322,6 +444,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
 
       // If a stage retries again, it should be removed from completedStageIndices set
       jobData.completedStageIndices.remove(stage.stageId)
+      logInfo(s"spark-client-log<onStageSubmitted> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
     }
   }
 
@@ -342,6 +465,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
       jobData <- jobIdToData.get(jobId)
     ) {
       jobData.numActiveTasks += 1
+      logInfo(s"spark-client-log<onTaskStart> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
     }
   }
 
@@ -426,6 +550,11 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
           case _ =>
             jobData.numFailedTasks += 1
         }
+        logInfo(s"spark-client-log<onTaskEnd> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
+        val curDate = new Date()
+        //val clog = s"${curDate} ${jobData.numCompletedTasks}/${jobData.numTasks}\n"
+        val clog = s"${curDate} Task ${info.id} in Stage ${taskEnd.stageId} Finished[${taskStatus}]"
+        redisLogSet(jobData, clog)
       }
     }
   }

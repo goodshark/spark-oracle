@@ -383,8 +383,10 @@ case class InsertIntoTable(
     table: LogicalPlan,
     partition: Map[String, Option[String]],
     child: LogicalPlan,
-    overwrite: OverwriteOptions,
-    ifNotExists: Boolean)
+    overwrite: Boolean,
+    ifNotExists: Boolean,
+    tableName: String = null,
+    dbName: Option[String] = null)
   extends LogicalPlan {
 
   override def children: Seq[LogicalPlan] = child :: Nil

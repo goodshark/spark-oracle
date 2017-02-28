@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 import org.antlr.v4.runtime.tree.TerminalNode
@@ -51,6 +52,16 @@ class SparkSqlParser(conf: SQLConf) extends AbstractSqlParser {
  */
 class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
   import org.apache.spark.sql.catalyst.parser.ParserUtils._
+
+  override def visitDelete(ctx : DeleteContext): LogicalPlan = withOrigin(ctx) {
+    val table = visitTableIdentifier(ctx.deleteStatement().tableIdentifier())
+    return AcidDelCommand(ctx, table)
+  }
+
+  override def visitUpdate(ctx: UpdateContext): LogicalPlan = withOrigin(ctx) {
+    val table = visitTableIdentifier(ctx.updateStatement().tableIdentifier())
+    return AcidUpdateCommand(ctx, table)
+  }
 
   /**
    * Create a [[SetCommand]] logical plan.
@@ -877,9 +888,14 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
    * Create a [[BucketSpec]].
    */
   override def visitBucketSpec(ctx: BucketSpecContext): BucketSpec = withOrigin(ctx) {
+    // bucketName toLowerCase
+    val bucketColumnNames = visitIdentifierList(ctx.identifierList)
+    val bucketColumnNamesToLowerCase = bucketColumnNames.map( b => b.toLowerCase)
+
     BucketSpec(
       ctx.INTEGER_VALUE.getText.toInt,
-      visitIdentifierList(ctx.identifierList),
+      bucketColumnNamesToLowerCase,
+      // visitIdentifierList(ctx.identifierList),
       Option(ctx.orderedIdentifierList)
         .toSeq
         .flatMap(_.orderedIdentifier.asScala)
@@ -1049,15 +1065,29 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
     }
 
     // TODO support the sql text - have a proper location for this!
-    val tableDesc = CatalogTable(
-      identifier = name,
-      tableType = tableType,
-      storage = storage,
-      schema = schema,
-      provider = Some(DDLUtils.HIVE_PROVIDER),
-      partitionColumnNames = partitionCols.map(_.name),
-      properties = properties,
-      comment = comment)
+    val tableDesc = {
+      if (null != bucketInfo) {
+        CatalogTable(
+          bucketColumnNames = bucketInfo.bucketColumnNames,
+          sortColumnNames = bucketInfo.sortColumnNames,
+          numBuckets = bucketInfo.numBuckets,
+          identifier = name,
+          tableType = tableType,
+          storage = storage,
+          schema = schema,
+          partitionColumnNames = partitionCols.map(_.name),
+          properties = properties,
+          comment = comment)
+      } else {
+         CatalogTable(
+          identifier = name,
+          tableType = tableType,
+          storage = storage,
+          schema = schema,
+          partitionColumnNames = partitionCols.map(_.name),
+          properties = properties,
+          comment = comment)
+      }
 
     val mode = if (ifNotExists) SaveMode.Ignore else SaveMode.ErrorIfExists
 

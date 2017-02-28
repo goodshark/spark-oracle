@@ -20,13 +20,18 @@ package org.apache.spark.sql.hive.execution
 import java.io.IOException
 import java.net.URI
 import java.text.SimpleDateFormat
-import java.util.{Date, Locale, Random}
+import java.util
+import java.util.{Date, Random}
 
+import scala.collection.JavaConverters._
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.hive.common.FileUtils
+import org.apache.hadoop.hive.conf
+import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.exec.TaskRunner
 import org.apache.hadoop.hive.ql.ErrorMsg
+import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.mapred.{FileOutputFormat, JobConf}
 
 import org.apache.spark.rdd.RDD
@@ -97,6 +102,10 @@ case class InsertIntoHiveTable(
     val inputPathUri: URI = inputPath.toUri
     val inputPathName: String = inputPathUri.getPath
     val fs: FileSystem = inputPath.getFileSystem(hadoopConf)
+
+    if (stagingDir.startsWith(".hive-staging")) {
+      stagingDir = hadoopConf.get("hive.exec.stagingdir", ".hive-staging")
+    }
     val stagingPathName: String =
       if (inputPathName.indexOf(stagingDir) == -1) {
         new Path(inputPathName, stagingDir).toString
@@ -193,6 +202,20 @@ case class InsertIntoHiveTable(
       case (key, None) => key -> ""
     }
 
+    val partitionPathStr: StringBuilder = new StringBuilder
+    partition.keys.foreach(key => {
+      partitionPathStr.append("/")
+      partitionPathStr.append(key)
+      partitionPathStr.append("=")
+      if (!partition.get(key).isEmpty && (!partition.get(key).get.isEmpty)) {
+        partitionPathStr.append(partition.get(key).get.get)
+      }
+      partitionPathStr.append("/")
+    })
+    if (null != partitionPathStr && partitionPathStr.length > 0) {
+      hadoopConf.setStrings("spark.partition.value", partitionPathStr.toString())
+    }
+    // logInfo(s" partitionPathStr is ==>${partitionPathStr.toString()}")
     // All partition column names in the format of "<column name 1>/<column name 2>/..."
     val partitionColumns = fileSinkConf.getTableInfo.getProperties.getProperty("partition_columns")
     val partitionColumnNames = Option(partitionColumns).map(_.split("/")).getOrElse(Array.empty)
@@ -223,6 +246,13 @@ case class InsertIntoHiveTable(
       if (isDynamic.init.zip(isDynamic.tail).contains((true, false))) {
         throw new AnalysisException(ErrorMsg.PARTITION_DYN_STA_ORDER.getMsg)
       }
+
+      // add check acid table
+      if (sessionState.catalog.checkAcidTable(table.catalogTable)) {
+        throw new SparkException(s"transaction table:${table.tableName} does not " +
+          s"support Dynamic partition")
+      }
+
     }
 
     val jobConf = new JobConf(hadoopConf)
@@ -247,12 +277,14 @@ case class InsertIntoHiveTable(
         jobConf,
         fileSinkConf,
         dynamicPartColNames,
-        child.output)
+        child.output,
+        table)
     } else {
       new SparkHiveWriterContainer(
         jobConf,
         fileSinkConf,
-        child.output)
+        child.output,
+        table)
     }
 
     @transient val outputClass = writerContainer.newSerializer(table.tableDesc).getSerializedClass
@@ -263,6 +295,30 @@ case class InsertIntoHiveTable(
     // In most of the time, we should have holdDDLTime = false.
     // holdDDLTime will be true when TOK_HOLD_DDLTIME presents in the query as a hint.
     val holdDDLTime = false
+
+    def loadTableForCrud(src: Path, detPath: Path) = {
+      val fs = src.getFileSystem(hadoopConf)
+      if (overwrite) {
+        fs.listStatus(detPath).foreach(det => {
+          if (!det.getPath.toString.equals(outputPath.getParent.toString)) {
+            val d = fs.delete(det.getPath, true)
+            if (!d) {
+              throw new SparkException(s"transaction table:${table.tableName} del " +
+                s" data for overwrite failed.")
+            }
+          }
+        }
+        )
+      }
+      fs.listStatus(src, FileUtils.HIDDEN_FILES_PATH_FILTER).foreach(o => {
+        val s = fs.rename(o.getPath, detPath)
+        if (!s) {
+          throw new SparkException(s"transaction table:${table.tableName} load " +
+            s"data into table failed.")
+        }
+      })
+    }
+
     if (partition.nonEmpty) {
       if (numDynamicPartitions > 0) {
         externalCatalog.loadDynamicPartitions(

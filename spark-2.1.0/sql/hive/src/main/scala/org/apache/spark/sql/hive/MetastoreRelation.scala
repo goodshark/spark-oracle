@@ -18,6 +18,7 @@
 package org.apache.spark.sql.hive
 
 import java.io.IOException
+import java.util
 
 import scala.collection.JavaConverters._
 
@@ -33,6 +34,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.expressions.{AttributeMap, AttributeReference, Expression}
+import org.apache.spark.sql.catalyst.parser.CatalystSqlParser
 import org.apache.spark.sql.catalyst.plans.logical.{LeafNode, LogicalPlan, Statistics}
 import org.apache.spark.sql.execution.FileRelation
 import org.apache.spark.sql.hive.client.HiveClient
@@ -108,6 +110,15 @@ private[hive] case class MetastoreRelation(
     val serdeParameters = new java.util.HashMap[String, String]()
     catalogTable.storage.properties.foreach { case (k, v) => serdeParameters.put(k, v) }
     serdeInfo.setParameters(serdeParameters)
+    logDebug(s"numberBucket is ===>${catalogTable.numBuckets}")
+    sd.setNumBuckets(catalogTable.numBuckets)
+    val bucketColumnNames = new  util.ArrayList[String]()
+    catalogTable.bucketColumnNames.foreach(col => {
+      bucketColumnNames.add(col)
+    })
+    sd.setBucketCols(bucketColumnNames)
+    logDebug(s"numberBucket is ===>${bucketColumnNames}")
+    logDebug(s" cols is ==> ${sd.getCols}")
 
     new HiveTable(tTable)
   }
@@ -228,13 +239,32 @@ private[hive] case class MetastoreRelation(
   }
 
   /** PartitionKey attributes */
-  val partitionKeys = catalogTable.partitionSchema.map(_.toAttribute)
+  val partitionKeys = catalogTable.partitionColumns.map(_.toAttribute)
+
+  /** add for acid */
+  val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
+  val OPTION_TYPE: String = "OPTION_TYPE"
 
   /** Non-partitionKey attributes */
   // TODO: just make this hold the schema itself, not just non-partition columns
-  val attributes = catalogTable.schema
-    .filter { c => !catalogTable.partitionColumnNames.contains(c.name) }
-    .map(_.toAttribute)
+  val attributes = {
+    val rs = catalogTable.schema
+      .filter { c => !catalogTable.partitionColumnNames.contains(c.name) }
+      .map(_.toAttribute)
+    val conf = sparkSession.sessionState.conf
+    val transaction_acid_flg = conf.getConfString(SPARK_TRANSACTION_ACID, "false")
+    var modifySchema = rs
+    // add __VID_COL__
+    if (transaction_acid_flg.equalsIgnoreCase("true")) {
+      if (conf.getConfString(OPTION_TYPE).equalsIgnoreCase("1")
+        || conf.getConfString(OPTION_TYPE).equalsIgnoreCase("2") ) {
+        val vid = new SchemaAttribute(new CatalogColumn(
+          HiveUtils.CRUD_VIRTUAL_COLUMN_NAME, "string"))
+        modifySchema = rs ++ Seq(vid.toAttribute)
+      }
+    }
+    modifySchema
+  }
 
   val output = attributes ++ partitionKeys
 

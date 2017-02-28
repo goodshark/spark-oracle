@@ -22,9 +22,12 @@ import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
 import scala.collection.immutable.Map
+import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.{Configurable, Configuration}
+import org.apache.hadoop.hive.ql.io.RecordIdentifier
+import org.apache.hadoop.hive.ql.io.orc.OrcStruct
 import org.apache.hadoop.mapred.FileSplit
 import org.apache.hadoop.mapred.InputFormat
 import org.apache.hadoop.mapred.InputSplit
@@ -261,8 +264,14 @@ class HadoopRDD[K, V](
       private val key: K = if (reader == null) null.asInstanceOf[K] else reader.createKey()
       private val value: V = if (reader == null) null.asInstanceOf[V] else reader.createValue()
 
+      import org.apache.hadoop.hive.ql.io.orc.OrcInputFormat.NullKeyRecordReader
+      import org.apache.hadoop.hive.ql.io.orc.SparkOrcStruct
       override def getNext(): (K, V) = {
+        var recordId: RecordIdentifier = null
         try {
+          if ( null != reader && reader.isInstanceOf[NullKeyRecordReader] ) {
+            recordId = reader.asInstanceOf[NullKeyRecordReader].getRecordIdentifier
+          }
           finished = !reader.next(key, value)
         } catch {
           case e: IOException if ignoreCorruptFiles =>
@@ -274,6 +283,12 @@ class HadoopRDD[K, V](
         }
         if (inputMetrics.recordsRead % SparkHadoopUtil.UPDATE_INPUT_METRICS_INTERVAL_RECORDS == 0) {
           updateBytesRead()
+        }
+        if ( value != null && value.isInstanceOf[OrcStruct]) {
+          val numberFields = value.asInstanceOf[OrcStruct].getNumFields
+          value.asInstanceOf[OrcStruct].setNumFields(numberFields + 1 )
+          SparkOrcStruct.setOrcStructValue(recordId, numberFields, value.asInstanceOf[OrcStruct])
+          logDebug(s" numberFields is ${value.asInstanceOf[OrcStruct].getNumFields}")
         }
         (key, value)
       }

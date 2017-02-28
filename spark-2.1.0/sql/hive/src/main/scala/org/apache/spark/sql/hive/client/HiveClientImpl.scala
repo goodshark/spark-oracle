@@ -723,6 +723,13 @@ private[hive] class HiveClientImpl(
   }
 
   def addJar(path: String): Unit = {
+    try {
+      URL.setURLStreamHandlerFactory(new FsUrlStreamHandlerFactory())
+    } catch {
+      // Factory can only be set once per JVM
+      case e: java.lang.Error if e.getMessage contains "factory already defined" =>
+        logError("Factory already define", e)
+    }
     val uri = new Path(path).toUri
     val jarURL = if (uri.getScheme == null) {
       // `path` is a local file path without a URL scheme
@@ -824,7 +831,10 @@ private[hive] class HiveClientImpl(
       hiveTable.setFields(schema.asJava)
     }
     hiveTable.setPartCols(partCols.asJava)
+    // TODO: set sort columns here too
+    hiveTable.setBucketCols(table.bucketColumnNames.asJava)
     hiveTable.setOwner(conf.getUser)
+    hiveTable.setNumBuckets(table.numBuckets)
     hiveTable.setCreateTime((table.createTime / 1000).toInt)
     hiveTable.setLastAccessTime((table.lastAccessTime / 1000).toInt)
     table.storage.locationUri.foreach { loc => shim.setDataLocation(hiveTable, loc) }

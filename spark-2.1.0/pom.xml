@@ -92,14 +92,19 @@
     <module>common/unsafe</module>
     <module>common/tags</module>
     <module>core</module>
+    <!--
     <module>graphx</module>
     <module>mllib</module>
     <module>mllib-local</module>
+    -->
     <module>tools</module>
+    <!--
     <module>streaming</module>
+    -->
     <module>sql/catalyst</module>
     <module>sql/core</module>
     <module>sql/hive</module>
+    <module>sql/hive-thriftserver</module>
     <module>assembly</module>
     <module>external/flume</module>
     <module>external/flume-sink</module>
@@ -284,6 +289,16 @@
       <groupId>com.novocode</groupId>
       <artifactId>junit-interface</artifactId>
       <scope>test</scope>
+    </dependency>
+   <dependency>
+    <groupId>redis.clients</groupId>
+    <artifactId>jedis</artifactId>
+    <version>2.8.0</version>
+   </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>5.1.36</version>
     </dependency>
   </dependencies>
   <dependencyManagement>
@@ -2650,7 +2665,7 @@
     <profile>
       <id>java7</id>
       <activation>
-        <property><name>env.JAVA_7_HOME</name></property>
+        <property><name>env.JAVA_HOME</name></property>
       </activation>
       <properties>
         <useZincForJdk8>false</useZincForJdk8>
@@ -2664,9 +2679,8 @@
               <configuration>
                 <compilerArgs combine.children="append">
                   <arg>-bootclasspath</arg>
-                  <arg>${env.JAVA_7_HOME}/jre/lib/rt.jar${path.separator}${env.JAVA_7_HOME}/jre/lib/jce.jar</arg>
+                  <arg>${env.JAVA_HOME}/jre/lib/rt.jar</arg>
                 </compilerArgs>
-                <verbose>true</verbose>
               </configuration>
             </plugin>
             <plugin>
@@ -2681,7 +2695,7 @@
                   <configuration>
                     <args combine.children="append">
                       <arg>-javabootclasspath</arg>
-                      <arg>${env.JAVA_7_HOME}/jre/lib/rt.jar${path.separator}${env.JAVA_7_HOME}/jre/lib/jce.jar</arg>
+                      <arg>${env.JAVA_HOME}/jre/lib/rt.jar</arg>
                     </args>
                   </configuration>
                 </execution>
@@ -2690,7 +2704,7 @@
                   <configuration>
                     <args combine.children="append">
                       <arg>-javabootclasspath</arg>
-                      <arg>${env.JAVA_7_HOME}/jre/lib/rt.jar${path.separator}${env.JAVA_7_HOME}/jre/lib/jce.jar</arg>
+                      <arg>${env.JAVA_HOME}/jre/lib/rt.jar</arg>
                     </args>
                   </configuration>
                 </execution>

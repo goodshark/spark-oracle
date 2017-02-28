@@ -18,13 +18,17 @@
 package org.apache.spark.sql.hive
 
 import java.text.NumberFormat
-import java.util.{Date, Locale}
+import java.util
+import java.util.{Date, Properties}
+
+import org.apache.hadoop.conf.Configuration
 
 import scala.collection.JavaConverters._
-
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.hdfs.client.HdfsUtils
 import org.apache.hadoop.hive.common.FileUtils
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
+import org.apache.hadoop.hive.metastore.txn.TxnHandler
 import org.apache.hadoop.hive.ql.exec.{FileSinkOperator, Utilities}
 import org.apache.hadoop.hive.ql.io.{HiveFileFormatUtils, HiveOutputFormat}
 import org.apache.hadoop.hive.ql.plan.TableDesc
@@ -41,19 +45,23 @@ import org.apache.spark.mapred.SparkHadoopMapRedUtil
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.execution.UnsafeKVExternalSorter
+import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
 import org.apache.spark.sql.hive.HiveShim.{ShimFileSinkDesc => FileSinkDesc}
 import org.apache.spark.sql.types._
 import org.apache.spark.util.SerializableJobConf
 import org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter
+
+import scala.collection.mutable
 
 /**
  * Internal helper class that saves an RDD using a Hive OutputFormat.
  * It is based on `SparkHadoopWriter`.
  */
 private[hive] class SparkHiveWriterContainer(
-    @transient private val jobConf: JobConf,
-    fileSinkConf: FileSinkDesc,
-    inputSchema: Seq[Attribute])
+                                              @transient private val jobConf: JobConf,
+                                              fileSinkConf: FileSinkDesc,
+                                              inputSchema: Seq[Attribute],
+                                              table: MetastoreRelation)
   extends Logging
   with HiveInspectors
   with Serializable {
@@ -176,23 +184,278 @@ private[hive] class SparkHiveWriterContainer(
     (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData)
   }
 
+  def getUpdateInspector: StandardStructObjectInspector = {
+    val ois = new util.ArrayList[ObjectInspector]()
+    val vidStructName = new util.ArrayList[String]()
+    vidStructName.add("transactionId")
+    vidStructName.add("bucketId")
+    vidStructName.add("rowId")
+
+    val vidStructType = new util.ArrayList[TypeInfo]()
+    vidStructType.add(TypeInfoFactory.getPrimitiveTypeInfo("bigint"))
+    vidStructType.add(TypeInfoFactory.getPrimitiveTypeInfo("int"))
+    vidStructType.add(TypeInfoFactory.getPrimitiveTypeInfo("bigint"))
+    ois.add(0, TypeInfoUtils.getStandardWritableObjectInspectorFromTypeInfo(
+      TypeInfoFactory.getStructTypeInfo(
+        vidStructName,
+        vidStructType)))
+
+    val colNames = new util.ArrayList[String]()
+    colNames.add("_col0")
+    var index = 1
+    table.catalogTable.schema.foreach {
+      f =>
+        colNames.add("_col" + index)
+        ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
+          TypeInfoFactory.getPrimitiveTypeInfo(f.dataType))
+        )
+        index = index + 1
+    }
+    ObjectInspectorFactory.getStandardStructObjectInspector(colNames, ois)
+  }
+
+  def getInsertInspector: StandardStructObjectInspector = {
+    val ois = new util.ArrayList[ObjectInspector]()
+    val colNames = new util.ArrayList[String]()
+    var index = 0
+    table.catalogTable.schema.foreach {
+      f =>
+        colNames.add("_col" + index)
+        ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
+          TypeInfoFactory.getPrimitiveTypeInfo(f.dataType))
+        )
+        index = index + 1
+    }
+    ObjectInspectorFactory.getStandardStructObjectInspector(colNames, ois)
+  }
+
+  def getTransactionId: Long = {
+    val url = conf.value.get("javax.jdo.option.ConnectionURL")
+    val props = new Properties()
+    props.put("user", conf.value.get("javax.jdo.option.ConnectionUserName"))
+    props.put("password", conf.value.get("javax.jdo.option.ConnectionPassword"))
+    val conn = JdbcUtils.createConnectionFactory(url, props)()
+    try {
+      var sql = "lock tables NEXT_TXN_ID WRITE, TXNS WRITE "
+      val lockStmt = conn.prepareStatement(sql)
+      lockStmt.executeQuery(sql)
+      sql = "select ntxn_next from NEXT_TXN_ID"
+      val stmt = conn.prepareStatement(sql)
+      val rs = stmt.executeQuery(sql)
+      if (!rs.next()) {
+        throw new Exception("Transaction database not properly " +
+          "configured, can't find next transaction id.")
+      }
+      val first: Long = rs.getLong(1)
+      logDebug(s" get current txnId : ${first}")
+      val txnId = first + 1
+      sql = "update NEXT_TXN_ID set ntxn_next = " + txnId
+      logDebug(s" update table NEXT_TXN_ID sql [ ${sql} ]")
+      stmt.executeUpdate(sql)
+      /* val now = System.currentTimeMillis()
+      val userName = "spark_txnId_user"
+      val hostName = "spark_txId_hostName"
+      sql = "insert into TXNS (txn_id, txn_state, txn_started, " +
+        "txn_last_heartbeat, txn_user, txn_host) values (?, 'o', " + now + ", " +
+        now + ", '" + userName + "', '" + hostName + "')"
+      logInfo(s" insert table TXNS sql [ ${sql} ]")
+      val ps = conn.prepareStatement(sql)
+      ps.setLong(1, txnId)
+      ps.executeUpdate() */
+      sql = "unlock tables"
+      val unLockStmt = conn.prepareStatement(sql)
+      unLockStmt.executeQuery(sql)
+      first
+    } finally {
+      if (conn != null) {
+        conn.close()
+      }
+    }
+  }
+
+  // completed file
+  def completedFile(txnId: Long, database: String, tableName: String, partition: String): Unit = {
+    val url = conf.value.get("javax.jdo.option.ConnectionURL")
+    val props = new Properties()
+    props.put("user", conf.value.get("javax.jdo.option.ConnectionUserName"))
+    props.put("password", conf.value.get("javax.jdo.option.ConnectionPassword"))
+    var p = ""
+    if (partition.isEmpty) {
+      p = "NULL"
+    } else {
+      p = "'" + partition + "'"
+    }
+    val conn = JdbcUtils.createConnectionFactory(url, props)()
+    try {
+      val sql = "insert into COMPLETED_TXN_COMPONENTS ( ctc_txnid, ctc_database, ctc_table, " +
+        "ctc_partition ) VALUES ( " +
+        txnId + " ,'" + database + "','" + tableName + "'," + p + " )"
+      logDebug(s" insert into  table COMPLETED_TXN_COMPONENTS sql [ ${sql} ]")
+      val stmt = conn.prepareStatement(sql)
+      stmt.executeUpdate(sql)
+    } finally {
+      if (conn != null) {
+        conn.close()
+      }
+    }
+  }
+
+
+  val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
+  val OPTION_TYPE: String = "OPTION_TYPE"
+
   // this function is executed on executor side
   def writeToFile(context: TaskContext, iterator: Iterator[InternalRow]): Unit = {
-    val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
-    executorSideSetup(context.stageId, context.partitionId, context.attemptNumber)
-
-    iterator.foreach { row =>
-      var i = 0
-      while (i < fieldOIs.length) {
-        outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
-        i += 1
+    val transaction_acid_flg = conf.value.get(SPARK_TRANSACTION_ACID, "false")
+    if (transaction_acid_flg.equalsIgnoreCase("true")) {
+      val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
+      var partitionPath = ""
+      if (null != table.tableDesc.getProperties.getProperty("partition_columns") &&
+        table.tableDesc.getProperties.getProperty("partition_columns").nonEmpty) {
+        partitionPath = conf.value.get("spark.partition.value")
       }
-      writer.write(serializer.serialize(outputData, standardOI))
-    }
+      val outPutPath = new Path(
+           FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
+      )
 
-    close()
+      val bucketColumnNames = table.catalogTable.bucketColumnNames
+      val bucketNumBuckets = table.catalogTable.numBuckets
+      var transactionId: Long = -1
+      val rows = new util.ArrayList[Any]
+      val updateRecordMap = scala.collection.mutable.Map[Integer, RecordUpdater]()
+      if (iterator.nonEmpty) {
+        transactionId = getTransactionId
+        fileSinkConf.setTransactionId(transactionId)
+      }
+      iterator.foreach {
+        row => {
+          rows.clear()
+          val bucketId: Int = rowsAddVid(bucketColumnNames, bucketNumBuckets,
+            standardOI, fieldOIs, rows, row)
+          var i = 0
+          while (i < fieldOIs.length) {
+            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+            rows.add(outputData(i))
+            i += 1
+          }
+
+          conf.value.get(OPTION_TYPE) match {
+            case "1" =>
+              getUpdateRecord(bucketId, getUpdateInspector, outPutPath,
+                updateRecordMap, conf.value.get(OPTION_TYPE))
+              updateRecordMap.get(bucketId).get.update(transactionId, rows)
+            case "2" =>
+              getUpdateRecord(bucketId, getUpdateInspector, outPutPath,
+                updateRecordMap, conf.value.get(OPTION_TYPE))
+              updateRecordMap.get(bucketId).get.delete(transactionId, rows)
+            case "0" =>
+              getUpdateRecord(bucketId, getInsertInspector, outPutPath,
+                updateRecordMap, conf.value.get(OPTION_TYPE))
+              updateRecordMap.get(bucketId).get.insert(transactionId, rows)
+            case _ =>
+              logError(s" no operation ")
+          }
+        }
+      }
+      closeUpdateRecord(updateRecordMap)
+      completedFile(transactionId, table.databaseName, table.tableName, partitionPath)
+
+    } else {
+      val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
+      executorSideSetup(context.stageId, context.partitionId, context.attemptNumber)
+      iterator.foreach { row =>
+        var i = 0
+        while (i < fieldOIs.length) {
+          outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+          i += 1
+        }
+        writer.write(serializer.serialize(outputData, standardOI))
+      }
+      close()
+    }
+  }
+
+  def closeUpdateRecord(updateRecordMap: mutable.Map[Integer, RecordUpdater]): Unit = {
+    updateRecordMap.keys.foreach(u => {
+      val updateRecord = updateRecordMap.get(u).get
+      if (updateRecord != null) {
+        updateRecord.close(false)
+      }
+    })
+  }
+
+
+  def rowsAddVid(bucketColumnNames: Seq[String],
+                 bucketNumber: Int,
+                 standardOI: StructObjectInspector,
+                 fieldOIs: Array[ObjectInspector],
+                 rows: util.ArrayList[Any],
+                 row: InternalRow): Int = {
+
+    var bucketId: Int = 0
+    if (conf.value.get(OPTION_TYPE).equalsIgnoreCase("1")
+      || conf.value.get(OPTION_TYPE).equalsIgnoreCase("2")) {
+      val vidValue = row.getString(fieldOIs.length).toString
+      val vidInfo = new util.ArrayList[Object]
+      val txnBucketRowId: Array[String] = vidValue.split('^')
+      val txnId = new LongWritable(txnBucketRowId(0).trim.toLong)
+      val bucketIdWritable = new LongWritable(txnBucketRowId(1).trim.toLong)
+      val rowId = new LongWritable(txnBucketRowId(2).trim.toLong)
+
+      logDebug(s" vidValue is : $vidValue txnId: $txnId bucketId: $bucketIdWritable ," +
+        s"rowId: $rowId age: ${row.getString(1)}")
+      vidInfo.add(txnId)
+      vidInfo.add(bucketIdWritable)
+      vidInfo.add(rowId)
+      rows.add(vidInfo)
+      bucketId = txnBucketRowId(1).trim.toInt
+    } else {
+      val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
+      var hashCode = 0
+      try {
+        standardOI.getAllStructFieldRefs.asScala.foreach(s => {
+          if (bucketColumnNames.contains(s.getFieldName)) {
+            val bucketVal = if (row.isNullAt(s.getFieldID)) null
+            else wrappers(s.getFieldID)(row.get(s.getFieldID, dataTypes(s.getFieldID)))
+            hashCode += bucketVal.hashCode()
+          }
+        })
+      } catch {
+        case e: Exception => logError(s" Computer bucket Id error..")
+      }
+      bucketId = (hashCode & Integer.MAX_VALUE) % bucketNumber
+    }
+    bucketId
+  }
+
+
+  def getUpdateRecord(bucketId: Int, inspector: StandardStructObjectInspector,
+                      outPutPath: Path,
+                      updateRecordMap: mutable.Map[Integer, RecordUpdater],
+                      op: String): Unit = {
+    val rowId: Int = op match {
+      case "0" => -1
+      case "1" => 0
+      case "2" => 0
+      case _ => -1
+    }
+    if (!updateRecordMap.contains(bucketId)) {
+      val updateRecord: RecordUpdater = HiveFileFormatUtils.getAcidRecordUpdater(
+        conf.value,
+        fileSinkConf.getTableInfo,
+        // table.catalogTable.numBuckets,
+        bucketId,
+        fileSinkConf,
+        // FileOutputFormat.getTaskOutputPath(conf.value, getOutputName),
+        outPutPath,
+        inspector,
+        Reporter.NULL,
+        rowId)
+      updateRecordMap.put(bucketId, updateRecord)
+    }
   }
 }
+
 
 private[hive] object SparkHiveWriterContainer {
   def createPathFromString(path: String, conf: JobConf): Path = {
@@ -213,11 +476,12 @@ private[spark] object SparkHiveDynamicPartitionWriterContainer {
 }
 
 private[spark] class SparkHiveDynamicPartitionWriterContainer(
-    jobConf: JobConf,
-    fileSinkConf: FileSinkDesc,
-    dynamicPartColNames: Array[String],
-    inputSchema: Seq[Attribute])
-  extends SparkHiveWriterContainer(jobConf, fileSinkConf, inputSchema) {
+                                                               jobConf: JobConf,
+                                                               fileSinkConf: FileSinkDesc,
+                                                               dynamicPartColNames: Array[String],
+                                                               inputSchema: Seq[Attribute],
+                                                               table: MetastoreRelation)
+  extends SparkHiveWriterContainer(jobConf, fileSinkConf, inputSchema, table) {
 
   import SparkHiveDynamicPartitionWriterContainer._
 
