@@ -297,7 +297,7 @@ class SessionCatalog(
     */
   def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
     var flag = true
-    if ( tableMetadata.bucketColumnNames.isEmpty ||
+    if ( tableMetadata.bucketSpec.get.bucketColumnNames.isEmpty ||
       !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||
       !tableMetadata.storage.outputFormat.
         get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")

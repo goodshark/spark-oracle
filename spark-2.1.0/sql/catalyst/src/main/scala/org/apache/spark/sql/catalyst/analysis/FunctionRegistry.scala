@@ -184,7 +184,6 @@ object FunctionRegistry {
     expression[Rand]("rand"),
     expression[Randn]("randn"),
     expression[Stack]("stack"),
-    expression[CreateStruct]("struct"),
     expression[CaseWhen]("when"),
 
     // math functions
