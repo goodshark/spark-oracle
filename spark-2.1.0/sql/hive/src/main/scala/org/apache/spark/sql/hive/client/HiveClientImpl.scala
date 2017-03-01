@@ -374,9 +374,9 @@ private[hive] class HiveClientImpl(
         unsupportedFeatures += "storage handler"
       }
 
-      if (!h.getBucketCols.isEmpty) {
+      /*if (!h.getBucketCols.isEmpty) {
         unsupportedFeatures += "bucketing"
-      }
+      }*/
 
       if (h.getTableType == HiveTableType.VIRTUAL_VIEW && partCols.nonEmpty) {
         unsupportedFeatures += "partitioned view"
