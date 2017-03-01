@@ -364,23 +364,35 @@ case class InsertIntoHiveTable(
           // inheritTableSpecs is set to true. It should be set to false for an IMPORT query
           // which is currently considered as a Hive native command.
           val inheritTableSpecs = true
-          externalCatalog.loadPartition(
-            table.catalogTable.database,
-            table.catalogTable.identifier.table,
-            outputPath.toString,
-            partitionSpec,
-            isOverwrite = doHiveOverwrite,
-            holdDDLTime = holdDDLTime,
-            inheritTableSpecs = inheritTableSpecs)
+          if (sessionState.catalog.checkAcidTable(table.catalogTable)) {
+            val src = new Path(outputPath.toString + partitionPathStr)
+            val detPath = new Path(table.tableDesc.getProperties.get("location").toString
+              + partitionPathStr)
+            loadTableForCrud(src, detPath)
+          } else {
+            externalCatalog.loadPartition(
+              table.catalogTable.database,
+              table.catalogTable.identifier.table,
+              outputPath.toString,
+              partitionSpec,
+              isOverwrite = doHiveOverwrite,
+              holdDDLTime = holdDDLTime,
+              inheritTableSpecs = inheritTableSpecs)
+          }
         }
       }
     } else {
-      externalCatalog.loadTable(
-        table.catalogTable.database,
-        table.catalogTable.identifier.table,
-        outputPath.toString, // TODO: URI
-        overwrite,
-        holdDDLTime)
+      if (sessionState.catalog.checkAcidTable(table.catalogTable)) {
+        val detPath = new Path(table.tableDesc.getProperties.get("location").toString)
+        loadTableForCrud(outputPath, detPath)
+      } else {
+        externalCatalog.loadTable(
+          table.catalogTable.database,
+          table.catalogTable.identifier.table,
+          outputPath.toString, // TODO: URI
+          overwrite,
+          holdDDLTime)
+      }
     }
 
     // Invalidate the cache.
