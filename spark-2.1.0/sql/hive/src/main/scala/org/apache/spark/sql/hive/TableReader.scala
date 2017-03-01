@@ -85,16 +85,16 @@ class HadoopTableReader(
 
   private val _broadcastedHadoopConf = {
     if (sparkSession.sessionState.catalog.checkAcidTable(relation.catalogTable)) {
-      val partitionColumns: Seq[CatalogColumn] = relation.catalogTable.partitionColumns
-      if (null != partitionColumns) {
-        partitionColumns.foreach( p => {
-          hadoopConf.set("columns", hadoopConf.get("columns") +  ","  + p.name)
-          hadoopConf.set("columns.types", hadoopConf.get("columns.types") +  ","  + p.dataType)
+      val schemaFields = relation.catalogTable.schema.fields
+      if (null != schemaFields) {
+        schemaFields.foreach(p => {
+          hadoopConf.set("columns", hadoopConf.get("columns") + "," + p.name)
+          hadoopConf.set("columns.types", hadoopConf.get("columns.types") + "," + p.dataType.typeName)
         })
       }
     }
     sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
-
+  }
   override def makeRDDForTable(hiveTable: HiveTable): RDD[InternalRow] =
     makeRDDForTable(
       hiveTable,
