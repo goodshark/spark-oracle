@@ -1020,6 +1020,27 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
     val partitionCols = Option(ctx.partitionColumns).map(visitColTypeList).getOrElse(Nil)
     val properties = Option(ctx.tablePropertyList).map(visitPropertyKeyValues).getOrElse(Map.empty)
     val selectQuery = Option(ctx.query).map(plan)
+    var bucketInfo: BucketSpec = null
+    if ( null!=ctx.bucketSpec() ) {
+      bucketInfo = visitBucketSpec(ctx.bucketSpec())
+    }
+
+    // Ensuring whether no duplicate name is used in table definition
+    val colNames = cols.map(_.name)
+    if (colNames.length != colNames.distinct.length) {
+      val duplicateColumns = colNames.groupBy(identity).collect {
+        case (x, ys) if ys.length > 1 => "\"" + x + "\""
+      }
+      operationNotAllowed(s"Duplicated column names found in table definition of $name: " +
+        duplicateColumns.mkString("[", ",", "]"), ctx)
+    }
+
+    // For Hive tables, partition columns must not be part of the schema
+    val badPartCols = partitionCols.map(_.name).toSet.intersect(colNames.toSet)
+    if (badPartCols.nonEmpty) {
+      operationNotAllowed(s"Partition columns may not be specified in the schema: " +
+        badPartCols.map("\"" + _ + "\"").mkString("[", ",", "]"), ctx)
+    }
 
     // Note: Hive requires partition columns to be distinct from the schema, so we need
     // to include the partition columns here explicitly
@@ -1079,7 +1100,7 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
           properties = properties,
           comment = comment)
       } else {
-         CatalogTable(
+        CatalogTable(
           identifier = name,
           tableType = tableType,
           storage = storage,
@@ -1089,6 +1110,7 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
           comment = comment)
       }
 
+    }
     val mode = if (ifNotExists) SaveMode.Ignore else SaveMode.ErrorIfExists
 
     selectQuery match {
