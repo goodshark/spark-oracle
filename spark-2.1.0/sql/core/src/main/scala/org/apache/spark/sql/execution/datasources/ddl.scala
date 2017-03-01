@@ -303,7 +303,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
     sb.append(tb)
 
     var partitionSet: Set[String] = Set()
-    if (tableMetadata.partitionColumns.nonEmpty ) {
+    if (tableMetadata.partitionColumnNames.nonEmpty ) {
       if (null==statement.where||statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
       }
