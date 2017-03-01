@@ -130,9 +130,9 @@ case class BucketSpec(
     numBuckets: Int,
     bucketColumnNames: Seq[String],
     sortColumnNames: Seq[String]) {
-  if (numBuckets <= 0) {
+  /*if (numBuckets <= 0) {
     throw new AnalysisException(s"Expected positive number of buckets, but got `$numBuckets`.")
-  }
+  }*/
 }
 
 /**
