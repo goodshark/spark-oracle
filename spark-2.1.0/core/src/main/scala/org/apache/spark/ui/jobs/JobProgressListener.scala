@@ -536,6 +536,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
         stageData.taskData = stageData.taskData.drop(stageData.taskData.size - retainedTasks)
       }
 
+      var taskStatus = "success"
       for (
         activeJobsDependentOnStage <- stageIdToActiveJobIds.get(taskEnd.stageId);
         jobId <- activeJobsDependentOnStage;
@@ -547,8 +548,10 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
             jobData.numCompletedTasks += 1
           case TaskKilled =>
             jobData.numKilledTasks += 1
+            taskStatus = "killed"
           case _ =>
             jobData.numFailedTasks += 1
+            taskStatus = "failed"
         }
         logInfo(s"spark-client-log<onTaskEnd> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
         val curDate = new Date()
