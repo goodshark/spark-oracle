@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql
 
+import java.util.Properties
 import java.beans.Introspector
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicReference

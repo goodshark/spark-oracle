@@ -162,7 +162,7 @@ case class DataSourceAnalysis(conf: CatalystConf) extends Rule[LogicalPlan] {
 
 
     case i @ logical.InsertIntoTable(
-           l @ LogicalRelation(t: HadoopFsRelation, _, _), part, query, overwrite, false, _, _)
+           l @ LogicalRelation(t: HadoopFsRelation, _, table), _, query, overwrite, false, _, _)
         if query.resolved && t.schema.asNullable == query.schema.asNullable =>
 
       // Sanity checks

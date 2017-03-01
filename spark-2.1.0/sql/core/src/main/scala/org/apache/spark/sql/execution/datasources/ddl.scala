@@ -31,6 +31,8 @@ import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.internal.SessionState
 import org.apache.spark.sql.types._
 
+import scala.collection.mutable
+
 case class CreateTable(
     tableDesc: CatalogTable,
     mode: SaveMode,
@@ -200,7 +202,7 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
       // extract where leaf node
       val partitionColumnMap: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
       extractWhereMap(statement.where, partitionColumnMap)
-      partitionSet = tableMetadata.partitionColumns.map( cata => cata.name.toLowerCase).toSet
+      partitionSet = tableMetadata.partitionColumnNames.map( cata => cata.name.toLowerCase).toSet
       val verifyPartition = partitionSet.subsetOf(
         partitionColumnMap.map(ele => ele._1).toSet
       )
@@ -210,7 +212,7 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
       sb.append(" partition ")
       sb.append("( ")
       var partitionColAssign = List[String]()
-      tableMetadata.partitionColumns.foreach( p => {
+      tableMetadata.partitionColumnNames.foreach( p => {
         partitionColAssign = partitionColAssign :+ p.name + "=" + partitionColumnMap.get(p.name).get
       })
       sb.append(partitionColAssign.mkString(","))
@@ -223,13 +225,13 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
       val array = statement.assignExpression(i).getText.split("=")
        columnMap += (array(0).toLowerCase -> array(1))
     }
-    tableMetadata.bucketColumnNames.foreach( bucketColumnName => {
+    tableMetadata.bucketSpec.get.bucketColumnNames.foreach( bucketColumnName => {
       if (columnMap.contains(bucketColumnName)) {
         throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
       }
     })
 
-    tableMetadata.partitionColumns.foreach( p => {
+    tableMetadata.partitionColumnNames.foreach( p => {
       if (columnMap.contains(p.name)) {
         throw new Exception(s" Cannot update partitionColumnName: ${p.name}")
       }

@@ -33,6 +33,7 @@ import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.{CreateTable, _}
 import org.apache.spark.sql.internal.{HiveSerDe, SQLConf, VariableSubstitution}
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.DataType
 
 /**
  * Concrete parser for Spark SQL statements.
@@ -1025,23 +1026,6 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
       bucketInfo = visitBucketSpec(ctx.bucketSpec())
     }
 
-    // Ensuring whether no duplicate name is used in table definition
-    val colNames = cols.map(_.name)
-    if (colNames.length != colNames.distinct.length) {
-      val duplicateColumns = colNames.groupBy(identity).collect {
-        case (x, ys) if ys.length > 1 => "\"" + x + "\""
-      }
-      operationNotAllowed(s"Duplicated column names found in table definition of $name: " +
-        duplicateColumns.mkString("[", ",", "]"), ctx)
-    }
-
-    // For Hive tables, partition columns must not be part of the schema
-    val badPartCols = partitionCols.map(_.name).toSet.intersect(colNames.toSet)
-    if (badPartCols.nonEmpty) {
-      operationNotAllowed(s"Partition columns may not be specified in the schema: " +
-        badPartCols.map("\"" + _ + "\"").mkString("[", ",", "]"), ctx)
-    }
-
     // Note: Hive requires partition columns to be distinct from the schema, so we need
     // to include the partition columns here explicitly
     val schema = StructType(dataCols ++ partitionCols)
@@ -1089,14 +1073,12 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
     val tableDesc = {
       if (null != bucketInfo) {
         CatalogTable(
-          bucketColumnNames = bucketInfo.bucketColumnNames,
-          sortColumnNames = bucketInfo.sortColumnNames,
-          numBuckets = bucketInfo.numBuckets,
           identifier = name,
           tableType = tableType,
           storage = storage,
           schema = schema,
           partitionColumnNames = partitionCols.map(_.name),
+          bucketSpec = Some(bucketInfo),
           properties = properties,
           comment = comment)
       } else {
