@@ -195,14 +195,14 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
     sb.append(".")
     sb.append(tb)
 
-    if (tableMetadata.partitionColumns.nonEmpty ) {
+    if (tableMetadata.partitionColumnNames.nonEmpty ) {
       if (null==statement.where||statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
       }
       // extract where leaf node
       val partitionColumnMap: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
       extractWhereMap(statement.where, partitionColumnMap)
-      partitionSet = tableMetadata.partitionColumnNames.map( cata => cata.name.toLowerCase).toSet
+      partitionSet = tableMetadata.partitionColumnNames.map( cata => cata.toLowerCase).toSet
       val verifyPartition = partitionSet.subsetOf(
         partitionColumnMap.map(ele => ele._1).toSet
       )
@@ -213,7 +213,7 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
       sb.append("( ")
       var partitionColAssign = List[String]()
       tableMetadata.partitionColumnNames.foreach( p => {
-        partitionColAssign = partitionColAssign :+ p.name + "=" + partitionColumnMap.get(p.name).get
+        partitionColAssign = partitionColAssign :+ p + "=" + partitionColumnMap.get(p).get
       })
       sb.append(partitionColAssign.mkString(","))
       sb.append(" )")
@@ -232,8 +232,8 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
     })
 
     tableMetadata.partitionColumnNames.foreach( p => {
-      if (columnMap.contains(p.name)) {
-        throw new Exception(s" Cannot update partitionColumnName: ${p.name}")
+      if (columnMap.contains(p)) {
+        throw new Exception(s" Cannot update partitionColumnName: ${p}")
       }
     })
 
@@ -310,7 +310,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       // extract where leaf node
       val partitionColumnMap: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
       AcidUpdateCommand(null, identifier).extractWhereMap(statement.where, partitionColumnMap)
-      partitionSet = tableMetadata.partitionColumns.map( cata => cata.name.toLowerCase).toSet
+      partitionSet = tableMetadata.partitionColumnNames.map( cata => cata.toLowerCase).toSet
       val verifyPartition = partitionSet.subsetOf(
         partitionColumnMap.map(ele => ele._1).toSet
       )
@@ -320,8 +320,8 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       sb.append(" partition ")
       sb.append("( ")
       var partitionColAssign = List[String]()
-      tableMetadata.partitionColumns.foreach( p => {
-        partitionColAssign = partitionColAssign :+ p.name + "=" + partitionColumnMap.get(p.name).get
+      tableMetadata.partitionColumnNames.foreach( p => {
+        partitionColAssign = partitionColAssign :+ p + "=" + partitionColumnMap.get(p).get
       })
       sb.append(partitionColAssign.mkString(","))
       sb.append(" )")

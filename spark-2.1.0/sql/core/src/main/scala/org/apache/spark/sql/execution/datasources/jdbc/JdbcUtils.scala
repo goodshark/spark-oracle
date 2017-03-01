@@ -18,11 +18,11 @@
 package org.apache.spark.sql.execution.datasources.jdbc
 
 import java.sql.{Connection, Driver, DriverManager, PreparedStatement, ResultSet, ResultSetMetaData, SQLException}
+import java.util.Properties
 
 import scala.collection.JavaConverters._
 import scala.util.Try
 import scala.util.control.NonFatal
-
 import org.apache.spark.TaskContext
 import org.apache.spark.executor.InputMetrics
 import org.apache.spark.internal.Logging
@@ -57,6 +57,34 @@ object JdbcUtils extends Logging {
           s"Did not find registered driver with class $driverClass")
       }
       driver.connect(options.url, options.asConnectionProperties)
+    }
+  }
+
+  /**
+    * Returns a factory for creating connections to the given JDBC URL.
+    *
+    * @param url the JDBC url to connect to.
+    * @param properties JDBC connection properties.
+    */
+  def createConnectionFactory(url: String, properties: Properties): () => Connection = {
+    val userSpecifiedDriverClass = Option(properties.getProperty("driver"))
+    userSpecifiedDriverClass.foreach(DriverRegistry.register)
+    // Performing this part of the logic on the driver guards against the corner-case where the
+    // driver returned for a URL is different on the driver and executors due to classpath
+    // differences.
+    val driverClass: String = userSpecifiedDriverClass.getOrElse {
+      DriverManager.getDriver(url).getClass.getCanonicalName
+    }
+    () => {
+      userSpecifiedDriverClass.foreach(DriverRegistry.register)
+      val driver: Driver = DriverManager.getDrivers.asScala.collectFirst {
+        case d: DriverWrapper if d.wrapped.getClass.getCanonicalName == driverClass => d
+        case d if d.getClass.getCanonicalName == driverClass => d
+      }.getOrElse {
+        throw new IllegalStateException(
+          s"Did not find registered driver with class $driverClass")
+      }
+      driver.connect(url, properties)
     }
   }
 
