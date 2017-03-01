@@ -27,7 +27,8 @@ import org.antlr.v4.runtime.{ParserRuleContext, Token}
 import org.antlr.v4.runtime.tree.{ParseTree, RuleNode, TerminalNode}
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.catalyst.{FunctionIdentifier, InternalRow, TableIdentifier}
+import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.parser.SqlBaseParser._
@@ -184,7 +185,7 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       UnresolvedRelation(tableIdent, None),
       partitionKeys,
       query,
-      ctx.OVERWRITE != null,
+      OverwriteOptions(overwrite, if (overwrite) staticPartitionKeys else Map.empty),
       ctx.EXISTS != null,
       ctx.tableIdentifier().table.getText,
       Option(ctx.tableIdentifier().db).map(_.getText))
