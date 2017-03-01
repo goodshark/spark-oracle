@@ -21,7 +21,7 @@ import java.io.IOException
 import java.net.URI
 import java.text.SimpleDateFormat
 import java.util
-import java.util.{Date, Random}
+import java.util.{Date, Locale, Random}
 
 import scala.collection.JavaConverters._
 import org.apache.hadoop.conf.Configuration
@@ -33,7 +33,6 @@ import org.apache.hadoop.hive.ql.exec.TaskRunner
 import org.apache.hadoop.hive.ql.ErrorMsg
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.mapred.{FileOutputFormat, JobConf}
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.InternalRow
@@ -90,7 +89,7 @@ case class InsertIntoHiveTable(
   def output: Seq[Attribute] = Seq.empty
 
   val hadoopConf = sessionState.newHadoopConf()
-  val stagingDir = hadoopConf.get("hive.exec.stagingdir", ".hive-staging")
+  var stagingDir = hadoopConf.get("hive.exec.stagingdir", ".hive-staging")
 
   private def executionId: String = {
     val rand: Random = new Random

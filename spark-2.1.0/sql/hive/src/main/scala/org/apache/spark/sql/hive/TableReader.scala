@@ -40,7 +40,7 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.{EmptyRDD, HadoopRDD, RDD, UnionRDD}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.catalog.{CatalogColumn, CatalogTable}
+import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.unsafe.types.UTF8String
@@ -163,7 +163,7 @@ class HadoopTableReader(
 
   def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
     var flag = true
-    if ( tableMetadata.bucketColumnNames.isEmpty ||
+    if ( tableMetadata.bucketSpec.get.bucketColumnNames.isEmpty ||
       !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||
       !tableMetadata.storage.outputFormat.
         get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")
@@ -417,7 +417,7 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
       iterator: Iterator[Writable],
       rawDeser: Deserializer,
       nonPartitionKeyAttrs: Seq[(Attribute, Int)],
-      mutableRow: MutableRow,
+      mutableRow: InternalRow,
       tableDeser: Deserializer,
       conf: Configuration = null ): Iterator[InternalRow] = {
 

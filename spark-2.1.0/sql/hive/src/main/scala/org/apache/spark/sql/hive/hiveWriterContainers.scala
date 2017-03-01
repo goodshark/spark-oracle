@@ -17,28 +17,27 @@
 
 package org.apache.spark.sql.hive
 
+
 import java.text.NumberFormat
 import java.util
-import java.util.{Date, Properties}
+import java.util.{Date, Locale, Properties}
 
 import org.apache.hadoop.conf.Configuration
 
 import scala.collection.JavaConverters._
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.hadoop.hdfs.client.HdfsUtils
 import org.apache.hadoop.hive.common.FileUtils
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
-import org.apache.hadoop.hive.metastore.txn.TxnHandler
 import org.apache.hadoop.hive.ql.exec.{FileSinkOperator, Utilities}
-import org.apache.hadoop.hive.ql.io.{HiveFileFormatUtils, HiveOutputFormat}
+import org.apache.hadoop.hive.ql.io._
 import org.apache.hadoop.hive.ql.plan.TableDesc
-import org.apache.hadoop.hive.serde2.Serializer
-import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspectorUtils, StructObjectInspector}
+import org.apache.hadoop.hive.serde2.{Deserializer, Serializer}
+import org.apache.hadoop.hive.serde2.objectinspector._
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils.ObjectInspectorCopyOption
-import org.apache.hadoop.io.Writable
+import org.apache.hadoop.hive.serde2.typeinfo.{TypeInfo, TypeInfoFactory, TypeInfoUtils}
+import org.apache.hadoop.io.{LongWritable, Writable}
 import org.apache.hadoop.mapred._
 import org.apache.hadoop.mapreduce.TaskType
-
 import org.apache.spark._
 import org.apache.spark.internal.Logging
 import org.apache.spark.mapred.SparkHadoopMapRedUtil
@@ -207,7 +206,7 @@ private[hive] class SparkHiveWriterContainer(
       f =>
         colNames.add("_col" + index)
         ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
-          TypeInfoFactory.getPrimitiveTypeInfo(f.dataType))
+          TypeInfoFactory.getPrimitiveTypeInfo(f.dataType.typeName))
         )
         index = index + 1
     }
@@ -222,7 +221,7 @@ private[hive] class SparkHiveWriterContainer(
       f =>
         colNames.add("_col" + index)
         ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
-          TypeInfoFactory.getPrimitiveTypeInfo(f.dataType))
+          TypeInfoFactory.getPrimitiveTypeInfo(f.dataType.typeName))
         )
         index = index + 1
     }
@@ -318,8 +317,8 @@ private[hive] class SparkHiveWriterContainer(
            FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
       )
 
-      val bucketColumnNames = table.catalogTable.bucketColumnNames
-      val bucketNumBuckets = table.catalogTable.numBuckets
+      val bucketColumnNames = table.catalogTable.bucketSpec.get.bucketColumnNames
+      val bucketNumBuckets = table.catalogTable.bucketSpec.get.numBuckets
       var transactionId: Long = -1
       val rows = new util.ArrayList[Any]
       val updateRecordMap = scala.collection.mutable.Map[Integer, RecordUpdater]()
