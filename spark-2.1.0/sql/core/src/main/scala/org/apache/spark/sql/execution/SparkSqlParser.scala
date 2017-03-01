@@ -1077,6 +1077,7 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
           tableType = tableType,
           storage = storage,
           schema = schema,
+          provider = Some(DDLUtils.HIVE_PROVIDER),
           partitionColumnNames = partitionCols.map(_.name),
           bucketSpec = Some(bucketInfo),
           properties = properties,
@@ -1087,10 +1088,12 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
           tableType = tableType,
           storage = storage,
           schema = schema,
+          provider = Some(DDLUtils.HIVE_PROVIDER),
           partitionColumnNames = partitionCols.map(_.name),
           properties = properties,
           comment = comment)
       }
+
 
     }
     val mode = if (ifNotExists) SaveMode.Ignore else SaveMode.ErrorIfExists
