@@ -108,10 +108,10 @@ private[hive] case class MetastoreRelation(
     val serdeParameters = new java.util.HashMap[String, String]()
     catalogTable.storage.properties.foreach { case (k, v) => serdeParameters.put(k, v) }
     serdeInfo.setParameters(serdeParameters)
-    logDebug(s"numberBucket is ===>${catalogTable.bucketSpec.get.numBuckets}")
-    sd.setNumBuckets(catalogTable.bucketSpec.get.numBuckets)
+    logDebug(s"numberBucket is ===>${catalogTable.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets}")
+    sd.setNumBuckets(catalogTable.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets)
     val bucketColumnNames = new  util.ArrayList[String]()
-    catalogTable.bucketSpec.get.bucketColumnNames.foreach(col => {
+    catalogTable.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.foreach(col => {
       bucketColumnNames.add(col)
     })
     sd.setBucketCols(bucketColumnNames)

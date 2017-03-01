@@ -163,7 +163,7 @@ class HadoopTableReader(
 
   def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
     var flag = true
-    if ( tableMetadata.bucketSpec.get.bucketColumnNames.isEmpty ||
+    if ( tableMetadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.isEmpty ||
       !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||
       !tableMetadata.storage.outputFormat.
         get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")

@@ -831,9 +831,9 @@ private[hive] class HiveClientImpl(
     }
     hiveTable.setPartCols(partCols.asJava)
     // TODO: set sort columns here too
-    hiveTable.setBucketCols(table.bucketSpec.get.bucketColumnNames.asJava)
+    hiveTable.setBucketCols(table.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.asJava)
     hiveTable.setOwner(conf.getUser)
-    hiveTable.setNumBuckets(table.bucketSpec.get.numBuckets)
+    hiveTable.setNumBuckets(table.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets)
     hiveTable.setCreateTime((table.createTime / 1000).toInt)
     hiveTable.setLastAccessTime((table.lastAccessTime / 1000).toInt)
     table.storage.locationUri.foreach { loc => shim.setDataLocation(hiveTable, loc) }

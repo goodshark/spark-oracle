@@ -841,10 +841,10 @@ case class ShowCreateTableCommand(table: TableIdentifier) extends RunnableComman
     }
 
     if (metadata.bucketSpec.isDefined) {
-      val bucketNum = metadata.bucketSpec.get.numBuckets
+      val bucketNum = metadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets
       /* throw new UnsupportedOperationException(
          "Creating Hive table with bucket spec is not supported yet.") */
-      val bucketCols = metadata.bucketSpec.get.bucketColumnNames
+      val bucketCols = metadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames
       builder ++= bucketCols.mkString("CLUSTERED BY (", ", ", ")\n")
       builder.append("  INTO  ")
       builder.append( bucketNum )

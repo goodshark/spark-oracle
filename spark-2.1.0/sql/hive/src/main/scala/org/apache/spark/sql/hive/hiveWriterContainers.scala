@@ -317,8 +317,8 @@ private[hive] class SparkHiveWriterContainer(
            FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
       )
 
-      val bucketColumnNames = table.catalogTable.bucketSpec.get.bucketColumnNames
-      val bucketNumBuckets = table.catalogTable.bucketSpec.get.numBuckets
+      val bucketColumnNames = table.catalogTable.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames
+      val bucketNumBuckets = table.catalogTable.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets
       var transactionId: Long = -1
       val rows = new util.ArrayList[Any]
       val updateRecordMap = scala.collection.mutable.Map[Integer, RecordUpdater]()

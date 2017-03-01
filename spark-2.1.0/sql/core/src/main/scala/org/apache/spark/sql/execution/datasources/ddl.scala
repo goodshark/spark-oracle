@@ -225,7 +225,7 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
       val array = statement.assignExpression(i).getText.split("=")
        columnMap += (array(0).toLowerCase -> array(1))
     }
-    tableMetadata.bucketSpec.get.bucketColumnNames.foreach( bucketColumnName => {
+    tableMetadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.foreach( bucketColumnName => {
       if (columnMap.contains(bucketColumnName)) {
         throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
       }
