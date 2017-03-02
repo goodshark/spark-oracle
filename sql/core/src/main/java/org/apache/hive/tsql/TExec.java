@@ -2082,7 +2082,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitSelect_statement(TSqlParser.Select_statementContext ctx) {
-
         SelectStatement selectStatement = new SelectStatement(Common.SELECT);
         StringBuffer sql = new StringBuffer();
         clearVariable();
@@ -2147,13 +2146,21 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return "";
     }
 
-
+    private Queue<String> withColmnNameAlias=new LinkedList<>();
     @Override
     public String visitCommon_table_expression(TSqlParser.Common_table_expressionContext ctx) {
         //SqlStatement rs = new SqlStatement();
+        withColmnNameAlias.clear();
+        if(null!=ctx.column_name_list()){
+            List<String> list=visitColumn_name_list(ctx.column_name_list());
+            for (String c:list) {
+                withColmnNameAlias.add(c);
+            }
+        }
         withExpressionSqlMap.put(visitId(ctx.id()), visitSelect_statement(ctx.select_statement())
                 .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE));
         popStatement();
+        withColmnNameAlias.clear();
         return "";
     }
 
@@ -3477,18 +3484,33 @@ public class TExec extends TSqlBaseVisitor<Object> {
              * 如select  @aa=string2  from boolean_ana where string1 ='code' 中的@aa
              */
             checkResultVariable(rs, ctx.expression());
-            if (null != ctx.AS()) {
-                rs.append(ctx.AS().getText()).append(Common.SPACE);
-            }
-            if (null != ctx.column_alias()) {
-                rs.append(visitColumn_alias(ctx.column_alias())).append(Common.SPACE);
-            }
+
+           /** 解决with中有别名 bug LEAP-2647
+            *with t_bTemp(i,n,a)
+            *as (select b1.id, b1.name, b2.age from b1 inner join b2 on b1.id = b2.id)
+            *insert into b3 select i,n,a from t_bTemp
+            **/
+
+           if(!withColmnNameAlias.isEmpty()){
+               rs.append(Common.SPACE).append("as ").append(withColmnNameAlias.poll());
+           }else{
+               if (null != ctx.AS()) {
+                   rs.append(ctx.AS().getText()).append(Common.SPACE);
+               }
+               if (null != ctx.column_alias()) {
+                   rs.append(visitColumn_alias(ctx.column_alias())).append(Common.SPACE);
+               }
+           }
         }
         if (ctx.column_alias() == null && ctx.expression() == null && (null != ctx.IDENTITY() || null != ctx.ROWGUID())) {
             addException("IDENTITY. ROWGUID", locate(ctx));
         }
         if (ctx.column_alias() == null && ctx.expression() == null && null == ctx.IDENTITY() && null == ctx.IDENTITY()) {
-            rs.append("*").append(Common.SPACE);
+            if(!withColmnNameAlias.isEmpty()){
+                addException("with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable",locate(ctx));
+            }else {
+                rs.append("*").append(Common.SPACE);
+            }
         }
         return rs.toString();
     }

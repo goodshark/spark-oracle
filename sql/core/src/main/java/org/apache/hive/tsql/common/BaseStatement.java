@@ -37,7 +37,7 @@ public abstract class BaseStatement extends TreeNode {
     public ResultSet commitStatement(String exeSql) {
         System.out.println("SparkServer Executing SQL: [" + exeSql + "]");
 //        //For testing
-        SparkResultSet sparkResultSet = new SparkResultSet();
+    /*    SparkResultSet sparkResultSet = new SparkResultSet();
         sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
         sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
         sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
@@ -47,17 +47,15 @@ public abstract class BaseStatement extends TreeNode {
         if(isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
-
-        return sparkResultSet;
+        return sparkResultSet;*/
         //For testing end
-
-    /*    SparkSession sparkSession = getExecSession().getSparkSession();
+        SparkSession sparkSession = getExecSession().getSparkSession();
         Dataset dataset = sparkSession.sql(exeSql);
         SparkResultSet sparkResultSet = new SparkResultSet(dataset);
         if(isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
-        return sparkResultSet;*/
+        return sparkResultSet;
     }
 
     /**
