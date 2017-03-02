@@ -19,35 +19,38 @@ package org.apache.spark.sql.hive.thriftserver
 
 import java.security.PrivilegedExceptionAction
 import java.sql.{Date, Timestamp}
-import java.util.{Arrays, Map => JMap, UUID}
+import java.util.{Arrays, UUID, Map => JMap}
 import java.util.concurrent.RejectedExecutionException
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ArrayBuffer, Map => SMap}
 import scala.util.control.NonFatal
-
 import org.apache.hadoop.hive.metastore.api.FieldSchema
 import org.apache.hadoop.hive.shims.Utils
 import org.apache.hive.service.cli._
 import org.apache.hive.service.cli.operation.ExecuteStatementOperation
 import org.apache.hive.service.cli.session.HiveSession
-
+import org.apache.hive.tsql.common.SparkResultSet
+import org.apache.hive.tsql.{ExecSession, ProcedureCli}
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{DataFrame, Row => SparkRow, SQLContext}
+import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext, Row => SparkRow}
 import org.apache.spark.sql.execution.command.SetCommand
+import org.apache.spark.sql.execution.datasources.{AcidDelCommand, AcidUpdateCommand}
 import org.apache.spark.sql.hive.HiveUtils
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.types._
-import org.apache.spark.util.{Utils => SparkUtils}
+import org.apache.spark.sql.types.{ArrayType, BinaryType, BooleanType, ByteType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, MapType, ShortType, StringType, StructType, TimestampType, _}
+import org.apache.spark.util.{Utils, Utils => SparkUtils}
 
 private[hive] class SparkExecuteStatementOperation(
-    parentSession: HiveSession,
-    statement: String,
-    confOverlay: JMap[String, String],
-    runInBackground: Boolean = true)
-    (sqlContext: SQLContext, sessionToActivePool: JMap[SessionHandle, String])
+                                                    parentSession: HiveSession,
+                                                    statement: String,
+                                                    confOverlay: JMap[String, String],
+                                                    runInBackground: Boolean = true)
+                                                  (sqlContext: SQLContext, sessionToActivePool: JMap[SessionHandle, String])
   extends ExecuteStatementOperation(parentSession, statement, confOverlay, runInBackground)
-  with Logging {
+    with Logging {
 
   private var result: DataFrame = _
   private var iter: Iterator[SparkRow] = _
@@ -216,14 +219,32 @@ private[hive] class SparkExecuteStatementOperation(
     if (pool != null) {
       sqlContext.sparkContext.setLocalProperty("spark.scheduler.pool", pool)
     }
+    var plan: LogicalPlan = null
     try {
-      result = sqlContext.sql(statement)
-      logDebug(result.queryExecution.toString())
-      result.queryExecution.logical match {
-        case SetCommand(Some((SQLConf.THRIFTSERVER_POOL.key, Some(value)))) =>
-          sessionToActivePool.put(parentSession.getSessionHandle, value)
-          logInfo(s"Setting spark.scheduler.pool=$value for future statements in this session.")
-        case _ =>
+      // 执行sqlserver
+      val sqlServerEngine = sqlContext.sessionState.
+        conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
+      if (sqlServerEngine.equalsIgnoreCase("true")) {
+        val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
+        procCli.callProcedure(statement)
+        val sqlServerRs = procCli.getExecSession().getResultSets()
+        if (null == sqlServerRs || sqlServerRs.size() == 0) {
+          import sqlContext.implicits._
+          result = sqlContext.sparkSession.createDataset(Seq[String]()).toDF()
+        } else {
+          result = sqlServerRs.get(sqlServerRs.size()-1).asInstanceOf[SparkResultSet].getDataset
+          logInfo("sqlServer result is ==>" + result.queryExecution.toString())
+        }
+      } else {
+        plan = sqlContext.sessionState.sqlParser.parsePlan(statement)
+        result = sqlContext.sql(statement)
+        logDebug(result.queryExecution.toString())
+        result.queryExecution.logical match {
+          case SetCommand(Some((SQLConf.THRIFTSERVER_POOL.key, Some(value)))) =>
+            sessionToActivePool.put(parentSession.getSessionHandle, value)
+            logInfo(s"Setting spark.scheduler.pool=$value for future statements in this session.")
+          case _ =>
+        }
       }
       HiveThriftServer2.listener.onStatementParsed(statementId, result.queryExecution.toString())
       iter = {
@@ -256,9 +277,33 @@ private[hive] class SparkExecuteStatementOperation(
         HiveThriftServer2.listener.onStatementError(
           statementId, e.getMessage, SparkUtils.exceptionString(e))
         throw new HiveSQLException(e.toString)
+    } finally {
+      // clearCrudTableMap(plan)
     }
     setState(OperationState.FINISHED)
     HiveThriftServer2.listener.onStatementFinish(statementId)
+  }
+
+  private def clearCrudTableMap(plan: LogicalPlan) = {
+    if (plan.isInstanceOf[AcidDelCommand]) {
+      val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
+      val fullTableName: String = sqlContext.sparkSession.getFullTableName(tableIdent)
+      sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
+    } else if (plan.isInstanceOf[AcidUpdateCommand]) {
+      val tableIdent = plan.asInstanceOf[AcidUpdateCommand].tableIdent
+      val fullTableName: String = sqlContext.sparkSession.getFullTableName(tableIdent)
+      sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
+    } else if (plan.isInstanceOf[InsertIntoTable]) {
+      val tableName = plan.asInstanceOf[InsertIntoTable].tableName
+      val dbName = plan.asInstanceOf[InsertIntoTable].dbName
+      val identifier = new TableIdentifier(tableName, dbName)
+      val fullTableName = sqlContext.sparkSession.getFullTableName(identifier)
+      val tableMetadata = sqlContext.sessionState.catalog.getTableMetadata(
+        new TableIdentifier(tableName, dbName))
+      if (sqlContext.sessionState.catalog.checkAcidTable(tableMetadata)) {
+        sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
+      }
+    }
   }
 
   override def cancel(): Unit = {
