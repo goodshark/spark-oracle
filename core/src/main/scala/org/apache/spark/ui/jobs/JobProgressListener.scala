@@ -98,7 +98,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
   val retainedStages = conf.getInt("spark.ui.retainedStages", SparkUI.DEFAULT_RETAINED_STAGES)
   val retainedJobs = conf.getInt("spark.ui.retainedJobs", SparkUI.DEFAULT_RETAINED_JOBS)
   val retainedTasks = conf.get(UI_RETAINED_TASKS)
-  val redisHost = conf.get("spark.clientlog.redishost", "localhost")
+  val redisHost = conf.get("spark.clientlog.redishost", "")
   val redisPort = conf.getInt("spark.clientlog.redisport", 6379)
   val redisPass = conf.get("spark.clientlog.redispass", "")
   val keyTimeout = conf.getInt("spark.clientlog.timeout", 86400)
@@ -187,12 +187,14 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
   /** $jobGrop-job-set: (1, 2, 3, ...) */
   def redisLogSadd(data: JobUIData): Unit = {
     try {
-      redisConn = new Jedis(redisHost, redisPort)
-      val jobGroup = data.jobGroup.getOrElse("100")
-      val jobSetKey = jobGroup + "-job-set"
-      val jobVal = s"${data.jobId}"
-      redisConn.sadd(jobSetKey, jobVal)
-      redisConn.expire(jobSetKey, keyTimeout)
+      if (!redisHost.isEmpty) {
+        redisConn = new Jedis(redisHost, redisPort)
+        val jobGroup = data.jobGroup.getOrElse("100")
+        val jobSetKey = jobGroup + "-job-set"
+        val jobVal = s"${data.jobId}"
+        redisConn.sadd(jobSetKey, jobVal)
+        redisConn.expire(jobSetKey, keyTimeout)
+      }
     } catch {
       case e: Exception => {
         logError(s"spark-client-log redis sadd exception: $e")
@@ -210,15 +212,17 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
    */
   def redisLogSet(data: JobUIData, info: String): Unit = {
     try {
-      redisConn = new Jedis(redisHost, redisPort)
-      val jobGroup = data.jobGroup.getOrElse("100")
-      val jobLogKey = jobGroup + "-log-" + data.jobId
-      redisConn.rpush(jobLogKey, info)
-      redisConn.expire(jobLogKey, keyTimeout)
-      val jobPrecentKey = jobGroup + "-precent-" + data.jobId
-      val jobPrecent = s"${data.numCompletedTasks}/${data.numTasks}"
-      redisConn.set(jobPrecentKey, jobPrecent)
-      redisConn.expire(jobPrecentKey, keyTimeout)
+      if (!redisHost.isEmpty) {
+        redisConn = new Jedis(redisHost, redisPort)
+        val jobGroup = data.jobGroup.getOrElse("100")
+        val jobLogKey = jobGroup + "-log-" + data.jobId
+        redisConn.rpush(jobLogKey, info)
+        redisConn.expire(jobLogKey, keyTimeout)
+        val jobPrecentKey = jobGroup + "-precent-" + data.jobId
+        val jobPrecent = s"${data.numCompletedTasks}/${data.numTasks}"
+        redisConn.set(jobPrecentKey, jobPrecent)
+        redisConn.expire(jobPrecentKey, keyTimeout)
+      }
     } catch {
       case e: Exception => {
         logError(s"spark-client-log redis set exception: $e")
@@ -232,6 +236,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
 
   def redisLog(data: JobUIData, info: String, append: Boolean = true): Unit = {
     try {
+      if (!redisHost.isEmpty) {
         redisConn = new Jedis(redisHost, redisPort)
         val rlog = redisConn.get(data.jobGroup.getOrElse("100"))
         val clog = s"$rlog"
@@ -249,14 +254,15 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
         }
         redisConn.set(data.jobGroup.getOrElse("100"), newClog)
         redisConn.expire(data.jobGroup.getOrElse("100"), keyTimeout)
+      }
     } catch {
-        case e: Exception => {
-            logError(s"spark-client-log redisLog get exception: $e")
-        }
+      case e: Exception => {
+        logError(s"spark-client-log redisLog get exception: $e")
+      }
     } finally {
-        if (redisConn != null) {
-            redisConn.close()
-        }
+      if (redisConn != null) {
+        redisConn.close()
+      }
     }
   }
 
@@ -563,15 +569,15 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
   }
 
   /**
-   * Upon receiving new metrics for a task, updates the per-stage and per-executor-per-stage
-   * aggregate metrics by calculating deltas between the currently recorded metrics and the new
-   * metrics.
-   */
+    * Upon receiving new metrics for a task, updates the per-stage and per-executor-per-stage
+    * aggregate metrics by calculating deltas between the currently recorded metrics and the new
+    * metrics.
+    */
   def updateAggregateMetrics(
-      stageData: StageUIData,
-      execId: String,
-      taskMetrics: TaskMetrics,
-      oldMetrics: Option[TaskMetricsUIData]) {
+                              stageData: StageUIData,
+                              execId: String,
+                              taskMetrics: TaskMetrics,
+                              oldMetrics: Option[TaskMetricsUIData]) {
     val execSummary = stageData.executorSummary.getOrElseUpdate(execId, new ExecutorSummary)
 
     val shuffleWriteDelta =
@@ -692,13 +698,13 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
   }
 
   /**
-   * For testing only. Wait until at least `numExecutors` executors are up, or throw
-   * `TimeoutException` if the waiting time elapsed before `numExecutors` executors up.
-   * Exposed for testing.
-   *
-   * @param numExecutors the number of executors to wait at least
-   * @param timeout time to wait in milliseconds
-   */
+    * For testing only. Wait until at least `numExecutors` executors are up, or throw
+    * `TimeoutException` if the waiting time elapsed before `numExecutors` executors up.
+    * Exposed for testing.
+    *
+    * @param numExecutors the number of executors to wait at least
+    * @param timeout time to wait in milliseconds
+    */
   private[spark] def waitUntilExecutorsUp(numExecutors: Int, timeout: Long): Unit = {
     val finishTime = System.currentTimeMillis() + timeout
     while (System.currentTimeMillis() < finishTime) {
