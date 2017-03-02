@@ -119,7 +119,7 @@ public class ObjectIdCalculator extends BaseCalculator {
         return UdfFactory.funcExists(funcName.toUpperCase());
     }
 
-    private boolean databaseFind(String objName, String type) throws Exception {
+    public boolean databaseFind(String objName, String type) throws Exception {
         if (type.equalsIgnoreCase("P")) {
             // procedure only
             return procedureCheck(objName);
