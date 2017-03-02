@@ -29,6 +29,7 @@ public class CreateTableStatement extends SqlStatement {
         if (tableNameUtils.checkIsTmpTable(tableName)) {
             addTmpTable(tableName, tableAliasName);
         }
+        setAddResult(false);
         commitStatement(sb.toString());
         return 1;
     }

@@ -2,6 +2,7 @@ package org.apache.hive.tsql.ddl;
 
 import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.SqlStatement;
+import org.apache.hive.tsql.udf.ObjectIdCalculator;
 
 import java.util.List;
 
@@ -12,14 +13,26 @@ public class DropViewStatement extends SqlStatement {
     protected List<String> tableNames;
 
     @Override
-    public int execute() {
+    public int execute() throws Exception{
         String sql = getSql().toString();
+        checkTableIsExist();
         for (String tableName : tableNames) {
             String execSql = sql + Common.SPACE + tableName;
             execSql = replaceTableName(tableName, execSql);
+            setAddResult(false);
             commitStatement(execSql);
         }
         return 1;
+    }
+
+    public void checkTableIsExist() throws Exception{
+        ObjectIdCalculator objectIdCalculator = new ObjectIdCalculator();
+        for (String tableName : tableNames) {
+            boolean b1=objectIdCalculator.databaseFind(getRealTableName(tableName),"V");
+            if(!b1){
+                throw new Exception("table :"+tableName +" is not exist.");
+            }
+        }
     }
 
     public DropViewStatement(String name) {

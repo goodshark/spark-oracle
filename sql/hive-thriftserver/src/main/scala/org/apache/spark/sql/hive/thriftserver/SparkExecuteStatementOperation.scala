@@ -35,13 +35,13 @@ import org.apache.hive.tsql.{ExecSession, ProcedureCli}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan}
-import org.apache.spark.sql.{DataFrame, Row, SQLContext, Row => SparkRow}
+import org.apache.spark.sql.{DataFrame, SQLContext, Row => SparkRow}
 import org.apache.spark.sql.execution.command.SetCommand
 import org.apache.spark.sql.execution.datasources.{AcidDelCommand, AcidUpdateCommand}
 import org.apache.spark.sql.hive.HiveUtils
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{ArrayType, BinaryType, BooleanType, ByteType, DataType, DateType, DecimalType, DoubleType, FloatType, IntegerType, LongType, MapType, ShortType, StringType, StructType, TimestampType, _}
-import org.apache.spark.util.{Utils, Utils => SparkUtils}
+import org.apache.spark.util.{Utils => SparkUtils}
 
 private[hive] class SparkExecuteStatementOperation(
                                                     parentSession: HiveSession,

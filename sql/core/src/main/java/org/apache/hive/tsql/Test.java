@@ -49,9 +49,7 @@ public class Test {
     public static void main(String[] args) throws Throwable {
        ProcedureCli procedureCli = new ProcedureCli(null);
         //procedureCli.callProcedure("insert into test001 values(1),(2)");
-        procedureCli.callProcedure("with t_bTemp(i,n,a)\n" +
-                "as (select b1.id, b1.name, b2.age from b1 inner join b2 on b1.id = b2.id)\n" +
-                "insert into b3 select i,n,a from t_bTemp");
+        procedureCli.callProcedure("create view t1_view(age) as select top(5) age from t1 order by age");
 
         /*for (String sql:CREATE_TABLE_SQL.split("@")) {
             try{

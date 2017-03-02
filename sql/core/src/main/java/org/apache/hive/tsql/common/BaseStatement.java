@@ -37,27 +37,27 @@ public abstract class BaseStatement extends TreeNode {
     public ResultSet commitStatement(String exeSql) {
         System.out.println("SparkServer Executing SQL: [" + exeSql + "]");
 //        //For testing
-//        SparkResultSet sparkResultSet = new SparkResultSet();
-//        sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
-//        sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
-//        sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
-//        for (int i = 0; i < 10; i++) {
-//            sparkResultSet.addRow(new Object[]{i*3, "TEST_"+i, i*11});
-//        }
-//        if(isAddResult()) {
-//            getExecSession().addRs(sparkResultSet);
-//        }
-//
-//        return sparkResultSet;
+        SparkResultSet sparkResultSet = new SparkResultSet();
+        sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
+        sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
+        sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
+        for (int i = 0; i < 10; i++) {
+            sparkResultSet.addRow(new Object[]{i*3, "TEST_"+i, i*11});
+        }
+        if(isAddResult()) {
+            getExecSession().addRs(sparkResultSet);
+        }
+
+        return sparkResultSet;
         //For testing end
 
-        SparkSession sparkSession = getExecSession().getSparkSession();
+    /*    SparkSession sparkSession = getExecSession().getSparkSession();
         Dataset dataset = sparkSession.sql(exeSql);
         SparkResultSet sparkResultSet = new SparkResultSet(dataset);
         if(isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
-        return sparkResultSet;
+        return sparkResultSet;*/
     }
 
     /**

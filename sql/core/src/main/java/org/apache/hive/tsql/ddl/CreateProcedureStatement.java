@@ -41,7 +41,9 @@ public class CreateProcedureStatement extends BaseStatement {
                 ProcService procService = new ProcService(getExecSession().getSparkSession());
                 String procName=function.getName().getFullFuncName();
                 int count= procService.getCountByName(procName);
-                if(count>0){
+                if(count==0){
+                    throw  new Exception(procName + " is exist;");
+                }else{
                     procService.delProc(procName);
                 }
                 procService.createProc(function);
