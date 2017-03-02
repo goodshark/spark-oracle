@@ -229,7 +229,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String sourceSql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         FuncName funcName = visitFunc_proc_name(ctx.func_proc_name());
-        checkLength(funcName.getFullFuncName(),128);
+        checkLength(funcName.getFullFuncName(),128,"procedure name ");
         Procedure func = new Procedure(funcName);
         func.setProcSql(sourceSql);
         func.setMd5(MD5Util.md5Hex(sourceSql));
@@ -1064,7 +1064,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(ctx.CREATE().getText()).append(Common.SPACE);
         sql.append(ctx.DATABASE().getText()).append(Common.SPACE);
         String databaseName=visitId(ctx.id(0));
-        checkLength(databaseName,128);
+        checkLength(databaseName,128,"database name ");
         sql.append(databaseName);
         if (ctx.CONTAINMENT() != null) {
             addException(ctx.CONTAINMENT().getText(), locate(ctx));
@@ -1196,7 +1196,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public SqlStatement visitCreate_table(TSqlParser.Create_tableContext ctx) {
         String tableName=visitTable_name(ctx.table_name()).getFullFuncName();
-        checkLength(tableName,128);
+        checkLength(tableName,128,"table name ");
         CreateTableStatement createTableStatement = new CreateTableStatement(tableName);
         createTableStatement.setColumnDefs(visitColumn_def_table_constraints(ctx.column_def_table_constraints()));
         if (ctx.crud_table() != null) {
@@ -1346,7 +1346,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(ctx.VIEW());
         sql.append(Common.SPACE);
         String viewName=visitSimple_name(ctx.simple_name());
-        checkLength(viewName,128);
+        checkLength(viewName,128,"view name ");
         sql.append(viewName).append(Common.SPACE);
         if (null != ctx.column_name_list()) {
             sql.append("(").append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
@@ -3554,9 +3554,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
 
-    private void checkLength(String str,int length){
+    private void checkLength(String str,int length,String warningMsg){
         if (str.length()>length){
-            addException(new Exception(str+" is too long"));
+            addException(new Exception(warningMsg+":"+ "["+str+"]"+" is too long"));
         }
     }
 }
