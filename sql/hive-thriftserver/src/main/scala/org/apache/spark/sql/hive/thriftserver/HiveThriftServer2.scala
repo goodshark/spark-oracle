@@ -176,7 +176,7 @@ object HiveThriftServer2 extends Logging {
     private val retainedSessions = conf.getConf(SQLConf.THRIFTSERVER_UI_SESSION_LIMIT)
     private var totalRunning = 0
 
-    private val redisHost = SparkSQLEnv.sparkContext.getConf.get("spark.clientlog.redishost", "localhost")
+    private val redisHost = SparkSQLEnv.sparkContext.getConf.get("spark.clientlog.redishost", "")
     private val redisPort = SparkSQLEnv.sparkContext.getConf.getInt("spark.clientlog.redisport", 6379)
     logInfo(s"spark-client-log<redis-thriftserver> host: $redisHost, port: $redisPort")
     //private val redisConn = new Jedis(redisHost, redisPort)
@@ -237,6 +237,7 @@ object HiveThriftServer2 extends Logging {
       executionList(id).groupId = groupId
       totalRunning += 1
       try {
+        if (!redisHost.isEmpty) {
           redisConn = new Jedis(redisHost, redisPort)
           logInfo(s"spark-client-log<onStatementStart>: $executionList, size: ${executionList.size}")
           redisConn.set(sessionId, id)
@@ -246,29 +247,30 @@ object HiveThriftServer2 extends Logging {
           val patRes = patFind.findPrefixOf(statement)
           val jsVal = statement.substring(priestParaPos)
           if (statement.length > priestParaPos && !patRes.isEmpty) {
-              logInfo(s"spark-client-log statement: $statement, js val: $jsVal")
-              val patMatch = """(set\s+priest\.params\s*=\s*)(.*)""".r
-              val patMatch(setPerfix, setSuffix) = statement
-              val priestVal = JSON.parseFull(setSuffix)
-              logInfo(s"spark-client-log priest val: $priestVal")
-              val mapVal = priestVal.get.asInstanceOf[Map[String, String]]
-              val execDate = mapVal("execdate")
-              val pid = mapVal("pid")
-              val tid = mapVal("tid")
-              val clientLog = s"spark_${pid}_${execDate}_${tid}"
-              logInfo(s"spark-client-log set clientLog key ${clientLog} to jobid ${id} start")
-              redisConn.set(clientLog, sessionId)
-              redisConn.expire(clientLog, keyTimeout)
-              logInfo(s"spark-client-log set clientLog key ${clientLog} to jobid ${id} success")
+            logInfo(s"spark-client-log statement: $statement, js val: $jsVal")
+            val patMatch = """(set\s+priest\.params\s*=\s*)(.*)""".r
+            val patMatch(setPerfix, setSuffix) = statement
+            val priestVal = JSON.parseFull(setSuffix)
+            logInfo(s"spark-client-log priest val: $priestVal")
+            val mapVal = priestVal.get.asInstanceOf[Map[String, String]]
+            val execDate = mapVal("execdate")
+            val pid = mapVal("pid")
+            val tid = mapVal("tid")
+            val clientLog = s"spark_${pid}_${execDate}_${tid}"
+            logInfo(s"spark-client-log set clientLog key ${clientLog} to jobid ${id} start")
+            redisConn.set(clientLog, sessionId)
+            redisConn.expire(clientLog, keyTimeout)
+            logInfo(s"spark-client-log set clientLog key ${clientLog} to jobid ${id} success")
           }
+        }
       } catch {
-          case e: Exception => {
-              logError(s"spark-client-log set clientlog exception: $e")
-          }
+        case e: Exception => {
+          logError(s"spark-client-log set clientlog exception: $e")
+        }
       } finally {
-          if (redisConn != null) {
-              redisConn.close()
-          }
+        if (redisConn != null) {
+          redisConn.close()
+        }
       }
     }
 
@@ -317,7 +319,7 @@ object HiveThriftServer2 extends Logging {
 
 private[hive] class HiveThriftServer2(sqlContext: SQLContext)
   extends HiveServer2
-  with ReflectedCompositeService {
+    with ReflectedCompositeService {
   // state is tracked internally so that the server only attempts to shut down if it successfully
   // started, and then once only.
   private val started = new AtomicBoolean(false)
@@ -351,7 +353,7 @@ private[hive] class HiveThriftServer2(sqlContext: SQLContext)
 
   override def stop(): Unit = {
     if (started.getAndSet(false)) {
-       super.stop()
+      super.stop()
     }
   }
 }
