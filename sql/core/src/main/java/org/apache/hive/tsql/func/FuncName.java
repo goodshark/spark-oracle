@@ -1,4 +1,4 @@
-package hive.tsql.func;
+package org.apache.hive.tsql.func;
 
 import org.apache.commons.lang3.StringUtils;
 

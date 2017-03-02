@@ -1,9 +1,10 @@
-package hive.tsql.udf.date;
+package org.apache.hive.tsql.udf.date;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.func.DateUnit;
 import org.apache.hive.tsql.udf.BaseCalculator;
 
+import java.util.Calendar;
 import java.util.Date;
 
 /**

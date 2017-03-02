@@ -1,4 +1,4 @@
-package hive.tsql;
+package org.apache.hive.tsql;
 
 
 import org.antlr.v4.runtime.ParserRuleContext;

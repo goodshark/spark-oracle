@@ -1,8 +1,9 @@
-package hive.tsql.another;
+package org.apache.hive.tsql.another;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.exception.AlreadyDeclaredException;
 
 import java.util.ArrayList;
 import java.util.List;

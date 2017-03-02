@@ -1,4 +1,4 @@
-package hive.tsql.dbservice;
+package org.apache.hive.tsql.dbservice;
 
 
 import org.apache.hive.tsql.common.Common;
@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.sql.*;
+import java.util.Date;
 
 /**
  * Created by wangsm9 on 2017/1/19.

@@ -1,10 +1,13 @@
-package hive.tsql.dbservice;
+package org.apache.hive.tsql.dbservice;
 
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Properties;
 
 /**

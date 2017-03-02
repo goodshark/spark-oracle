@@ -1,4 +1,4 @@
-package hive.tsql.arg;
+package org.apache.hive.tsql.arg;
 
 import org.apache.hive.tsql.cursor.Cursor;
 import org.apache.hive.tsql.func.Procedure;

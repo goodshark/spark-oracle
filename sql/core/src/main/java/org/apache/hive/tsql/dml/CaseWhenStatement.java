@@ -1,10 +1,12 @@
-package hive.tsql.dml;
+package org.apache.hive.tsql.dml;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseResultSet;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.LogicNode;
+import scala.reflect.internal.Trees;
 
 import java.sql.SQLException;
 import java.util.ArrayList;

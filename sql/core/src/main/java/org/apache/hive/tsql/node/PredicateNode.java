@@ -1,4 +1,4 @@
-package hive.tsql.node;
+package org.apache.hive.tsql.node;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
@@ -9,6 +9,7 @@ import org.apache.hive.tsql.exception.CompareException;
 import org.apache.hive.tsql.exception.WrongArgNumberException;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;

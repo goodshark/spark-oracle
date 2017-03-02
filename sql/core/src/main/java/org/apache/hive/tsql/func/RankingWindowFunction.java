@@ -1,4 +1,4 @@
-package hive.tsql.func;
+package org.apache.hive.tsql.func;
 
 /**
  * Created by zhongdg1 on 2017/1/12.

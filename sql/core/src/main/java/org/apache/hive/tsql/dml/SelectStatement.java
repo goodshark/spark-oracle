@@ -1,4 +1,4 @@
-package hive.tsql.dml;
+package org.apache.hive.tsql.dml;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.Row;
@@ -8,7 +8,9 @@ import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.util.StrUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.reflect.internal.Trees;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

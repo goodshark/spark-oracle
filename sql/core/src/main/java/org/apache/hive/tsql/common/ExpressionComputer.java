@@ -1,8 +1,10 @@
-package hive.tsql.common;
+package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.util.DateUtil;
+import org.apache.spark.sql.types.DataType;
 
+import java.lang.*;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.Set;

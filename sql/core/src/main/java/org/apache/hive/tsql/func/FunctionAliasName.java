@@ -1,4 +1,4 @@
-package hive.tsql.func;
+package org.apache.hive.tsql.func;
 
 import java.util.concurrent.ConcurrentHashMap;
 

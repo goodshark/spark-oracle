@@ -1,4 +1,4 @@
-package hive.tsql;
+package org.apache.hive.tsql;
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 import org.apache.hive.tsql.arg.VariableContainer;

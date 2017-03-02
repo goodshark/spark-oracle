@@ -1,4 +1,4 @@
-package hive.tsql.common;
+package org.apache.hive.tsql.common;
 
 /**
  * Created by wangsm9 on 2016/11/24.

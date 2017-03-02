@@ -1,9 +1,10 @@
-package hive.tsql.udf.string;
+package org.apache.hive.tsql.udf.string;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.udf.BaseCalculator;
 import org.apache.hive.tsql.util.StrUtils;
+import scala.Char;
 
 /**
  * Created by dengrb1 on 2/17 0017.

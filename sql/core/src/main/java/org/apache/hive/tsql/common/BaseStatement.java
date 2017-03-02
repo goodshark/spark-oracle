@@ -1,4 +1,4 @@
-package hive.tsql.common;
+package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.spark.sql.Dataset;

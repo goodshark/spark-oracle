@@ -1,4 +1,4 @@
-package hive.tsql.common;
+package org.apache.hive.tsql.common;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

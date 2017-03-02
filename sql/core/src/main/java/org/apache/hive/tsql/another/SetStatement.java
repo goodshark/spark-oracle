@@ -1,4 +1,4 @@
-package hive.tsql.another;
+package org.apache.hive.tsql.another;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.AssignmentOp;

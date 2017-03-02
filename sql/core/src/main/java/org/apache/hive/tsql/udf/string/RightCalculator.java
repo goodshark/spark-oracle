@@ -1,4 +1,4 @@
-package hive.tsql.udf.string;
+package org.apache.hive.tsql.udf.string;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.exception.FunctionArgumentException;

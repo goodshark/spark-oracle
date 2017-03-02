@@ -1,4 +1,4 @@
-package hive.tsql.another;
+package org.apache.hive.tsql.another;
 
 /**
  * Created by zhongdg1 on 2017/2/16.

@@ -1,4 +1,4 @@
-package hive.tsql.cfl;
+package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;

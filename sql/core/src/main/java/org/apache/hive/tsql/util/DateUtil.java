@@ -1,4 +1,4 @@
-package hive.tsql.util;
+package org.apache.hive.tsql.util;
 
 import org.apache.commons.lang.StringUtils;
 

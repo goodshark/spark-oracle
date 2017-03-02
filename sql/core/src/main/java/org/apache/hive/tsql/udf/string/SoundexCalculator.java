@@ -1,9 +1,10 @@
-package hive.tsql.udf.string;
+package org.apache.hive.tsql.udf.string;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.udf.BaseCalculator;
 import org.apache.hive.tsql.util.StrUtils;
+import org.datanucleus.store.types.backed.HashMap;
 
 import java.util.Arrays;
 import java.util.Map;

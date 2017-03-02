@@ -1,4 +1,4 @@
-package hive.tsql.cfl;
+package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;

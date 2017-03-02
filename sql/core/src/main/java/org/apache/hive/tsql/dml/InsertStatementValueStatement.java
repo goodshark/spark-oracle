@@ -1,9 +1,12 @@
-package hive.tsql.dml;
+package org.apache.hive.tsql.dml;
 
+import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.common.TreeNode;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by wangsm9 on 2016/12/15.

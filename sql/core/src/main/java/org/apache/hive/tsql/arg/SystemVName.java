@@ -1,4 +1,4 @@
-package hive.tsql.arg;
+package org.apache.hive.tsql.arg;
 
 /**
  * Created by zhongdg1 on 2017/1/3.

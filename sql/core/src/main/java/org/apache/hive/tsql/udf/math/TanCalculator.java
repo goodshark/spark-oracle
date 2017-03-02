@@ -1,4 +1,4 @@
-package hive.tsql.udf.math;
+package org.apache.hive.tsql.udf.math;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.udf.BaseCalculator;

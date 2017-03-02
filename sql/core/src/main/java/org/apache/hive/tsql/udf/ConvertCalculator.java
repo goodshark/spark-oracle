@@ -1,4 +1,4 @@
-package hive.tsql.udf;
+package org.apache.hive.tsql.udf;
 
 import org.apache.hive.tsql.arg.Var;
 

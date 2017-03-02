@@ -1,8 +1,7 @@
-package hive.tsql.cfl;
+package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
-import org.apache.hive.tsql.common.TreeNode;
 
 import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
@@ -10,6 +9,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.hive.tsql.common.TreeNode;
 
 /**
  * Created by dengrb1 on 12/7 0007.

@@ -1,4 +1,6 @@
-package hive.tsql.common;
+package org.apache.hive.tsql.common;
+
+import java.util.List;
 
 /**
  * Created by zhongdg1 on 2016/12/13.

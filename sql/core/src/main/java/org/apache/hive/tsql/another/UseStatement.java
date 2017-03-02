@@ -1,4 +1,4 @@
-package hive.tsql.another;
+package org.apache.hive.tsql.another;
 
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.LeafStatement;

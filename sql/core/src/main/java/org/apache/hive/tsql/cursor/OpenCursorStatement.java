@@ -1,4 +1,4 @@
-package hive.tsql.cursor;
+package org.apache.hive.tsql.cursor;
 
 import org.apache.hive.tsql.arg.SystemVName;
 import org.apache.hive.tsql.common.BaseStatement;

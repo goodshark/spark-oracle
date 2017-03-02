@@ -1,4 +1,4 @@
-package hive.tsql.exception;
+package org.apache.hive.tsql.exception;
 
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.Parser;

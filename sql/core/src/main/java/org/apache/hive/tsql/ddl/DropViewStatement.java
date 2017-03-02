@@ -1,4 +1,4 @@
-package hive.tsql.ddl;
+package org.apache.hive.tsql.ddl;
 
 import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.SqlStatement;

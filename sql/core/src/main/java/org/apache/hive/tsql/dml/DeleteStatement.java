@@ -1,5 +1,6 @@
-package hive.tsql.dml;
+package org.apache.hive.tsql.dml;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.common.TreeNode;

@@ -1,4 +1,4 @@
-package hive.tsql.exception;
+package org.apache.hive.tsql.exception;
 
 /**
  * Created by dengrb1 on 1/11 0011.

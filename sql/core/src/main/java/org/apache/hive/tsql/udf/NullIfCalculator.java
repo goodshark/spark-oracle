@@ -1,6 +1,8 @@
-package hive.tsql.udf;
+package org.apache.hive.tsql.udf;
 
 import org.apache.hive.tsql.arg.Var;
+
+import java.util.Date;
 
 /**
  * Created by zhongdg1 on 2017/2/8.

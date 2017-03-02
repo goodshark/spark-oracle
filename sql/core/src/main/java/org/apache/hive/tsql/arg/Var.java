@@ -1,4 +1,4 @@
-package hive.tsql.arg;
+package org.apache.hive.tsql.arg;
 
 import org.apache.hive.tsql.common.ExpressionComputer;
 import org.apache.hive.tsql.common.TreeNode;

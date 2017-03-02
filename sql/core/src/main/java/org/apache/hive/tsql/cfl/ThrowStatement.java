@@ -1,9 +1,10 @@
-package hive.tsql.cfl;
+package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
-import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.exception.UnsupportedException;
+import org.apache.hive.tsql.common.TreeNode;
+import scala.Int;
 
 /**
  * Created by dengrb1 on 12/7 0007.

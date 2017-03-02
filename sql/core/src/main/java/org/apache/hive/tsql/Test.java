@@ -1,4 +1,9 @@
-package hive.tsql;
+package org.apache.hive.tsql;
+
+import org.apache.hive.tsql.common.Row;
+import org.apache.hive.tsql.common.SparkResultSet;
+
+import static org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.Method.get;
 
 /**
  * Created by wangsm9 on 2017/2/8.

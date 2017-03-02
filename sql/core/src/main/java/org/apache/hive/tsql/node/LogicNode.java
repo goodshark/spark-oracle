@@ -1,4 +1,4 @@
-package hive.tsql.node;
+package org.apache.hive.tsql.node;
 
 import org.apache.hive.tsql.common.TreeNode;
 

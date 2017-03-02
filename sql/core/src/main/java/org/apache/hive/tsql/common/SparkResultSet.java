@@ -1,4 +1,4 @@
-package hive.tsql.common;
+package org.apache.hive.tsql.common;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.types.StructField;

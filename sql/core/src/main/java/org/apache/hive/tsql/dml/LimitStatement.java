@@ -1,4 +1,4 @@
-package hive.tsql.dml;
+package org.apache.hive.tsql.dml;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.Common;
