@@ -17,6 +17,7 @@ public class FunctionAliasName {
         functionAliasNames.put("STRING_SPLIT".toUpperCase(), "split".toUpperCase());
         functionAliasNames.put("isnull".toUpperCase(), "ifnull".toUpperCase());
         functionAliasNames.put("len".toUpperCase(), "length".toUpperCase());
+        functionAliasNames.put("atn2".toUpperCase(), "atan2".toUpperCase());
     }
 
     private static class FunctionAliasNameHolder {

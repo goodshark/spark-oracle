@@ -63,7 +63,7 @@ public class UdfFactory {
             registFunction("ABS".toUpperCase(), "org.apache.hive.tsql.udf.math.AbsCalculator");
             registFunction("ACOS".toUpperCase(), "org.apache.hive.tsql.udf.math.AcosCalculator");
             registFunction("ASIN".toUpperCase(), "org.apache.hive.tsql.udf.math.AsinCalculator");
-            registFunction("ATAN2".toUpperCase(), "org.apache.hive.tsql.udf.math.Atan2Calculator");
+            registFunction("ATN2".toUpperCase(), "org.apache.hive.tsql.udf.math.Atan2Calculator");
             registFunction("ATAN".toUpperCase(), "org.apache.hive.tsql.udf.math.AtanCalculator");
             registFunction("CEILING".toUpperCase(), "org.apache.hive.tsql.udf.math.CeilingCalculator");
             registFunction("COS".toUpperCase(), "org.apache.hive.tsql.udf.math.CosCalculator");

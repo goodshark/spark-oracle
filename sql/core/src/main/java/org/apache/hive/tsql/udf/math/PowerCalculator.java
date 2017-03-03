@@ -14,7 +14,7 @@ public class PowerCalculator extends BaseCalculator {
     @Override
     public Var compute() throws Exception {
         Float val = getArguments(0).getFloat();
-        Float val2 = getArguments(0).getFloat();
+        Float val2 = getArguments(1).getFloat();
         return new Var(Math.pow(val, val2), Var.DataType.FLOAT);
     }
 }

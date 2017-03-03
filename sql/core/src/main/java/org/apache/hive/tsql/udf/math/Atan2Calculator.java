@@ -15,7 +15,7 @@ public class Atan2Calculator extends BaseCalculator {
     public Var compute() throws Exception {
         Var var = getArguments(0);
         var.setDataType(Var.DataType.DOUBLE);
-        Var var2 = getArguments(0);
+        Var var2 = getArguments(1);
         var2.setDataType(Var.DataType.DOUBLE);
 
         return new Var(Math.atan2(var.getDouble(), var2.getDouble()), Var.DataType.DOUBLE);
