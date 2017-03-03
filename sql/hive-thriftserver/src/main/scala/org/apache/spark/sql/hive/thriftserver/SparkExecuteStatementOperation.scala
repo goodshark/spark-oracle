@@ -235,6 +235,9 @@ private[hive] class SparkExecuteStatementOperation(
           result = sqlServerRs.get(sqlServerRs.size()-1).asInstanceOf[SparkResultSet].getDataset
           logInfo("sqlServer result is ==>" + result.queryExecution.toString())
         }
+
+        HiveThriftServer2.sqlSessionListenr.addTable(parentSession.getSessionHandle.getSessionId.toString,
+                                                     procCli.getTempTables)
       } else {
         plan = sqlContext.sessionState.sqlParser.parsePlan(statement)
         result = sqlContext.sql(statement)
