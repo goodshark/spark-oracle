@@ -49,7 +49,7 @@ public class Test {
     public static void main(String[] args) throws Throwable {
        ProcedureCli procedureCli = new ProcedureCli(null);
         //procedureCli.callProcedure("insert into test001 values(1),(2)");
-        procedureCli.callProcedure("create view t1_view(age) as select top(5) age from t1 order by age");
+        procedureCli.callProcedure("exec p_func1 N'test_a', 110'");
 
         /*for (String sql:CREATE_TABLE_SQL.split("@")) {
             try{
@@ -65,5 +65,13 @@ public class Test {
 
     public static  class testHashCode{
         private String s;
+    }
+
+
+    public static void replace(){
+        String sql="select a as aa ,b as bb from tb";
+
+
+
     }
 }

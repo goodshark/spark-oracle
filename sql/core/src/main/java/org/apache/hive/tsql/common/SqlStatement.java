@@ -16,7 +16,6 @@ public class SqlStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
-        setAddResult(false);
         setRs(commitStatement(getSql()));
         return 1;
     }

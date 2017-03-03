@@ -1432,6 +1432,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public SqlStatement visitTruncate_table(TSqlParser.Truncate_tableContext ctx) {
         String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
         TruncateTableStatement truncateTableStatement = new TruncateTableStatement(tableName);
+        truncateTableStatement.setAddResult(false);
         pushStatement(truncateTableStatement);
         return truncateTableStatement;
     }
@@ -1450,6 +1451,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 sql.append(visitId(ctx.id(i)));
             }
         }
+        rs.setAddResult(false);
         rs.setSql(sql.toString());
         pushStatement(rs);
         return rs;
