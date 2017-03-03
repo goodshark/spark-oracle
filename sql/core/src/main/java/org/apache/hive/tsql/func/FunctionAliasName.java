@@ -16,6 +16,7 @@ public class FunctionAliasName {
         functionAliasNames.put("CHARINDEX".toUpperCase(), "locate".toUpperCase());
         functionAliasNames.put("STRING_SPLIT".toUpperCase(), "split".toUpperCase());
         functionAliasNames.put("isnull".toUpperCase(), "ifnull".toUpperCase());
+        functionAliasNames.put("len".toUpperCase(), "length".toUpperCase());
     }
 
     private static class FunctionAliasNameHolder {

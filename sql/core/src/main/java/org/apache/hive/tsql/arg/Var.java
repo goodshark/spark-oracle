@@ -335,7 +335,7 @@ public class Var implements Serializable {
     }
 
     public String getString() {
-        return varValue.toString().trim();
+        return varValue.toString();
     }
 
     @Override
