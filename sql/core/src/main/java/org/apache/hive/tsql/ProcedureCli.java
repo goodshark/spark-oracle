@@ -102,6 +102,19 @@ public class ProcedureCli {
     }
 
 
+    public Set<String> getTempTables() {
+//        return session.getVariableContainer().getAllTmpTableNames();
+        Set<String> tables = new HashSet<>();
+        for (String name : session.getVariableContainer().getAllTmpTableNames()) {
+            String alias = session.getVariableContainer().findTmpTaleAlias(name);
+            if (StringUtils.isBlank(alias)) {
+                continue;
+            }
+            tables.add(alias);
+        }
+        return tables;
+    }
+
     private void clean() {
         //清理表变量
         if (null != session) {
@@ -113,13 +126,13 @@ public class ProcedureCli {
                 }
                 allAlias.add(alias);
             }
-            for (String name : session.getVariableContainer().getAllTmpTableNames()) {
+            /*for (String name : session.getVariableContainer().getAllTmpTableNames()) {
                 String alias = session.getVariableContainer().findTmpTaleAlias(name);
                 if (StringUtils.isBlank(alias)) {
                     continue;
                 }
                 allAlias.add(alias);
-            }
+            }*/
 
             for (String tableName : allAlias) {
                 final StringBuffer sb = new StringBuffer();
@@ -179,4 +192,5 @@ public class ProcedureCli {
             System.err.println(exception);
         }
     }
+
 }
