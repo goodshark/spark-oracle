@@ -219,7 +219,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return null;
         }
         ConstantLocalID constantLocalID = new ConstantLocalID();
-        constantLocalID.setVal(ctx.getText());
+        String str = ctx.getText();
+        if (str.startsWith("N")) {
+            str = str.substring(1);
+        }
+        constantLocalID.setVal(str);
         constantLocalID.setVariable(ctx.LOCAL_ID() != null);
         return constantLocalID;
     }
