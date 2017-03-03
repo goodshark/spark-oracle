@@ -10,6 +10,7 @@ import java.util.List;
  */
 public class IsNullCalculator extends BaseCalculator {
     public IsNullCalculator() {
+        setCheckNull(false);
     }
 
     @Override
@@ -19,7 +20,7 @@ public class IsNullCalculator extends BaseCalculator {
             throw new FunctionArgumentException("ISNULL", argList.size(), 2, 2);
 
         Var arg1 = getArguments(0);
-        if (arg1 == null || arg1.getDataType() == Var.DataType.NULL) {
+        if (arg1 == null || arg1.getVarValue() == null || arg1.getDataType() == Var.DataType.NULL) {
             return getArguments(1);
         } else {
             return getArguments(0);
