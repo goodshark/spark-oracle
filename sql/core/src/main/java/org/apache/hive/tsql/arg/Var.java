@@ -22,7 +22,7 @@ public class Var implements Serializable {
     }
 
     public enum ValueType {
-        EXPRESSION, TABLE, CURSOR, SPECIAL, NONE,DEFAULT
+        EXPRESSION, TABLE, CURSOR, SPECIAL, NONE, DEFAULT
     }
 
     public enum VarType {
@@ -42,24 +42,24 @@ public class Var implements Serializable {
 
 
     public Var(String varName, Object varValue, DataType dataType) {
-        this.varName = null != varName ? varName.toUpperCase(): null;
+        this.varName = null != varName ? varName.toUpperCase() : null;
         this.varValue = varValue;
         this.dataType = dataType;
     }
 
     public Var(String varName, TreeNode expr, DataType dataType) {
-        this.varName = null != varName ? varName.toUpperCase(): null;
+        this.varName = null != varName ? varName.toUpperCase() : null;
         this.expr = expr;
         this.dataType = dataType;
     }
 
     public Var(String varName, TreeNode expr) {
-        this.varName = null != varName ? varName.toUpperCase(): null;
+        this.varName = null != varName ? varName.toUpperCase() : null;
         this.expr = expr;
     }
 
     public Var(String varName, TreeNode expr, DataType dataType, VarType varType) {
-        this.varName = null != varName ? varName.toUpperCase(): null;
+        this.varName = null != varName ? varName.toUpperCase() : null;
         this.expr = expr;
         this.dataType = dataType;
         this.varType = varType;
@@ -73,7 +73,7 @@ public class Var implements Serializable {
 
 
     public Var(String varName) {
-        this.varName = null != varName ? varName.toUpperCase(): null;
+        this.varName = null != varName ? varName.toUpperCase() : null;
     }
 
     public Var() {
@@ -135,6 +135,7 @@ public class Var implements Serializable {
         ExpressionComputer expressionComputer = new ExpressionComputer();
         return expressionComputer.operatorXor(this, v);
     }
+
     /**
      * and操作
      *
@@ -242,11 +243,11 @@ public class Var implements Serializable {
 
     public String getVarName() {
 //        return varName.toUpperCase();
-        return this.varName = null != varName ? varName.toUpperCase(): null;
+        return this.varName = null != varName ? varName.toUpperCase() : null;
     }
 
     public void setVarName(String varName) {
-        this.varName = null != varName ? varName.toUpperCase(): null;
+        this.varName = null != varName ? varName.toUpperCase() : null;
     }
 
     public Object getVarValue() throws ParseException {
@@ -270,7 +271,7 @@ public class Var implements Serializable {
                 varValue = String.valueOf(varValue.toString());
                 break;
             case DATE:
-                if(varValue instanceof String) {
+                if (varValue instanceof String) {
                     varValue = DateUtil.parse(StrUtils.trimQuot(varValue.toString()));
                 }
 
@@ -317,12 +318,13 @@ public class Var implements Serializable {
     public Date getDate() throws ParseException {
         return this.varValue instanceof Date ? (Date) this.varValue : DateUtil.parse(this.varValue.toString());
     }
+
     public Float getFloat() {
-        return varValue instanceof Float ? (Float)varValue : Float.valueOf(varValue.toString());
+        return varValue instanceof Float ? (Float) varValue : Float.valueOf(varValue.toString());
     }
 
     public Double getDouble() {
-        return varValue instanceof Double ? (Double)varValue : Double.valueOf(varValue.toString());
+        return varValue instanceof Double ? (Double) varValue : Double.valueOf(varValue.toString());
     }
 
 
@@ -340,7 +342,20 @@ public class Var implements Serializable {
 
     @Override
     public String toString() {
-        return "[" + this.varName + ", " + this.aliasName + ", " + this.varValue + ", " + this.dataType + "]";
+
+        switch (dataType) {
+            case DATE:
+                try {
+                    Date date = getDate();
+                    return DateUtil.format(date, "yyyy-MM-dd");
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+                break;
+            default:
+                break;
+        }
+        return varValue == null ? null : varValue.toString();
     }
 }
 

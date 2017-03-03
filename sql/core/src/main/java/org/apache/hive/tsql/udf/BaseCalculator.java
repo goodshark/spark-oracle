@@ -118,6 +118,9 @@ public abstract class BaseCalculator implements Calculator {
             case MONTH:
                 result = calendar.get(Calendar.MONTH) + 1;
                 break;
+            case DAY:
+                result = calendar.get(Calendar.DAY_OF_MONTH);
+                break;
             case HOUR:
                 result = calendar.get(Calendar.HOUR);
                 break;
@@ -143,7 +146,6 @@ public abstract class BaseCalculator implements Calculator {
                 break;
 
         }
-        System.out.println("date result # " + result);
         return result;
     }
 

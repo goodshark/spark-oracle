@@ -33,11 +33,12 @@ public class PrintStatement extends BaseStatement {
         ResultSet exprRes = expr.getRs();
         try {
             Var exprVar = (Var) exprRes.getObject(0);
-            if (exprVar == null || exprVar.getDataType() == Var.DataType.NULL || null == exprVar.getVarValue()) {
+            Object val = exprVar.getVarValue();
+            if (exprVar == null || exprVar.getDataType() == Var.DataType.NULL || null == val) {
                 System.out.println("print result:");
                 System.out.flush();
             } else {
-                System.out.println("print result: " + StrUtils.trimQuot(exprVar.getVarValue().toString()));
+                System.out.println("print result: " + StrUtils.trimQuot(exprVar.toString()));
                 System.out.flush();
             }
         } catch (Exception e) {
