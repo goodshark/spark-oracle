@@ -16,7 +16,7 @@ public class CursorStatusCalculator extends BaseCalculator {
     @Override
     public Var compute() throws Exception {
         String scope = StrUtils.trimQuot(getArguments(0).getString()).toUpperCase();
-        String cursorName = StrUtils.trimQuot(getArguments(1).getString());
+        String cursorName = StrUtils.trimQuot(getArguments(1).getString()).toUpperCase();
         Cursor cursor = null;
         if ("LOCAL".equals(scope)) {
             cursor = getExecSession().getVariableContainer().findCursor(cursorName, false);

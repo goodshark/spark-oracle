@@ -57,11 +57,13 @@ public class VariableContainer {
 
     //按指定容器查找
     public Cursor findCursor(String name, boolean isGlobal) {
+        name = name.toUpperCase();
         return isGlobal ? globalCursors.get(name) : localCursors.get(name);
     }
 
     //local存在在返回，否则找global
     public Cursor findCursor(String name) {
+        name = name.toUpperCase();
         return localCursors.get(name) != null ? localCursors.get(name) : globalCursors.get(name);
     }
 
@@ -73,6 +75,7 @@ public class VariableContainer {
 
     //如果指定global则直接delete global，否则优先delete local
     public void deleteCursor(String cursorName, boolean isGlobal) {
+        cursorName = cursorName.toUpperCase();
         if (isGlobal) {
             globalCursors.remove(cursorName);
             return;
