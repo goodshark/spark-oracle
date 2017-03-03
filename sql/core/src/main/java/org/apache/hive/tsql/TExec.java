@@ -233,7 +233,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String sourceSql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         FuncName funcName = visitFunc_proc_name(ctx.func_proc_name());
-        checkLength(funcName.getFullFuncName(),128,"procedure name ");
+        checkLength(funcName.getFullFuncName(), 128, "procedure name ");
         Procedure func = new Procedure(funcName);
         func.setProcSql(sourceSql);
         func.setMd5(MD5Util.md5Hex(sourceSql));
@@ -1067,8 +1067,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         StringBuffer sql = new StringBuffer();
         sql.append(ctx.CREATE().getText()).append(Common.SPACE);
         sql.append(ctx.DATABASE().getText()).append(Common.SPACE);
-        String databaseName=visitId(ctx.id(0));
-        checkLength(databaseName,128,"database name ");
+        String databaseName = visitId(ctx.id(0));
+        checkLength(databaseName, 128, "database name ");
         sql.append(databaseName);
         if (ctx.CONTAINMENT() != null) {
             addException(ctx.CONTAINMENT().getText(), locate(ctx));
@@ -1199,8 +1199,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitCreate_table(TSqlParser.Create_tableContext ctx) {
-        String tableName=visitTable_name(ctx.table_name()).getFullFuncName();
-        checkLength(tableName,128,"table name ");
+        String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
+        checkLength(tableName, 128, "table name ");
         CreateTableStatement createTableStatement = new CreateTableStatement(tableName);
         createTableStatement.setColumnDefs(visitColumn_def_table_constraints(ctx.column_def_table_constraints()));
         if (ctx.crud_table() != null) {
@@ -1349,8 +1349,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(Common.SPACE);
         sql.append(ctx.VIEW());
         sql.append(Common.SPACE);
-        String viewName=visitSimple_name(ctx.simple_name());
-        checkLength(viewName,128,"view name ");
+        String viewName = visitSimple_name(ctx.simple_name());
+        checkLength(viewName, 128, "view name ");
         sql.append(viewName).append(Common.SPACE);
         if (null != ctx.column_name_list()) {
             sql.append("(").append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
@@ -2152,14 +2152,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return "";
     }
 
-    private Queue<String> withColmnNameAlias=new LinkedList<>();
+    private Queue<String> withColmnNameAlias = new LinkedList<>();
+
     @Override
     public String visitCommon_table_expression(TSqlParser.Common_table_expressionContext ctx) {
         //SqlStatement rs = new SqlStatement();
         withColmnNameAlias.clear();
-        if(null!=ctx.column_name_list()){
-            List<String> list=visitColumn_name_list(ctx.column_name_list());
-            for (String c:list) {
+        if (null != ctx.column_name_list()) {
+            List<String> list = visitColumn_name_list(ctx.column_name_list());
+            for (String c : list) {
                 withColmnNameAlias.add(c);
             }
         }
@@ -2203,9 +2204,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             tableNameList.add(tableName);
             //#表示临时表，需要先创建
             //if (tableName.startsWith("#")) {
-                intoTableSql = "create table " + tableName + " as ";
-           // } else {
-              //  intoTableSql = "insert into table " + tableName;
+            intoTableSql = "create table " + tableName + " as ";
+            // } else {
+            //  intoTableSql = "insert into table " + tableName;
             //}
         }
         if (null != ctx.FROM()) {
@@ -2376,8 +2377,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitColumn_alias(TSqlParser.Column_aliasContext ctx) {
         //如果列名中含有空格和单引号，sparksql不支持，如 select name AS 'Time Range' from tb
         String columnAliasName = ctx.getText().trim();
-        if(columnAliasName.contains("'")||columnAliasName.contains(" ")){
-            addException("column alias has  single quotes",locate(ctx));
+        if (columnAliasName.contains("'") || columnAliasName.contains(" ")) {
+            addException("column alias has  single quotes", locate(ctx));
         }
         return columnAliasName;
     }
@@ -2482,8 +2483,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitLog_function(TSqlParser.Log_functionContext ctx) {
-        return super.visitLog_function(ctx);
+    public TreeNode visitLog_function(TSqlParser.Log_functionContext ctx) {
+        LogFunction function = new LogFunction(new FuncName(null, "LOG", null));
+        visit(ctx.expression());
+        function.setExpr(popStatement());
+        pushStatement(function);
+        return function;
     }
 
     @Override
@@ -3477,7 +3482,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             // | column_alias '=' expression 解析为 select expression as column_alias
             rs.append(getExpressionSql(ctx.expression()));
             rs.append("  as ");
-            String columnAlias=visitColumn_alias(ctx.column_alias());
+            String columnAlias = visitColumn_alias(ctx.column_alias());
             rs.append(columnAlias).append(Common.SPACE);
             popStatement();
             return rs.toString();
@@ -3497,30 +3502,30 @@ public class TExec extends TSqlBaseVisitor<Object> {
              */
             checkResultVariable(rs, ctx.expression());
 
-           /** 解决with中有别名 bug LEAP-2647
-            *with t_bTemp(i,n,a)
-            *as (select b1.id, b1.name, b2.age from b1 inner join b2 on b1.id = b2.id)
-            *insert into b3 select i,n,a from t_bTemp
-            **/
+            /** 解决with中有别名 bug LEAP-2647
+             *with t_bTemp(i,n,a)
+             *as (select b1.id, b1.name, b2.age from b1 inner join b2 on b1.id = b2.id)
+             *insert into b3 select i,n,a from t_bTemp
+             **/
 
-           if(!withColmnNameAlias.isEmpty()){
-               rs.append(Common.SPACE).append("as ").append(withColmnNameAlias.poll());
-           }else{
-               if (null != ctx.AS()) {
-                   rs.append(ctx.AS().getText()).append(Common.SPACE);
-               }
-               if (null != ctx.column_alias()) {
-                   rs.append(visitColumn_alias(ctx.column_alias())).append(Common.SPACE);
-               }
-           }
+            if (!withColmnNameAlias.isEmpty()) {
+                rs.append(Common.SPACE).append("as ").append(withColmnNameAlias.poll());
+            } else {
+                if (null != ctx.AS()) {
+                    rs.append(ctx.AS().getText()).append(Common.SPACE);
+                }
+                if (null != ctx.column_alias()) {
+                    rs.append(visitColumn_alias(ctx.column_alias())).append(Common.SPACE);
+                }
+            }
         }
         if (ctx.column_alias() == null && ctx.expression() == null && (null != ctx.IDENTITY() || null != ctx.ROWGUID())) {
             addException("IDENTITY. ROWGUID", locate(ctx));
         }
         if (ctx.column_alias() == null && ctx.expression() == null && null == ctx.IDENTITY() && null == ctx.IDENTITY()) {
-            if(!withColmnNameAlias.isEmpty()){
-                addException("with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable",locate(ctx));
-            }else {
+            if (!withColmnNameAlias.isEmpty()) {
+                addException("with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable", locate(ctx));
+            } else {
                 rs.append("*").append(Common.SPACE);
             }
         }
@@ -3588,9 +3593,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
 
-    private void checkLength(String str,int length,String warningMsg){
-        if (str.length()>length){
-            addException(new Exception(warningMsg+":"+ "["+str+"]"+" is too long"));
+    private void checkLength(String str, int length, String warningMsg) {
+        if (str.length() > length) {
+            addException(new Exception(warningMsg + ":" + "[" + str + "]" + " is too long"));
         }
     }
 }
