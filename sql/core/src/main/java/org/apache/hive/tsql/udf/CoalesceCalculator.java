@@ -10,6 +10,7 @@ public class CoalesceCalculator extends BaseCalculator {
     public CoalesceCalculator() {
         setMinSize(1);
         setMaxSize(Integer.MAX_VALUE);
+        setCheckNull(false);
     }
 
     @Override
