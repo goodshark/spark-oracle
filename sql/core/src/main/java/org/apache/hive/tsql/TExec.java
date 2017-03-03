@@ -2375,7 +2375,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitColumn_alias(TSqlParser.Column_aliasContext ctx) {
         //如果列名中含有空格和单引号，sparksql不支持，如 select name AS 'Time Range' from tb
-        String columnAliasName = ctx.getText().trim().replaceAll("'", "").replace(" ", "");
+        String columnAliasName = ctx.getText().trim();
+        if(columnAliasName.contains("'")||columnAliasName.contains(" ")){
+            addException("column alias has  single quotes",locate(ctx));
+        }
         return columnAliasName;
     }
 
@@ -2992,6 +2995,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         /*logicNode.setNodeType(TreeNode.Type.WHEN)*/
         ;
         sql.append(logicNode.toString());
+        popStatement();
         addNode(swichStatement);
         sql.append(ctx.THEN().getText()).append(Common.SPACE);
         TreeNode sqlStatement = (TreeNode) visit(ctx.expression());
@@ -3426,6 +3430,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         LogicNode logicNode = visitSearch_condition(ctx.search_condition());
         if (null != logicNode) {
             rs.append(logicNode.toString()).append(Common.SPACE);
+            popStatement();
         }
         if (null != ctx.CROSS()) {
             rs.append(ctx.CROSS().getText()).append(Common.SPACE);
@@ -3472,7 +3477,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             // | column_alias '=' expression 解析为 select expression as column_alias
             rs.append(getExpressionSql(ctx.expression()));
             rs.append("  as ");
-            rs.append(visitColumn_alias(ctx.column_alias())).append(Common.SPACE);
+            String columnAlias=visitColumn_alias(ctx.column_alias());
+            rs.append(columnAlias).append(Common.SPACE);
             popStatement();
             return rs.toString();
         }

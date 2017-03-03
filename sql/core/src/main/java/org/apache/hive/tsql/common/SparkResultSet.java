@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.hive.tsql.arg.Var;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.types.StructField;
 import org.slf4j.Logger;
@@ -27,16 +28,19 @@ public class SparkResultSet extends BaseResultSet {
         this.dataset = dataset;
         List<org.apache.spark.sql.Row> list = dataset.collectAsList();
         int filedSize = dataset.schema().fieldNames().length;
+        StructField structField[] = dataset.schema().fields();
         for (org.apache.spark.sql.Row r : list) {
             Row row = new Row(filedSize);
             Object values[] = new Object[filedSize];
             for (int i = 0; i < filedSize; i++) {
-                values[i] = r.get(i);
+                Var var =new Var();
+                var.setDataType(Var.DataType.valueOf(structField[i].dataType().typeName().toUpperCase().replaceAll("\\(.*\\)", "")));
+                var.setVarValue(r.get(i));
+                values[i] = var;
             }
             row.setValues(values);
             addRow(row);
         }
-        StructField structField[] = dataset.schema().fields();
         for (StructField s : structField) {
             //TODO 实现获取列的别名
             String asName = "";
