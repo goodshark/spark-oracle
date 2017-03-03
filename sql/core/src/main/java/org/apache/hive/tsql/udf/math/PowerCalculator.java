@@ -8,7 +8,7 @@ import org.apache.hive.tsql.udf.BaseCalculator;
  */
 public class PowerCalculator extends BaseCalculator {
     public PowerCalculator() {
-        setMinMax(1);
+        setMinMax(2);
     }
 
     @Override
