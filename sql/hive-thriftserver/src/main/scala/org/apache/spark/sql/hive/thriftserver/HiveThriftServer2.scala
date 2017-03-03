@@ -22,25 +22,23 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hive.service.cli.thrift.{ThriftBinaryCLIService, ThriftHttpCLIService}
 import org.apache.hive.service.server.HiveServer2
-
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkContext, SqlSessionListener}
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd, SparkListenerJobStart}
 import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.hive.{HiveUtils}
+import org.apache.spark.sql.hive.HiveUtils
 import org.apache.spark.sql.hive.thriftserver.ReflectionUtils._
 import org.apache.spark.sql.hive.thriftserver.ui.ThriftServerTab
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.util.{ShutdownHookManager, Utils}
-
 import redis.clients.jedis.Jedis
+
 import scala.util.parsing.json.JSON
 
 /**
@@ -51,6 +49,7 @@ object HiveThriftServer2 extends Logging {
   var LOG = LogFactory.getLog(classOf[HiveServer2])
   var uiTab: Option[ThriftServerTab] = _
   var listener: HiveThriftServer2Listener = _
+  var sqlSessionListenr: SqlSessionListener = null
 
   /**
    * :: DeveloperApi ::
@@ -68,6 +67,8 @@ object HiveThriftServer2 extends Logging {
     server.start()
     listener = new HiveThriftServer2Listener(server, sqlContext.conf)
     sqlContext.sparkContext.addSparkListener(listener)
+    sqlSessionListenr = new SqlSessionListener(sqlContext)
+    sqlContext.sparkContext.addSparkListener(sqlSessionListenr)
     uiTab = if (sqlContext.sparkContext.getConf.getBoolean("spark.ui.enabled", true)) {
       Some(new ThriftServerTab(sqlContext.sparkContext))
     } else {
@@ -99,6 +100,8 @@ object HiveThriftServer2 extends Logging {
       logInfo("HiveThriftServer2 started")
       listener = new HiveThriftServer2Listener(server, SparkSQLEnv.sqlContext.conf)
       SparkSQLEnv.sparkContext.addSparkListener(listener)
+      sqlSessionListenr = new SqlSessionListener(SparkSQLEnv.sqlContext)
+      SparkSQLEnv.sparkContext.addSparkListener(sqlSessionListenr)
       uiTab = if (SparkSQLEnv.sparkContext.getConf.getBoolean("spark.ui.enabled", true)) {
         Some(new ThriftServerTab(SparkSQLEnv.sparkContext))
       } else {
@@ -118,10 +121,10 @@ object HiveThriftServer2 extends Logging {
   }
 
   private[thriftserver] class SessionInfo(
-      val sessionId: String,
-      val startTimestamp: Long,
-      val ip: String,
-      val userName: String) {
+                                           val sessionId: String,
+                                           val startTimestamp: Long,
+                                           val ip: String,
+                                           val userName: String) {
     var finishTimestamp: Long = 0L
     var totalExecution: Int = 0
     def totalTime: Long = {
@@ -139,10 +142,10 @@ object HiveThriftServer2 extends Logging {
   }
 
   private[thriftserver] class ExecutionInfo(
-      val statement: String,
-      val sessionId: String,
-      val startTimestamp: Long,
-      val userName: String) {
+                                             val statement: String,
+                                             val sessionId: String,
+                                             val startTimestamp: Long,
+                                             val userName: String) {
     var finishTimestamp: Long = 0L
     var executePlan: String = ""
     var detail: String = ""
@@ -160,11 +163,11 @@ object HiveThriftServer2 extends Logging {
 
 
   /**
-   * An inner sparkListener called in sc.stop to clean up the HiveThriftServer2
-   */
+    * An inner sparkListener called in sc.stop to clean up the HiveThriftServer2
+    */
   private[thriftserver] class HiveThriftServer2Listener(
-      val server: HiveServer2,
-      val conf: SQLConf) extends SparkListener {
+                                                         val server: HiveServer2,
+                                                         val conf: SQLConf) extends SparkListener {
 
     override def onApplicationEnd(applicationEnd: SparkListenerApplicationEnd): Unit = {
       server.stop()
@@ -214,6 +217,7 @@ object HiveThriftServer2 extends Logging {
         sessionList.put(sessionId, info)
         onlineSessionNum += 1
         trimSessionIfNecessary()
+        sqlSessionListenr.onSessionCreated(sessionId)
       }
     }
 
@@ -221,14 +225,15 @@ object HiveThriftServer2 extends Logging {
       sessionList(sessionId).finishTimestamp = System.currentTimeMillis
       onlineSessionNum -= 1
       trimSessionIfNecessary()
+      sqlSessionListenr.onSessionClosed(sessionId)
     }
 
     def onStatementStart(
-        id: String,
-        sessionId: String,
-        statement: String,
-        groupId: String,
-        userName: String = "UNKNOWN"): Unit = synchronized {
+                          id: String,
+                          sessionId: String,
+                          statement: String,
+                          groupId: String,
+                          userName: String = "UNKNOWN"): Unit = synchronized {
       val info = new ExecutionInfo(statement, sessionId, System.currentTimeMillis, userName)
       info.state = ExecutionState.STARTED
       executionList.put(id, info)
