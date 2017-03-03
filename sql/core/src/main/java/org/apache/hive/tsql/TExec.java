@@ -229,6 +229,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String sourceSql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         FuncName funcName = visitFunc_proc_name(ctx.func_proc_name());
+        checkLength(funcName.getFullFuncName(),128,"procedure name ");
         Procedure func = new Procedure(funcName);
         func.setProcSql(sourceSql);
         func.setMd5(MD5Util.md5Hex(sourceSql));
@@ -1062,7 +1063,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         StringBuffer sql = new StringBuffer();
         sql.append(ctx.CREATE().getText()).append(Common.SPACE);
         sql.append(ctx.DATABASE().getText()).append(Common.SPACE);
-        sql.append(visitId(ctx.id(0)));
+        String databaseName=visitId(ctx.id(0));
+        checkLength(databaseName,128,"database name ");
+        sql.append(databaseName);
         if (ctx.CONTAINMENT() != null) {
             addException(ctx.CONTAINMENT().getText(), locate(ctx));
         }
@@ -1192,7 +1195,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitCreate_table(TSqlParser.Create_tableContext ctx) {
-        CreateTableStatement createTableStatement = new CreateTableStatement(visitTable_name(ctx.table_name()).getFullFuncName());
+        String tableName=visitTable_name(ctx.table_name()).getFullFuncName();
+        checkLength(tableName,128,"table name ");
+        CreateTableStatement createTableStatement = new CreateTableStatement(tableName);
         createTableStatement.setColumnDefs(visitColumn_def_table_constraints(ctx.column_def_table_constraints()));
         if (ctx.crud_table() != null) {
             createTableStatement.setCrudStr(visitCrud_table(ctx.crud_table()));
@@ -1340,7 +1345,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(Common.SPACE);
         sql.append(ctx.VIEW());
         sql.append(Common.SPACE);
-        sql.append(visitSimple_name(ctx.simple_name())).append(Common.SPACE);
+        String viewName=visitSimple_name(ctx.simple_name());
+        checkLength(viewName,128,"view name ");
+        sql.append(viewName).append(Common.SPACE);
         if (null != ctx.column_name_list()) {
             sql.append("(").append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
             sql.append(")");
@@ -1585,7 +1592,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             LimitStatement limitStatement = new LimitStatement();
             limitStatement.setNodeType(TreeNode.Type.LIMIT_NUMBER);
             visit(ctx.expression());
-            addNode(limitStatement);
+            limitStatement.setLimitValueNode(popStatement());
             insertStatement.addInsertValuesNode(limitStatement);
             if (null != ctx.PERCENT()) {
                 limitStatement.setNodeType(TreeNode.Type.LIMIT_PERCENT);
@@ -1712,6 +1719,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             LimitStatement limitStatement = new LimitStatement();
             limitStatement.setNodeType(TreeNode.Type.LIMIT_NUMBER);
             visit(ctx.expression());
+            limitStatement.setLimitValueNode(popStatement());
             updateStatement.addUpdateValuesNode(limitStatement);
             if (null != ctx.PERCENT()) {
                 limitStatement.setNodeType(TreeNode.Type.LIMIT_PERCENT);
@@ -1834,6 +1842,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             LimitStatement limitStatement = new LimitStatement();
             limitStatement.setNodeType(TreeNode.Type.LIMIT_NUMBER);
             visit(ctx.expression());
+            limitStatement.setLimitValueNode(popStatement());
             deleteStatement.addDelValuesNode(limitStatement);
             if (null != ctx.PERCENT()) {
                 limitStatement.setNodeType(TreeNode.Type.LIMIT_PERCENT);
@@ -2073,7 +2082,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitSelect_statement(TSqlParser.Select_statementContext ctx) {
-
         SelectStatement selectStatement = new SelectStatement(Common.SELECT);
         StringBuffer sql = new StringBuffer();
         clearVariable();
@@ -2138,13 +2146,21 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return "";
     }
 
-
+    private Queue<String> withColmnNameAlias=new LinkedList<>();
     @Override
     public String visitCommon_table_expression(TSqlParser.Common_table_expressionContext ctx) {
         //SqlStatement rs = new SqlStatement();
+        withColmnNameAlias.clear();
+        if(null!=ctx.column_name_list()){
+            List<String> list=visitColumn_name_list(ctx.column_name_list());
+            for (String c:list) {
+                withColmnNameAlias.add(c);
+            }
+        }
         withExpressionSqlMap.put(visitId(ctx.id()), visitSelect_statement(ctx.select_statement())
                 .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE));
         popStatement();
+        withColmnNameAlias.clear();
         return "";
     }
 
@@ -2180,11 +2196,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
             tableNameList.add(tableName);
             //#表示临时表，需要先创建
-            if (tableName.startsWith("#")) {
+            //if (tableName.startsWith("#")) {
                 intoTableSql = "create table " + tableName + " as ";
-            } else {
-                intoTableSql = "insert into table " + tableName;
-            }
+           // } else {
+              //  intoTableSql = "insert into table " + tableName;
+            //}
         }
         if (null != ctx.FROM()) {
             rs.append(ctx.FROM().getText()).append(Common.SPACE);
@@ -2213,11 +2229,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 LogicNode logicNode = visitSearch_condition(ctx.search_condition(1));
                 if (null != logicNode) {
                     rs.append(logicNode.toString()).append(Common.SPACE);
+                    popStatement();
                 }
             } else {
                 LogicNode logicNode = visitSearch_condition(ctx.search_condition(0));
                 if (null != logicNode) {
                     rs.append(logicNode.toString()).append(Common.SPACE);
+                    popStatement();
                 }
             }
         }
@@ -3466,18 +3484,33 @@ public class TExec extends TSqlBaseVisitor<Object> {
              * 如select  @aa=string2  from boolean_ana where string1 ='code' 中的@aa
              */
             checkResultVariable(rs, ctx.expression());
-            if (null != ctx.AS()) {
-                rs.append(ctx.AS().getText()).append(Common.SPACE);
-            }
-            if (null != ctx.column_alias()) {
-                rs.append(visitColumn_alias(ctx.column_alias())).append(Common.SPACE);
-            }
+
+           /** 解决with中有别名 bug LEAP-2647
+            *with t_bTemp(i,n,a)
+            *as (select b1.id, b1.name, b2.age from b1 inner join b2 on b1.id = b2.id)
+            *insert into b3 select i,n,a from t_bTemp
+            **/
+
+           if(!withColmnNameAlias.isEmpty()){
+               rs.append(Common.SPACE).append("as ").append(withColmnNameAlias.poll());
+           }else{
+               if (null != ctx.AS()) {
+                   rs.append(ctx.AS().getText()).append(Common.SPACE);
+               }
+               if (null != ctx.column_alias()) {
+                   rs.append(visitColumn_alias(ctx.column_alias())).append(Common.SPACE);
+               }
+           }
         }
         if (ctx.column_alias() == null && ctx.expression() == null && (null != ctx.IDENTITY() || null != ctx.ROWGUID())) {
             addException("IDENTITY. ROWGUID", locate(ctx));
         }
         if (ctx.column_alias() == null && ctx.expression() == null && null == ctx.IDENTITY() && null == ctx.IDENTITY()) {
-            rs.append("*").append(Common.SPACE);
+            if(!withColmnNameAlias.isEmpty()){
+                addException("with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable",locate(ctx));
+            }else {
+                rs.append("*").append(Common.SPACE);
+            }
         }
         return rs.toString();
     }
@@ -3540,5 +3573,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String crudSql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return crudSql;
+    }
+
+
+    private void checkLength(String str,int length,String warningMsg){
+        if (str.length()>length){
+            addException(new Exception(warningMsg+":"+ "["+str+"]"+" is too long"));
+        }
     }
 }

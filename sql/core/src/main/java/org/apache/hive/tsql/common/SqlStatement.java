@@ -16,6 +16,7 @@ public class SqlStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
+        setAddResult(false);
         setRs(commitStatement(getSql()));
         return 1;
     }
@@ -32,14 +33,18 @@ public class SqlStatement extends BaseStatement {
      * @param sql
      */
     public String replaceTableName(String tableName, String sql) {
+        String realTableName = getRealTableName(tableName);
+        return sql.replaceAll(tableName, realTableName);
+    }
+
+
+    public String getRealTableName(String tableName){
         String realTableName = "";
         TmpTableNameUtils tableNameUtils = new TmpTableNameUtils();
         if (tableName.indexOf("@") != -1) {
             realTableName = findTableVarAlias(tableName);
-            return sql.replaceAll(tableName, realTableName);
         } else if (tableNameUtils.checkIsGlobalTmpTable(tableName)) {
             realTableName = tableNameUtils.getRelTableName(tableName);
-            return sql.replaceAll(tableName, realTableName);
         } else if(tableNameUtils.checkIsTmpTable(tableName)){
             //临时表，先从内存中找，如果没有找到，需要创建
             realTableName=findTmpTaleAlias(tableName);
@@ -47,11 +52,10 @@ public class SqlStatement extends BaseStatement {
                 realTableName = tableNameUtils.getRelTableName(tableName);
                 addTmpTable(tableName,realTableName);
             }
-            return sql.replaceAll(tableName, realTableName);
-        } else {
-            return sql;
+        } else{
+            realTableName = tableName;
         }
-
+        return  realTableName;
     }
 
 }

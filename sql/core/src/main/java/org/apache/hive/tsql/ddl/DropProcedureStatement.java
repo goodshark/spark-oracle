@@ -19,7 +19,6 @@ public class DropProcedureStatement extends SqlStatement {
         for (FuncName f:funcNames) {
             procService.delProc(f.getFullFuncName());
         }
-
         return 0;
     }
 
