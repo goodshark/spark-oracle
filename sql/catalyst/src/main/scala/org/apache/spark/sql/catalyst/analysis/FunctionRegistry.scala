@@ -433,7 +433,7 @@ object FunctionRegistry {
     castAlias("string", StringType),
 
   //sql server functions support
-  expression[Length]("len"),
+//  expression[Length]("len"),
   expression[StddevSamp]("stdev"),
   expression[StddevPop]("stdevp"),
   expression[VarianceSamp]("var"),
