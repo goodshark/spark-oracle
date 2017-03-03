@@ -12,6 +12,7 @@ import java.util.List;
  */
 public class ReplaceCalculator extends BaseCalculator {
     public ReplaceCalculator() {
+        setCheckNull(false);
     }
 
     @Override
