@@ -18,7 +18,7 @@ public class Var implements Serializable {
     private static final long serialVersionUID = -1631515791432293303L;
 
     public enum DataType {
-        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION
+        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE,DATETIME, BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION
     }
 
     public enum ValueType {

@@ -343,33 +343,36 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public Var.DataType visitData_type(TSqlParser.Data_typeContext ctx) {
         String dataType = ctx.getText().toUpperCase();
-        if (dataType.contains("BIGINT")) {
+        if (dataType.equals("BIGINT")) {
             return Var.DataType.LONG;
-        } else if (dataType.contains("INT")) {
+        } else if (dataType.equals("INT")||dataType.equals("TINYINT")) {
             return Var.DataType.INT;
-        } else if (dataType.contains("BINARY")) {
+        } else if (dataType.equals("BINARY")) {
             return Var.DataType.BINARY;
-        } else if (dataType.contains("DATE") || dataType.contains("TIME")) {
+        } else if (dataType.equals("DATE")) {
             return Var.DataType.DATE;
-        } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
+        } else if (dataType.contains("TIME")) {
+            return Var.DataType.DATETIME;
+        } else if (dataType.equals("CHAR") || dataType.equals("TEXT") || dataType.equals("NCHAR")) {
             return Var.DataType.STRING;
-        } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
+        } else if (dataType.equals("FLOAT") || dataType.equals("REAL")) {
             return Var.DataType.FLOAT;
-        } else if (dataType.contains("BIT")
-                || dataType.contains("XML")
-                || dataType.contains("IMAGE")
-                || dataType.contains("UNIQUEIDENTIFIER")
-                || dataType.contains("GEOGRAPHY")
-                || dataType.contains("GEOMETRY")
-                || dataType.contains("HIERARCHYID")) {
+        } else if (dataType.equals("BIT")
+                || dataType.equals("XML")
+                || dataType.equals("IMAGE")
+                || dataType.equals("UNIQUEIDENTIFIER")
+                || dataType.equals("GEOGRAPHY")
+                || dataType.equals("GEOMETRY")
+                || dataType.equals("HIERARCHYID")) {
             addException(dataType, locate(ctx));
             return Var.DataType.NULL;
-        } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
-                || dataType.contains("NUMERIC")) {
+        } else if (dataType.equals("MONEY") || dataType.equals("DECIMAL")
+                || dataType.equals("NUMERIC")) {
             return Var.DataType.DOUBLE;
         } else {
             return Var.DataType.STRING;
         }
+
     }
 
 
