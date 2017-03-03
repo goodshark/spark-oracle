@@ -12,6 +12,7 @@ import java.util.List;
  */
 public class ConcatCalculator extends BaseCalculator {
     public ConcatCalculator() {
+        setCheckNull(false);
     }
 
     @Override

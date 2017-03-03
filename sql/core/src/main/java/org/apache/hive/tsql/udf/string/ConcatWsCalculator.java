@@ -10,6 +10,7 @@ import org.apache.hive.tsql.util.StrUtils;
  */
 public class ConcatWsCalculator extends BaseCalculator {
     public ConcatWsCalculator() {
+        setCheckNull(false);
     }
 
     @Override
@@ -21,6 +22,8 @@ public class ConcatWsCalculator extends BaseCalculator {
         String concatStr = StrUtils.trimQuot(arg1.getVarValue().toString());
         StringBuilder sb = new StringBuilder();
         for (Var arg: getAllArguments().subList(1, getAllArguments().size())) {
+            if (arg == null || arg.getVarValue() == null || arg.getDataType() == Var.DataType.NULL)
+                continue;
             String argStr = StrUtils.trimQuot(arg.getVarValue().toString());
             if (sb.length() == 0) {
                 sb.append(argStr);
