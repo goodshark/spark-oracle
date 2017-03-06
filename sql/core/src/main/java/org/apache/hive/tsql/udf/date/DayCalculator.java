@@ -16,8 +16,12 @@ public class DayCalculator extends BaseCalculator {
 
     @Override
     public Var compute() throws Exception {
-        Date date = getArguments(0).getDate();
-        return new Var(getDatePartValue(DateUnit.DAY, date), Var.DataType.INT);
+        Var v = getArguments(0);
+        boolean flag = false;
+        if (v.getDataType() == Var.DataType.INT && 0 == v.getInt()) {
+            flag = true;
+        }
+        return new Var(flag ? 1 : getDatePartValue(DateUnit.DAY, v.getDate()), Var.DataType.INT);
     }
 
 

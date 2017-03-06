@@ -15,6 +15,6 @@ public class GetDateCalculator extends BaseCalculator {
 
     @Override
     public Var compute() throws Exception {
-        return new Var(new Date(), Var.DataType.DATE);
+        return new Var(new Date(), Var.DataType.DATETIME);
     }
 }
