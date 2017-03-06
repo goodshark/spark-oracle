@@ -1,12 +1,8 @@
 package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.arg.Var;
-import org.apache.hive.tsql.util.DateUtil;
-import org.apache.spark.sql.types.DataType;
 
-import java.lang.*;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.Set;
 
 /**
@@ -44,7 +40,7 @@ public class ExpressionComputer {
     public Var operatorXor(Var v1, Var v2) throws ParseException {
         if (v1.getVarValue() == null || v2.getVarValue() == null) {
             return Var.Null;
-        }  else if (v1.getDataType().equals(Var.DataType.INT) && v2.getDataType().equals(Var.DataType.INT)) {
+        } else if (v1.getDataType().equals(Var.DataType.INT) && v2.getDataType().equals(Var.DataType.INT)) {
             Var var = new Var();
             var.setDataType(Var.DataType.INT);
             int b1 = Integer.parseInt(v1.getVarValue().toString());
@@ -85,7 +81,7 @@ public class ExpressionComputer {
         } else if (v1.getDataType().equals(Var.DataType.BOOLEAN) && v2.getDataType().equals(Var.DataType.BOOLEAN)) {
             if (Boolean.parseBoolean(v1.getVarValue().toString()) || Boolean.parseBoolean(v1.getVarValue().toString()))
                 return Var.TrueVal;
-        }else if (v1.getDataType().equals(Var.DataType.INT) && v2.getDataType().equals(Var.DataType.INT)) {
+        } else if (v1.getDataType().equals(Var.DataType.INT) && v2.getDataType().equals(Var.DataType.INT)) {
             Var var = new Var();
             var.setDataType(Var.DataType.INT);
             int b1 = Integer.parseInt(v1.getVarValue().toString());
@@ -179,11 +175,12 @@ public class ExpressionComputer {
     public int compareTo(Var var1, Var var2) throws ParseException {
         if (equals(var1, var2)) {
             return 0;
-        }  else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
+        } else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
             return var1.getVarValue().toString().compareTo(var2.getVarValue().toString());
         } else if (var1.getDataType().equals(Var.DataType.DATE) || var2.getDataType().equals(Var.DataType.DATE)) {
-            return Long.compare(getDateTime(var1), getDateTime(var2));
-        }else if (checkVarIsNumber(var1, var2)) {
+//            return Long.compare(getDateTime(var1), getDateTime(var2));
+            return Long.compare(var1.getTime(), var2.getTime());
+        } else if (checkVarIsNumber(var1, var2)) {
             Number number = new Number();
             number = number.operator(paserVarToNuber(var1), paserVarToNuber(var2), Number.Operator.EQUALS);
             double v = Double.parseDouble(number.getValue());
@@ -198,25 +195,25 @@ public class ExpressionComputer {
         return -1;
     }
 
-    private long getDateTime(Var var) throws ParseException {
-        Var.DataType dataType = var.getDataType();
-        long rs = -1l;
-        switch (dataType) {
-            case DATE:
-                rs = ((Date) var.getVarValue()).getTime();
-                break;
-            case STRING:
-                rs = DateUtil.parse(var.getVarValue().toString()).getTime();
-                break;
-            case INT:
-            case FLOAT:
-            case LONG:
-            case DOUBLE:
-                rs = Long.parseLong(var.getVarValue().toString());
-                break;
-        }
-        return rs;
-    }
+//    private long getDateTime(Var var) throws ParseException {
+//        Var.DataType dataType = var.getDataType();
+//        long rs = -1l;
+//        switch (dataType) {
+//            case DATE:
+//                rs = ((Date) var.getVarValue()).getTime();
+//                break;
+//            case STRING:
+//                rs = DateUtil.parse(var.getVarValue().toString()).getTime();
+//                break;
+//            case INT:
+//            case FLOAT:
+//            case LONG:
+//            case DOUBLE:
+//                rs = Long.parseLong(var.getVarValue().toString());
+//                break;
+//        }
+//        return rs;
+//    }
 
 
     /**
@@ -225,7 +222,7 @@ public class ExpressionComputer {
     public boolean equals(Var var1, Var var2) throws ParseException {
         if (var1 == null && var2 == null) {
             return true;
-        }else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
+        } else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
             if (var1.getVarValue().toString().equals(var2.getVarValue().toString())) {
                 return true;
             }

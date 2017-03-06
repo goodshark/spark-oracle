@@ -131,7 +131,7 @@ public abstract class BaseCalculator implements Calculator {
                 result = calendar.get(Calendar.SECOND);
                 break;
             case QUARTER:
-                result = (calendar.get(Calendar.MONTH) % 4) + 1;
+                result = (calendar.get(Calendar.MONTH) / 3) + 1;
                 break;
             case DAYOFYEAR:
                 result = calendar.get(Calendar.DAY_OF_YEAR);

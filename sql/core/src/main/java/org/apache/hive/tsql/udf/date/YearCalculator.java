@@ -4,9 +4,6 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.func.DateUnit;
 import org.apache.hive.tsql.udf.BaseCalculator;
 
-import java.util.Calendar;
-import java.util.Date;
-
 /**
  * Created by zhongdg1 on 2017/2/8.
  */
@@ -17,8 +14,12 @@ public class YearCalculator extends BaseCalculator {
 
     @Override
     public Var compute() throws Exception {
-        Date date = getArguments(0).getDate();
-        return new Var(getDatePartValue(DateUnit.YEAR, date), Var.DataType.INT);
+        Var v = getArguments(0);
+        boolean flag = false;
+        if (v.getDataType() == Var.DataType.INT && 0 == v.getInt()) {
+            flag = true;
+        }
+        return new Var(flag ? 1900 : getDatePartValue(DateUnit.YEAR, v.getDate()), Var.DataType.INT);
     }
 
 

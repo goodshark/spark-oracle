@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.arg;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.common.ExpressionComputer;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.util.DateUtil;
@@ -18,7 +19,7 @@ public class Var implements Serializable {
     private static final long serialVersionUID = -1631515791432293303L;
 
     public enum DataType {
-        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE,DATETIME, BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION
+        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, DATETIME, DATETIME2, BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION
     }
 
     public enum ValueType {
@@ -272,7 +273,7 @@ public class Var implements Serializable {
                 break;
             case DATE:
                 if (varValue instanceof String) {
-                    varValue = DateUtil.parse(StrUtils.trimQuot(varValue.toString()));
+                    varValue = getDate();
                 }
 
                 break;
@@ -316,8 +317,45 @@ public class Var implements Serializable {
     }
 
     public Date getDate() throws ParseException {
-        return this.varValue instanceof Date ? (Date) this.varValue : DateUtil.parse(this.varValue.toString());
+        if (varValue == null || StringUtils.isBlank(varValue.toString())) {
+            return null;
+        }
+        return this.varValue instanceof Date ?
+                (Date) this.varValue : DateUtil.parseLenient(StrUtils.trimQuot(this.varValue.toString()), getPattern());
     }
+
+    public long getTime() throws ParseException {
+        return getDate().getTime();
+    }
+
+    public String getDateStr() throws ParseException {
+        if (varValue == null || StringUtils.isBlank(varValue.toString())) {
+            return null;
+        }
+        return DateUtil.format(getDate(), getPattern());
+
+//        return this.varValue instanceof Date ?
+//                (Date) this.varValue : DateUtil.parseLenient(StrUtils.trimQuot(this.varValue.toString()), getPattern());
+    }
+
+
+    private String getPattern() {
+        String pattern = "yyyy-MM-dd HH:mm:ss";
+        switch (dataType) {
+            case DATE:
+                pattern = "yyyy-MM-dd";
+                break;
+            case DATETIME:
+            case DATETIME2:
+//                varValue = fillDate(varValue.toString());
+                pattern = "yyyy-MM-dd HH:mm:ss";
+                break;
+        }
+        return pattern;
+
+    }
+
+
 
     public Float getFloat() {
         return varValue instanceof Float ? (Float) varValue : Float.valueOf(varValue.toString());
@@ -345,13 +383,13 @@ public class Var implements Serializable {
 
         switch (dataType) {
             case DATE:
+            case DATETIME:
+            case DATETIME2:
                 try {
-                    Date date = getDate();
-                    return DateUtil.format(date, "yyyy-MM-dd");
+                    return getDateStr();
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
-                break;
             default:
                 break;
         }

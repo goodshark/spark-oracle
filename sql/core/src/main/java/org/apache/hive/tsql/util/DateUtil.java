@@ -14,11 +14,11 @@ import java.util.Date;
  */
 public class DateUtil {
     private static String defaultDatePattern = "yyyy-MM-dd HH:mm:ss";
-    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat(defaultDatePattern);
-    /**
-     * 获得默认的 date pattern
-     */
-//    public static String getDatePattern() {
+//    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat(defaultDatePattern);
+//    /**
+//     * 获得默认的 date pattern
+//     */
+//    public static String getDatePattern(String ) {
 //        return defaultDatePattern;
 //    }
 
@@ -43,35 +43,62 @@ public class DateUtil {
     public static String format(Date date, String pattern) {
         return date == null ? " " : new SimpleDateFormat(pattern).format(date);
     }
+//
+//    /**
+//     * 使用预设格式将字符串转为Date
+//     */
+//    public static Date parse(String strDate) throws ParseException {
+//        if (null == strDate) {
+//            return null;
+//        }
+//        strDate = StrUtils.trimQuot(strDate);
+//        StringBuffer sb = new StringBuffer();
+//        sb.append(strDate);
+//        int indexFirst = strDate.indexOf(":");
+//        if (-1 == indexFirst) {
+//            sb.append(" 00:00:00");
+//        } else {
+//            if (indexFirst == strDate.lastIndexOf(":")) {
+//                sb.append(":00");
+//            }
+//        }
+//        return StringUtils.isBlank(sb.toString()) ? null : parseLenient(sb.toString());
+//    }
 
-    /**
-     * 使用预设格式将字符串转为Date
-     */
-    public static Date parse(String strDate) throws ParseException {
-        if(null == strDate) {
+    public static String fillDate(String strDate) {
+        if (null == strDate) {
             return null;
         }
         strDate = StrUtils.trimQuot(strDate);
         StringBuffer sb = new StringBuffer();
         sb.append(strDate);
         int indexFirst = strDate.indexOf(":");
-        if(-1 == indexFirst) {
+        if (-1 == indexFirst) {
             sb.append(" 00:00:00");
         } else {
-            if(indexFirst == strDate.lastIndexOf(":")) {
+            if (indexFirst == strDate.lastIndexOf(":")) {
                 sb.append(":00");
             }
         }
-        return StringUtils.isBlank(sb.toString()) ? null : parseLenient(sb.toString());
+        return sb.toString();
     }
+
 
     /**
      * 使用参数Format将字符串转为Date
      */
-    public static Date parseLenient(String strDate)
+    public static Date parseLenient(String strDate, String pattern)
             throws ParseException {
+        if (StringUtils.isBlank(strDate)) {
+            return null;
+        }
+        if ("yyyy-MM-dd HH:mm:ss".equals(pattern)) {
+            strDate = fillDate(strDate);
+        }
+
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
         simpleDateFormat.setLenient(false);
-        return StringUtils.isBlank(strDate) ? null : simpleDateFormat.parse(strDate);
+        return simpleDateFormat.parse(strDate);
     }
 
     /**
@@ -99,11 +126,11 @@ public class DateUtil {
         return String.valueOf(cal.get(Calendar.DAY_OF_MONTH));// 获得月末是几号  
     }
 
-    public static Date getDate(String year, String month, String day)
-            throws ParseException {
-        String result = year + "- "
-                + (month.length() == 1 ? ("0 " + month) : month) + "- "
-                + (day.length() == 1 ? ("0 " + day) : day);
-        return parse(result);
-    }
+//    public static Date getDate(String year, String month, String day)
+//            throws ParseException {
+//        String result = year + "- "
+//                + (month.length() == 1 ? ("0 " + month) : month) + "- "
+//                + (day.length() == 1 ? ("0 " + day) : day);
+//        return parse(result);
+//    }
 }  

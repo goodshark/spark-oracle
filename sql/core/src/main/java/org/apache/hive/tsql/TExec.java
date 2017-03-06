@@ -342,10 +342,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public Var.DataType visitData_type(TSqlParser.Data_typeContext ctx) {
-        String dataType = ctx.getText().toUpperCase();
+        String dataType = ctx.getText().trim().toUpperCase();
         if (dataType.equals("BIGINT")) {
             return Var.DataType.LONG;
-        } else if (dataType.equals("INT")||dataType.equals("TINYINT")) {
+        } else if (dataType.equals("INT") || dataType.equals("TINYINT")) {
             return Var.DataType.INT;
         } else if (dataType.equals("BINARY")) {
             return Var.DataType.BINARY;
