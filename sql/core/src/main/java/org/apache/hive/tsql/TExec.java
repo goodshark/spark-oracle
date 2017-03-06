@@ -342,37 +342,40 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public Var.DataType visitData_type(TSqlParser.Data_typeContext ctx) {
-        String dataType = ctx.getText().trim().toUpperCase();
-        if (dataType.equals("BIGINT")) {
+        String dataType = ctx.getText().toUpperCase();
+        if (null != ctx.BIGINT()) {
             return Var.DataType.LONG;
-        } else if (dataType.equals("INT") || dataType.equals("TINYINT")) {
+        } else if (null != ctx.INT() || ctx.TINYINT() != null) {
             return Var.DataType.INT;
-        } else if (dataType.equals("BINARY")) {
+        } else if (null != ctx.BINARY()) {
             return Var.DataType.BINARY;
-        } else if (dataType.equals("DATE")) {
+        } else if (null != ctx.DATE()) {
             return Var.DataType.DATE;
-        } else if (dataType.contains("TIME")) {
+        } else if (null != ctx.DATETIME()
+                || null != ctx.DATETIME2()
+                || null != ctx.DATETIMEOFFSET()
+                || null != ctx.TIMESTAMP()) {
             return Var.DataType.DATETIME;
-        } else if (dataType.equals("CHAR") || dataType.equals("TEXT") || dataType.equals("NCHAR")) {
+        } else if (null != ctx.CHAR() || null != ctx.TEXT() || null != ctx.NVARCHAR()) {
             return Var.DataType.STRING;
-        } else if (dataType.equals("FLOAT") || dataType.equals("REAL")) {
+        } else if (null != ctx.FLOAT() || null != ctx.REAL()) {
             return Var.DataType.FLOAT;
-        } else if (dataType.equals("BIT")
-                || dataType.equals("XML")
-                || dataType.equals("IMAGE")
-                || dataType.equals("UNIQUEIDENTIFIER")
-                || dataType.equals("GEOGRAPHY")
-                || dataType.equals("GEOMETRY")
-                || dataType.equals("HIERARCHYID")) {
+        } else if (null != ctx.BIT()
+                || null != ctx.XML()
+                || null != ctx.IMAGE()
+                || null != ctx.UNIQUEIDENTIFIER()
+                || null != ctx.GEOGRAPHY()
+                || null != ctx.GEOMETRY()
+                || null != ctx.HIERARCHYID()) {
             addException(dataType, locate(ctx));
             return Var.DataType.NULL;
-        } else if (dataType.equals("MONEY") || dataType.equals("DECIMAL")
-                || dataType.equals("NUMERIC")) {
+        } else if (null != ctx.MONEY()
+                || null != ctx.DECIMAL()
+                || null != ctx.NUMERIC()) {
             return Var.DataType.DOUBLE;
         } else {
             return Var.DataType.STRING;
         }
-
     }
 
 
