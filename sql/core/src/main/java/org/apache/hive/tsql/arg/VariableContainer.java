@@ -35,7 +35,7 @@ public class VariableContainer {
     }
 
     public void addTableVars(Var var) {
-        tableVars.put(var.getVarName(), var);
+        tableVars.put(var.getVarName().toUpperCase(), var);
     }
 
     public String findTableVarAlias(String tableVarName) {
@@ -49,6 +49,10 @@ public class VariableContainer {
 
     public String findTmpTaleAlias(String tmpTableName) {
         return tmpTables.get(tmpTableName);
+    }
+
+    public void deleteTmpTable(String tmp) {
+        tmpTables.remove(tmp);
     }
 
     public Var findSystemVar(String sysName) {

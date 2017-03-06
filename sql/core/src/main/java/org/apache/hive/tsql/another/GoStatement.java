@@ -3,6 +3,7 @@ package org.apache.hive.tsql.another;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -32,18 +33,32 @@ public class GoStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
-        Set<String> tableNames = getExecSession().getVariableContainer().getAllTableVarNames();
-        for(String tableName : tableNames) {
+        Set<String> tableNames = new HashSet<>();
+        for (String tableName : getExecSession().getVariableContainer().getAllTableVarNames()) {
+            tableNames.add(findTableVarAlias(tableName));
+        }
+        for (String tmpTableName : getExecSession().getVariableContainer().getAllTmpTableNames()) {
+            if (isLocalTmpTable(tmpTableName)) {
+                tableNames.add(findTmpTaleAlias(tmpTableName));
+                getExecSession().getVariableContainer().deleteTmpTable(tmpTableName);
+            }
+        }
+        for (String tableName : tableNames) {
             StringBuffer sb = new StringBuffer();
-            sb.append("DROP TABLE ").append(findTableVarAlias(tableName));
+            sb.append("DROP TABLE ").append(tableName);
+            System.out.println("drop table go # " + sb.toString());
             commitStatement(sb.toString());
         }
-        if(getExecSession().isReset()) {
+        if (getExecSession().isReset()) {
             super.getExecSession().getVariableContainer().resetVars();
         }
 
 
         return 0;
+    }
+
+    private boolean isLocalTmpTable(String tmpTableName) {
+        return '#' == tmpTableName.charAt(0) && '#' != tmpTableName.charAt(1);
     }
 
     @Override

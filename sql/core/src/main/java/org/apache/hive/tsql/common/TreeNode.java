@@ -27,7 +27,7 @@ public abstract class TreeNode implements Serializable {
     boolean isExecutable = false; //Direct to sparkserver
     private ExecSession execSession;
     private String sql;
-    private boolean addResult = true;
+    private boolean addResult = false;
 
     public enum Type {
         IF, AND, OR, NOT, PREDICATE, WHILE, BREAK, CONTINUE, RETURN, GOTO, PRINT,
