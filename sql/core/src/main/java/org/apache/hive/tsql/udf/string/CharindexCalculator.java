@@ -31,7 +31,7 @@ public class CharindexCalculator extends BaseCalculator {
         if (getAllArguments().size() == 3) {
             Var arg3 = getArguments(2);
             int startIndex = Integer.parseInt(StrUtils.trimQuot(arg3.getVarValue().toString()));
-            pos = searchStr.indexOf(findStr, startIndex) + 1;
+            pos = searchStr.indexOf(findStr, startIndex - 1) + 1;
         } else {
             pos = searchStr.indexOf(findStr) + 1;
         }
