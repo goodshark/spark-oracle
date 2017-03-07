@@ -44,10 +44,11 @@ import org.apache.spark.mapred.SparkHadoopMapRedUtil
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.util.StringUtils
 import org.apache.spark.sql.execution.UnsafeKVExternalSorter
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
 import org.apache.spark.sql.hive.HiveShim.{ShimFileSinkDesc => FileSinkDesc}
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{DataType, _}
 import org.apache.spark.util.SerializableJobConf
 import org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter
 
@@ -211,7 +212,7 @@ private[hive] class SparkHiveWriterContainer(
         ) */
 
         ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
-          TypeInfoUtils.getTypeInfoFromTypeString(f.dataType.typeName))
+          TypeInfoUtils.getTypeInfoFromTypeString(getDataTypeNameToHive(f.dataType.typeName)))
         )
         index = index + 1
     }
@@ -227,14 +228,31 @@ private[hive] class SparkHiveWriterContainer(
         colNames.add("_col" + index)
        /* ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
           TypeInfoFactory.getPrimitiveTypeInfo(f.dataType.typeName))
-        ) */
-        logInfo("dataType is + " + f.dataType.typeName)
+        )
+        */
+
         ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
-          TypeInfoUtils.getTypeInfoFromTypeString(f.dataType.typeName))
+          TypeInfoUtils.getTypeInfoFromTypeString(getDataTypeNameToHive(f.dataType.typeName)))
         )
         index = index + 1
     }
     ObjectInspectorFactory.getStandardStructObjectInspector(colNames, ois)
+  }
+
+
+  def getDataTypeNameToHive( dataType: String) : String = {
+    var rs = dataType
+    if (dataType.equalsIgnoreCase("long")) {
+      rs = "bigint"
+    } else if (dataType.equalsIgnoreCase("integer")) {
+      rs = "int"
+    } else if (dataType.equalsIgnoreCase("byte")) {
+      rs = "binary"
+    } else if (dataType.equalsIgnoreCase("short")) {
+      rs = "tinyint"
+    }
+    logInfo("dataType src is " + dataType + "is + " + rs)
+    rs
   }
 
   def getTransactionId: Long = {
