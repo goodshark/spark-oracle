@@ -20,6 +20,7 @@ import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
 import org.apache.hive.tsql.util.StrUtils;
 
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
 
@@ -342,7 +343,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public Var.DataType visitData_type(TSqlParser.Data_typeContext ctx) {
-        String dataType = ctx.getText().toUpperCase();
+        /*String dataType = ctx.getText().toUpperCase();
         if (null != ctx.BIGINT()) {
             return Var.DataType.LONG;
         } else if (null != ctx.INT() || ctx.TINYINT() != null) {
@@ -376,6 +377,38 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else {
             return Var.DataType.STRING;
         }
+*/
+        String dataType = ctx.getText().toUpperCase();
+        if (dataType.contains("BIGINT")) {
+            return Var.DataType.LONG;
+        } else if (dataType.contains("INT")) {
+            return Var.DataType.INT;
+        } else if (dataType.contains("BINARY")) {
+            return Var.DataType.BINARY;
+        }else if (dataType.contains("DATETIME")||dataType.contains("TIMESTAMP")) {
+            return Var.DataType.DATETIME;
+        } else if (dataType.contains("DATE")) {
+            return Var.DataType.DATE;
+        }else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
+            return Var.DataType.STRING;
+        } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
+            return Var.DataType.FLOAT;
+        } else if (dataType.contains("BIT")
+                || dataType.contains("XML")
+                || dataType.contains("IMAGE")
+                || dataType.contains("UNIQUEIDENTIFIER")
+                || dataType.contains("GEOGRAPHY")
+                || dataType.contains("GEOMETRY")
+                || dataType.contains("HIERARCHYID")) {
+            addException(dataType, locate(ctx));
+            return Var.DataType.NULL;
+        } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
+                || dataType.contains("NUMERIC")) {
+            return Var.DataType.DOUBLE;
+        } else {
+            return Var.DataType.STRING;
+        }
+
     }
 
 
@@ -1430,6 +1463,19 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(ctx.SHOW().getText()).append(Common.SPACE);
         sql.append(ctx.TABLES().getText()).append(Common.SPACE);
         sqlStatement.setSql(sql.toString());
+        sqlStatement.setAddResult(true);
+        pushStatement(sqlStatement);
+        return sqlStatement;
+    }
+
+    @Override
+    public SqlStatement visitShow_databases(TSqlParser.Show_databasesContext ctx) {
+        SqlStatement sqlStatement = new SqlStatement(Common.SHOW_TABLES);
+        StringBuffer sql = new StringBuffer();
+        sql.append(ctx.SHOW().getText()).append(Common.SPACE);
+        sql.append(ctx.DATABASES().getText()).append(Common.SPACE);
+        sqlStatement.setSql(sql.toString());
+        sqlStatement.setAddResult(true);
         pushStatement(sqlStatement);
         return sqlStatement;
     }
@@ -3089,7 +3135,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SubqueryStatement subqueryStatement = new SubqueryStatement();
         StringBuffer sql = new StringBuffer();
         sql.append("(");
-        sql.append(visitSubquery(ctx.subquery()));
+        sql.append(visitSubquery(ctx.subquery()).getSql());
         sql.append(")");
         subqueryStatement.setSql(sql.toString());
         addNode(subqueryStatement);
@@ -3515,7 +3561,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
              **/
 
             if (!withColmnNameAlias.isEmpty()) {
-                rs.append(Common.SPACE).append("as ").append(withColmnNameAlias.poll());
+                rs.append(Common.SPACE).append("as ").append(withColmnNameAlias.poll()).append(Common.SPACE);
             } else {
                 if (null != ctx.AS()) {
                     rs.append(ctx.AS().getText()).append(Common.SPACE);
