@@ -6,6 +6,7 @@ import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.dbservice.DbUtils;
 import org.apache.hive.tsql.dbservice.ProcService;
 import org.apache.hive.tsql.exception.FunctionArgumentException;
+import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,7 @@ public class ObjectIdCalculator extends BaseCalculator {
 
     private static final Logger LOG = LoggerFactory.getLogger(ObjectIdCalculator.class);
     private final String OBJ_TABLE_NAME = "TBLS";
+    private final String DB_TABLE_NAME = "DBS";
 
     public ObjectIdCalculator() {
     }
@@ -86,7 +88,7 @@ public class ObjectIdCalculator extends BaseCalculator {
                 res = databaseFind(objName, "");
         } else {
             String arg = getArguments(1).getVarValue().toString();
-            arg = trimName(arg);
+            arg = trimName(arg).toUpperCase();
             switch (arg) {
                 case "AF":
                 case "FN":
@@ -153,10 +155,27 @@ public class ObjectIdCalculator extends BaseCalculator {
         } else if (tableNameCheck.checkIsGlobalTmpTable(objName)) {
             objName = objName.substring(2);
         }
+
+        // generate sql
         String sqlStr = genSql(type);
+        String[] objArray = objName.split("\\.");
+        String curDb = "";
+        String obj = "";
+        // objname has more than 1 dot, only take first two element
+        if (objArray.length >= 2) {
+            curDb = objArray[0];
+            obj = objArray[1];
+        } else if (objArray.length == 1) {
+            SparkSession ss = getExecSession().getSparkSession();
+            curDb = ss.sessionState().catalog().getCurrentDatabase();
+            obj = objArray[0];
+        }
+        LOG.info("ObjectId check obj in database, sql: " + sqlStr + ", table: " + obj + ", db: " + curDb);
+
         Connection conn = createDbConn();
         PreparedStatement stmt = conn.prepareStatement(sqlStr);
-        stmt.setString(1, objName);
+        stmt.setString(1, obj);
+        stmt.setString(2, curDb);
         ResultSet rs = stmt.executeQuery();
         int count = 0;
         while (rs.next()) {
@@ -167,8 +186,11 @@ public class ObjectIdCalculator extends BaseCalculator {
 
     private String genSql(String type) {
         StringBuffer sql = new StringBuffer();
-        sql.append("select count(*) from ").append(OBJ_TABLE_NAME);
-        sql.append(" where TBL_NAME = ");
+        sql.append("select count(*) from ").append(OBJ_TABLE_NAME).append(" join ").append(DB_TABLE_NAME);
+        sql.append(" on ").append(OBJ_TABLE_NAME).append(".DB_ID = ").append(DB_TABLE_NAME).append(".DB_ID");
+        sql.append(" where ").append(OBJ_TABLE_NAME).append(".TBL_NAME = ");
+        sql.append("?");
+        sql.append(" and ").append(DB_TABLE_NAME).append(".NAME = ");
         sql.append("?");
         switch (type.toUpperCase()) {
             case "V":
