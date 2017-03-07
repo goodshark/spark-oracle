@@ -37,16 +37,15 @@ public class GoStatement extends BaseStatement {
         for (String tableName : getExecSession().getVariableContainer().getAllTableVarNames()) {
             tableNames.add(findTableVarAlias(tableName));
         }
-        for (String tmpTableName : getExecSession().getVariableContainer().getAllTmpTableNames()) {
-            if (isLocalTmpTable(tmpTableName)) {
-                tableNames.add(findTmpTaleAlias(tmpTableName));
-                getExecSession().getVariableContainer().deleteTmpTable(tmpTableName);
-            }
-        }
+//        for (String tmpTableName : getExecSession().getVariableContainer().getAllTmpTableNames()) {
+//            if (isLocalTmpTable(tmpTableName)) {
+//                tableNames.add(findTmpTaleAlias(tmpTableName));
+//                getExecSession().getVariableContainer().deleteTmpTable(tmpTableName);
+//            }
+//        }
         for (String tableName : tableNames) {
             StringBuffer sb = new StringBuffer();
             sb.append("DROP TABLE ").append(tableName);
-            System.out.println("drop table go # " + sb.toString());
             commitStatement(sb.toString());
         }
         if (getExecSession().isReset()) {
