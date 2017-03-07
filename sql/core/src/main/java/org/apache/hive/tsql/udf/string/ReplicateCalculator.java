@@ -22,6 +22,8 @@ public class ReplicateCalculator extends BaseCalculator {
         Var arg2 = getArguments(1);
         String argStr = StrUtils.trimQuot(arg1.getVarValue().toString());
         int cnt = Integer.parseInt(StrUtils.trimQuot(arg2.getVarValue().toString()));
+        if (cnt < 0 )
+            return var;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < cnt; i++) {
             sb.append(argStr);
