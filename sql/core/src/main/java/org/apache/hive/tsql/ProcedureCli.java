@@ -44,7 +44,7 @@ public class ProcedureCli {
         sparkSession = ss;
     }
 
-    public ExecSession getExecSession(){
+    public ExecSession getExecSession() {
         return session;
     }
 
@@ -86,7 +86,7 @@ public class ProcedureCli {
             executor.run();
 
         } catch (Throwable e) {
-            LOG.error("callProcedure error, sql:"+sql, e);
+            LOG.error("callProcedure error, sql:" + sql, e);
             throw e;
         } finally {
             //6. clean
@@ -126,18 +126,18 @@ public class ProcedureCli {
                 }
                 allAlias.add(alias);
             }
-            /*for (String name : session.getVariableContainer().getAllTmpTableNames()) {
+            for (String name : session.getVariableContainer().getAllTmpTableNames()) {
                 String alias = session.getVariableContainer().findTmpTaleAlias(name);
                 if (StringUtils.isBlank(alias)) {
                     continue;
                 }
                 allAlias.add(alias);
-            }*/
+            }
 
             for (String tableName : allAlias) {
                 final StringBuffer sb = new StringBuffer();
                 sb.append("DROP TABLE ").append(tableName);
-                BaseStatement statement =new BaseStatement() {
+                BaseStatement statement = new BaseStatement() {
                     @Override
                     public BaseStatement createStatement() {
                         return null;
@@ -150,9 +150,9 @@ public class ProcedureCli {
                     }
                 };
                 statement.setExecSession(session);
-                try{
+                try {
                     statement.execute();
-                }catch (Throwable e){
+                } catch (Throwable e) {
                     LOG.error("clean error", e);
                 }
 

@@ -33,7 +33,7 @@ public class SparkResultSet extends BaseResultSet {
             Row row = new Row(filedSize);
             Object values[] = new Object[filedSize];
             for (int i = 0; i < filedSize; i++) {
-                Var var =new Var();
+                Var var = new Var();
                 var.setDataType(Var.DataType.valueOf(structField[i].dataType().typeName().toUpperCase().replaceAll("\\(.*\\)", "")));
                 var.setVarValue(r.get(i));
                 values[i] = var;
@@ -115,6 +115,9 @@ public class SparkResultSet extends BaseResultSet {
 
     @Override
     public boolean previous() throws SQLException {
+        if (!isFirstFetch && index == 0) {
+            return true;
+        }
         if (0 == currentSize || index < 1) {
             return false;
         }
@@ -124,9 +127,11 @@ public class SparkResultSet extends BaseResultSet {
 
     @Override
     public boolean first() throws SQLException {
+
         if (0 == currentSize) {
             return false;
         }
+        isFirstFetch = false;
         index = 0;
         return true;
     }
@@ -142,19 +147,23 @@ public class SparkResultSet extends BaseResultSet {
 
     @Override
     public boolean absolute(int row) throws SQLException {
-        index = row >= 0 ? row - 1 : currentSize + row;
-        if (index >= currentSize || index < 0) {
-            return false;
+        int newIndex = row >= 0 ? row - 1 : currentSize + row;
+
+        if (newIndex >= currentSize || newIndex < 0) {
+            return !isFirstFetch;
         }
+        isFirstFetch = false;
+        index = newIndex;
         return true;
     }
+
+    private boolean lastIndexBeyonded = false;
 
     @Override
     public boolean relative(int rows) throws SQLException {
         if (isFirstFetch && rows < 1) {
             return false;
         }
-
 
         int targetIndex = index + rows;
         if (isFirstFetch) {
@@ -164,7 +173,18 @@ public class SparkResultSet extends BaseResultSet {
         if (currentSize == 0) {
             return false;
         }
+
+        if (lastIndexBeyonded && rows >= 0) {
+            return true;
+        }
+
+        if (lastIndexBeyonded && rows < 0) {
+            index = currentSize + rows;
+            return true;
+        }
+
         if (0 > targetIndex || currentSize <= targetIndex) {
+            lastIndexBeyonded = true;
             return true;
         }
 

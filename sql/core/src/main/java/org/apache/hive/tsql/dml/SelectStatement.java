@@ -22,6 +22,7 @@ public class SelectStatement extends SqlStatement {
 
     public SelectStatement(String selectStatementName) {
         super(selectStatementName);
+        setAddResult(true);
     }
 
     /**
