@@ -50,7 +50,7 @@ public class ExecuteStringStatement extends BaseStatement {
 
     public String getExecSql() throws Exception {
         String execSQL = getSql();
-        if(execSQL.startsWith("N'")) {
+        if (execSQL.startsWith("N'")) {
             execSQL = execSQL.substring(1, execSQL.length());
         }
         if (!vars.isEmpty()) {
@@ -60,10 +60,25 @@ public class ExecuteStringStatement extends BaseStatement {
                     throw new NotDeclaredException(s);
                 }
 //                String value = v.getVarValue().toString();
-                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? StrUtils.addQuot("") : StrUtils.addQuot(v.getVarValue().toString()));
+//                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? StrUtils.addQuot("") : StrUtils.addQuot(v.getVarValue().toString()));
+                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? "" : addQuot(v.getVarValue().toString()));
             }
         }
         return execSQL;
+    }
+
+    private final String[] keywords = new String[]{"select", "delete", "insert", "create", "declare", "exec"};
+
+    private String addQuot(String str) {
+        boolean containKws = false;
+        String tmpStr = str.toLowerCase();
+        for (String kw : keywords) {
+            if (tmpStr.contains(kw)) {
+                containKws = true;
+                break;
+            }
+        }
+        return containKws ? StrUtils.trimQuot(str) : StrUtils.addQuot(str);
     }
 
     @Override
