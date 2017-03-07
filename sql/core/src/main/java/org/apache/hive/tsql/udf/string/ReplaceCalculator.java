@@ -29,7 +29,10 @@ public class ReplaceCalculator extends BaseCalculator {
         if (arg1 == null || arg2 == null || arg3 == null ||
             arg1.getDataType() == Var.DataType.NULL ||
             arg2.getDataType() == Var.DataType.NULL ||
-            arg3.getDataType() == Var.DataType.NULL)
+            arg3.getDataType() == Var.DataType.NULL ||
+            arg1.getVarValue() == null ||
+            arg2.getVarValue() == null ||
+            arg3.getVarValue() == null)
             return var;
 
         String exprStr = StrUtils.trimQuot(arg1.getVarValue().toString());
