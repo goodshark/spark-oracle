@@ -81,8 +81,11 @@ ddl_clause
     | drop_view
     | show_tables
     | truncate_table
+    | show_databases
     ;
-
+show_databases:
+    SHOW DATABASES ';'?
+    ;
 show_tables:
     SHOW TABLES ';'?
     ;
@@ -1830,6 +1833,7 @@ TRUE:                                  '"' T R U E '"';
 //add for show table
 SHOW:                                   S H O W;
 TABLES:                                 T A B L E S;
+DATABASES:                              D A T A B A S E S;
 
 SPACE:              [ \t\r\n]+    -> skip;
 COMMENT:            '/*' .*? '*/' -> channel(HIDDEN);
