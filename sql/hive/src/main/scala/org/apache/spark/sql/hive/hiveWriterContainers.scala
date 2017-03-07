@@ -212,7 +212,7 @@ private[hive] class SparkHiveWriterContainer(
         ) */
 
         ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
-          TypeInfoUtils.getTypeInfoFromTypeString(getDataTypeNameToHive(f.dataType.typeName)))
+          TypeInfoFactory.getPrimitiveTypeInfo(getDataTypeNameToHive(f.dataType.typeName)))
         )
         index = index + 1
     }
@@ -232,7 +232,7 @@ private[hive] class SparkHiveWriterContainer(
         */
 
         ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
-          TypeInfoUtils.getTypeInfoFromTypeString(getDataTypeNameToHive(f.dataType.typeName)))
+          TypeInfoFactory.getPrimitiveTypeInfo(getDataTypeNameToHive(f.dataType.typeName)))
         )
         index = index + 1
     }
