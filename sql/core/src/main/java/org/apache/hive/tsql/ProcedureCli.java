@@ -85,6 +85,9 @@ public class ProcedureCli {
             Executor executor = new Executor(session);
             executor.run();
 
+            LOG.info("size is =======>"+session.getResultSets().size());
+
+
         } catch (Throwable e) {
             LOG.error("callProcedure error, sql:" + sql, e);
             throw e;

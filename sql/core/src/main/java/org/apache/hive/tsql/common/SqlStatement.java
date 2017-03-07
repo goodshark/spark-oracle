@@ -3,10 +3,15 @@ package org.apache.hive.tsql.common;
 
 import org.apache.commons.lang.StringUtils;
 
+import java.io.Serializable;
+
 /**
  * Created by wangsm9 on 2016/11/24.
  */
-public class SqlStatement extends BaseStatement {
+public class SqlStatement extends BaseStatement implements Serializable {
+
+    private static final long serialVersionUID = -1531515791432293303L;
+
     public SqlStatement() {
     }
 
