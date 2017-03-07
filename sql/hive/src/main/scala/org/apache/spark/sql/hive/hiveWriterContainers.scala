@@ -206,8 +206,12 @@ private[hive] class SparkHiveWriterContainer(
     table.catalogTable.schema.foreach {
       f =>
         colNames.add("_col" + index)
-        ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
+       /* ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
           TypeInfoFactory.getPrimitiveTypeInfo(f.dataType.typeName))
+        ) */
+
+        ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
+          TypeInfoUtils.getTypeInfoFromTypeString(f.dataType.typeName))
         )
         index = index + 1
     }
@@ -221,8 +225,12 @@ private[hive] class SparkHiveWriterContainer(
     table.catalogTable.schema.foreach {
       f =>
         colNames.add("_col" + index)
-        ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
+       /* ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
           TypeInfoFactory.getPrimitiveTypeInfo(f.dataType.typeName))
+        ) */
+        logInfo("dataType is + " + f.dataType.typeName)
+        ois.add(index, TypeInfoUtils.getStandardJavaObjectInspectorFromTypeInfo(
+          TypeInfoUtils.getTypeInfoFromTypeString(f.dataType.typeName))
         )
         index = index + 1
     }
@@ -318,8 +326,10 @@ private[hive] class SparkHiveWriterContainer(
            FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
       )
 
-      val bucketColumnNames = table.catalogTable.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames
-      val bucketNumBuckets = table.catalogTable.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets
+      val bucketColumnNames = table.catalogTable.
+        bucketSpec.getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames
+      val bucketNumBuckets = table.catalogTable.
+        bucketSpec.getOrElse(new BucketSpec(-1, Seq(), Seq())).numBuckets
       var transactionId: Long = -1
       val rows = new util.ArrayList[Any]
       val updateRecordMap = scala.collection.mutable.Map[Integer, RecordUpdater]()
