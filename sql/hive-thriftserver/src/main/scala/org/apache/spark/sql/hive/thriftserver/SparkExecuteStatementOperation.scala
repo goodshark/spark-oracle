@@ -19,6 +19,7 @@ package org.apache.spark.sql.hive.thriftserver
 
 import java.security.PrivilegedExceptionAction
 import java.sql.{Date, Timestamp}
+import java.util
 import java.util.{Arrays, UUID, Map => JMap}
 import java.util.concurrent.RejectedExecutionException
 
@@ -233,11 +234,16 @@ private[hive] class SparkExecuteStatementOperation(
           result = sqlContext.sparkSession.createDataset(Seq[String]()).toDF()
         } else {
           result = sqlServerRs.get(sqlServerRs.size()-1).asInstanceOf[SparkResultSet].getDataset
-          logInfo("sqlServer result is ==>" + result.queryExecution.toString())
+          // logInfo("sqlServer result is ==>" + result.queryExecution.toString())
         }
-
-        HiveThriftServer2.sqlSessionListenr.addTable(parentSession.getSessionHandle.getSessionId.toString,
-                                                     procCli.getTempTables)
+        val allTable = new util.HashSet[String]()
+        val tmpTable = sqlContext.sparkSession.getSqlServerTable.get(2)
+        val globalTable = sqlContext.sparkSession.getSqlServerTable.get(3)
+        allTable.addAll(tmpTable)
+        allTable.addAll(globalTable)
+        HiveThriftServer2.sqlSessionListenr.addTable(
+          parentSession.getSessionHandle.getSessionId.toString,
+          allTable)
       } else {
         plan = sqlContext.sessionState.sqlParser.parsePlan(statement)
         result = sqlContext.sql(statement)
@@ -281,10 +287,18 @@ private[hive] class SparkExecuteStatementOperation(
           statementId, e.getMessage, SparkUtils.exceptionString(e))
         throw new HiveSQLException(e.toString)
     } finally {
-      // clearCrudTableMap(plan)
+       clearCrudTableMap(plan)
+       dropSqlserverTables
     }
     setState(OperationState.FINISHED)
     HiveThriftServer2.listener.onStatementFinish(statementId)
+  }
+
+  private def dropSqlserverTables(): Unit = {
+    val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
+    for (table <- tableVar) {
+      sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + table)
+    }
   }
 
   private def clearCrudTableMap(plan: LogicalPlan) = {

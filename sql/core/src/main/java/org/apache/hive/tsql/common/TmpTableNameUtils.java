@@ -2,6 +2,7 @@ package org.apache.hive.tsql.common;
 
 import org.apache.commons.lang.StringUtils;
 
+import java.util.HashMap;
 import java.util.Random;
 
 /**
@@ -22,20 +23,15 @@ public class TmpTableNameUtils{
         if (checkIsGlobalTmpTable(tableName)) {
             sb.append("tmp.");
             int index = tableName.indexOf(TMP2);
+            sb.append("global_");
             sb.append(tableName.substring(index+2, tableName.length()));
             return sb.toString();
         } else if (checkIsTmpTable(tableName)) {
             sb.append("tmp.");
-            String tbName = "";
-            if (StringUtils.isBlank(tbName)) {
-                int index = tableName.lastIndexOf(TMP);
-                sb.append(tableName.substring(index+1, tableName.length())).
-                        append("_").append(System.currentTimeMillis()).append("_")
-                        .append(new Random().nextInt(1000)).toString();
-                return sb.toString();
-            } else {
-                return tbName;
-            }
+            int index = tableName.lastIndexOf(TMP);
+            sb.append("tmp_");
+            sb.append(tableName.substring(index+1, tableName.length()));
+            return sb.toString();
         } else {
             return tableName;
         }

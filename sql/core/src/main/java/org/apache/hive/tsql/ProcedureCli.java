@@ -105,7 +105,7 @@ public class ProcedureCli {
     }
 
 
-    public Set<String> getTempTables() {
+    /*public Set<String> getTempTables() {
 //        return session.getVariableContainer().getAllTmpTableNames();
         Set<String> tables = new HashSet<>();
         for (String name : session.getVariableContainer().getAllTmpTableNames()) {
@@ -116,7 +116,7 @@ public class ProcedureCli {
             tables.add(alias);
         }
         return tables;
-    }
+    }*/
 
     private void clean() {
         //清理表变量
@@ -129,6 +129,7 @@ public class ProcedureCli {
                 }
                 allAlias.add(alias);
             }
+            session.getSparkSession().getSqlServerTable().get(1).addAll(allAlias);
             /* for (String name : session.getVariableContainer().getAllTmpTableNames()) {
                 String alias = session.getVariableContainer().findTmpTaleAlias(name);
                 if (StringUtils.isBlank(alias)) {
@@ -137,7 +138,7 @@ public class ProcedureCli {
                 allAlias.add(alias);
             } */
 
-            for (String tableName : allAlias) {
+            /*for (String tableName : allAlias) {
                 final StringBuffer sb = new StringBuffer();
                 sb.append("DROP TABLE ").append(tableName);
                 BaseStatement statement = new BaseStatement() {
@@ -159,7 +160,7 @@ public class ProcedureCli {
                     LOG.error("clean error", e);
                 }
 
-            }
+            }*/
         }
     }
 

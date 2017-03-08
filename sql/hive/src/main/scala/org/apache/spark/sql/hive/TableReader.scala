@@ -87,11 +87,26 @@ class HadoopTableReader(
       if (null != schemaFields) {
         schemaFields.foreach(p => {
           hadoopConf.set("columns", hadoopConf.get("columns") + "," + p.name)
-          hadoopConf.set("columns.types", hadoopConf.get("columns.types") + "," + p.dataType.typeName)
+          hadoopConf.set("columns.types", hadoopConf.get("columns.types")
+            + "," + getDataTypeNameToHive(p.dataType.typeName))
         })
       }
     }
     sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
+  }
+  private def getDataTypeNameToHive( dataType: String) : String = {
+    var rs = dataType
+    if (dataType.equalsIgnoreCase("long")) {
+      rs = "bigint"
+    } else if (dataType.equalsIgnoreCase("integer")) {
+      rs = "int"
+    } else if (dataType.equalsIgnoreCase("byte")) {
+      rs = "binary"
+    } else if (dataType.equalsIgnoreCase("short")) {
+      rs = "tinyint"
+    }
+    logInfo("dataType src is " + dataType + "is + " + rs)
+    rs
   }
   override def makeRDDForTable(hiveTable: HiveTable): RDD[InternalRow] =
     makeRDDForTable(
