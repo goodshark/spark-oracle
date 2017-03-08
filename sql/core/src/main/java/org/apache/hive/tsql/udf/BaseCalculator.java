@@ -110,6 +110,7 @@ public abstract class BaseCalculator implements Calculator {
     public int getDatePartValue(DateUnit dateUnit, Date date) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
+
         int result = -1;
         switch (dateUnit) {
             case YEAR:
@@ -122,7 +123,7 @@ public abstract class BaseCalculator implements Calculator {
                 result = calendar.get(Calendar.DAY_OF_MONTH);
                 break;
             case HOUR:
-                result = calendar.get(Calendar.HOUR);
+                result = calendar.get(Calendar.HOUR_OF_DAY);
                 break;
             case MINUTE:
                 result = calendar.get(Calendar.MINUTE);

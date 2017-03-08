@@ -157,38 +157,44 @@ public class SparkResultSet extends BaseResultSet {
         return true;
     }
 
-    private boolean lastIndexBeyonded = false;
+    private int lastIndex = 0;
 
     @Override
     public boolean relative(int rows) throws SQLException {
         if (isFirstFetch && rows < 1) {
             return false;
         }
-
-        int targetIndex = index + rows;
-        if (isFirstFetch) {
-            targetIndex -= 1;
-            isFirstFetch = false;
-        }
         if (currentSize == 0) {
             return false;
         }
 
-        if (lastIndexBeyonded && rows >= 0) {
+        lastIndex = lastIndex + rows;
+
+        if (isFirstFetch) {
+            isFirstFetch = false;
+            lastIndex--;
+        }
+        if (lastIndex >= currentSize) {
+            lastIndex = currentSize;
             return true;
         }
 
-        if (lastIndexBeyonded && rows < 0) {
-            index = currentSize + rows;
+        if (lastIndex < 0) {
+            lastIndex = -1;
             return true;
         }
 
-        if (0 > targetIndex || currentSize <= targetIndex) {
-            lastIndexBeyonded = true;
-            return true;
-        }
+//        if (lastIndexBeyonded && rows < 0) {
+//            index = currentSize + rows;
+//            return true;
+//        }
+//
+//        if (0 > targetIndex || currentSize <= targetIndex) {
+//            lastIndexBeyonded = true;
+//            return true;
+//        }
 
-        index = targetIndex;
+        index = lastIndex;
         return true;
     }
 
