@@ -55,7 +55,7 @@ public class DateNameFunction extends BaseFunction {
                 functionName = "weekofyear";
                 break;
             case WEEKDAY:
-                break;
+
             default:
                 functionName = this.dateUnit.toString();
         }

@@ -20,7 +20,6 @@ import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
 import org.apache.hive.tsql.util.StrUtils;
 
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
 
@@ -385,11 +384,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return Var.DataType.INT;
         } else if (dataType.contains("BINARY")) {
             return Var.DataType.BINARY;
-        }else if (dataType.contains("DATETIME")||dataType.contains("TIMESTAMP")) {
+        } else if (dataType.contains("DATETIME") || dataType.contains("TIMESTAMP")) {
             return Var.DataType.DATETIME;
         } else if (dataType.contains("DATE")) {
             return Var.DataType.DATE;
-        }else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
+        } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
             return Var.DataType.STRING;
         } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
             return Var.DataType.FLOAT;
@@ -2678,6 +2677,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public BaseFunction visitDatename_function(TSqlParser.Datename_functionContext ctx) {
         DateNameFunction function = new DateNameFunction(new FuncName(null, "DATENAME", null));
         String datePart = ctx.ID().getText();
+        if ("weekday".equals(datePart) || "dw".equals(datePart) || "w".equals(datePart)) {
+            addException("DatePart " + datePart, locate(ctx));
+        }
         DateUnit dateUnit = DateUnit.parse(datePart);
         if (null == dateUnit) {
             addException("datepart # " + datePart, locate(ctx));
