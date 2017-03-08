@@ -599,6 +599,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if (ctx.DYNAMIC() != null) {
             cursor.setDataMode(Cursor.DataMode.DYNAMIC);
+            cursor.setScoll(true);
         }
         if (ctx.FAST_FORWARD().size() > 0 || ctx.FORWARD_ONLY().size() > 0) {
             if (cursor.isScoll()) {
