@@ -221,10 +221,10 @@ private[hive] class SparkExecuteStatementOperation(
       sqlContext.sparkContext.setLocalProperty("spark.scheduler.pool", pool)
     }
     var plan: LogicalPlan = null
+    val sqlServerEngine = sqlContext.sessionState.
+      conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
     try {
       // 执行sqlserver
-      val sqlServerEngine = sqlContext.sessionState.
-        conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
       if (sqlServerEngine.equalsIgnoreCase("true")) {
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement)
@@ -288,7 +288,10 @@ private[hive] class SparkExecuteStatementOperation(
         throw new HiveSQLException(e.toString)
     } finally {
        clearCrudTableMap(plan)
-       dropSqlserverTables
+      if (sqlServerEngine.equalsIgnoreCase("true")) {
+        dropSqlserverTables
+      }
+
     }
     setState(OperationState.FINISHED)
     HiveThriftServer2.listener.onStatementFinish(statementId)
@@ -296,9 +299,12 @@ private[hive] class SparkExecuteStatementOperation(
 
   private def dropSqlserverTables(): Unit = {
     val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
-    while(tableVar.iterator().hasNext) {
-      sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + tableVar.iterator().next())
+    if (null!=tableVar) {
+      while (tableVar.iterator().hasNext) {
+        sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + tableVar.iterator().next())
+      }
     }
+
   }
 
   private def clearCrudTableMap(plan: LogicalPlan) = {
