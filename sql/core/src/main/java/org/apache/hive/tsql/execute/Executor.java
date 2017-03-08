@@ -65,40 +65,50 @@ public class Executor {
     }
 
     public void executeStmt(TreeNode node) throws Exception {
-        switch (node.getNodeType()) {
-            case IF:
-                ifExecute(node);
-                break;
-            case WHILE:
-                whileExecute(node);
-                break;
-            case BREAK:
-                breakExecute();
-                break;
-            case CONTINUE:
-                continueExecute();
-                break;
-            case GOTO:
-                gotoExecute(node);
-                break;
-            case RETURN:
-                returnExecute(node);
-                break;
-            case TRY:
-                tryExecute(node);
-                break;
-            case THROW:
-                throwExecute(node);
-                break;
-            case RAISE:
-                raiseExecute(node);
-                break;
-            case GO:
-                goExecute(node);
-                break;
-            default:
-                node.execute();
-                pushChild(node);
+        try {
+            switch (node.getNodeType()) {
+                case IF:
+                    ifExecute(node);
+                    break;
+                case WHILE:
+                    whileExecute(node);
+                    break;
+                case BREAK:
+                    breakExecute();
+                    break;
+                case CONTINUE:
+                    continueExecute();
+                    break;
+                case GOTO:
+                    gotoExecute(node);
+                    break;
+                case RETURN:
+                    returnExecute(node);
+                    break;
+                case TRY:
+                    tryExecute(node);
+                    break;
+                case THROW:
+                    throwExecute(node);
+                    break;
+                case RAISE:
+                    raiseExecute(node);
+                    break;
+                case GO:
+                    goExecute(node);
+                    break;
+                default:
+                    node.execute();
+                    pushChild(node);
+            }
+        } catch (Exception e) {
+            // throw statement exception, if stmt in try-catch, handle it
+            ThrowStatement throwStmt = new ThrowStatement(TreeNode.Type.THROW);
+            throwStmt.setMsg(e.getMessage());
+            // TODO make error number map error msg
+            throwStmt.setStateNumStr("200");
+            throwStmt.setErrorNumStr("60000");
+            throwExecute(throwStmt);
         }
     }
 
