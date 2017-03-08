@@ -19,7 +19,7 @@ public class Var implements Serializable {
     private static final long serialVersionUID = -1631515791432293303L;
 
     public enum DataType {
-        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, DATETIME, DATETIME2, BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION
+        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, DATETIME, DATETIME2, TIME, BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION
     }
 
     public enum ValueType {
@@ -350,11 +350,14 @@ public class Var implements Serializable {
 //                varValue = fillDate(varValue.toString());
                 pattern = "yyyy-MM-dd HH:mm:ss";
                 break;
+            case TIME:
+//                varValue = fillDate(varValue.toString());
+                pattern = "HH:mm:ss";
+                break;
         }
         return pattern;
 
     }
-
 
 
     public Float getFloat() {
@@ -380,18 +383,18 @@ public class Var implements Serializable {
 
     @Override
     public String toString() {
-
-        switch (dataType) {
-            case DATE:
-            case DATETIME:
-            case DATETIME2:
-                try {
+        try {
+            switch (dataType) {
+                case DATE:
+                case DATETIME:
+                case DATETIME2:
+                case TIME:
                     return getDateStr();
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-            default:
-                break;
+                default:
+                    break;
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
         }
         return varValue == null ? null : varValue.toString();
     }
