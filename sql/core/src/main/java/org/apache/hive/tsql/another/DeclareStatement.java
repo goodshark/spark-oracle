@@ -49,7 +49,7 @@ public class DeclareStatement extends BaseStatement {
                         break;
                     }
                     statement.execute();
-                    var.setVarValue(((Var) statement.getRs().getObject(1)).getVarValue());
+                    var.setVarValue(((Var) statement.getRs().getObject(0)).getVarValue());
                     var.setExecuted(true);
                     break;
                 default:

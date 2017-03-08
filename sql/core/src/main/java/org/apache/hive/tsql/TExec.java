@@ -386,6 +386,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return Var.DataType.BINARY;
         } else if (dataType.contains("DATETIME") || dataType.contains("TIMESTAMP")) {
             return Var.DataType.DATETIME;
+        } else if (dataType.equalsIgnoreCase("TIME")) {
+            return Var.DataType.TIME;
         } else if (dataType.contains("DATE")) {
             return Var.DataType.DATE;
         } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
