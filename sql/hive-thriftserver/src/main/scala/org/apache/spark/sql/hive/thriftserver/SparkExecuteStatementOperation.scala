@@ -239,8 +239,12 @@ private[hive] class SparkExecuteStatementOperation(
         val allTable = new util.HashSet[String]()
         val tmpTable = sqlContext.sparkSession.getSqlServerTable.get(2)
         val globalTable = sqlContext.sparkSession.getSqlServerTable.get(3)
-        allTable.addAll(tmpTable)
-        allTable.addAll(globalTable)
+        if (null != tmpTable ) {
+          allTable.addAll(tmpTable)
+        }
+        if(null!=globalTable) {
+          allTable.addAll(globalTable)
+        }
         HiveThriftServer2.sqlSessionListenr.addTable(
           parentSession.getSessionHandle.getSessionId.toString,
           allTable)
@@ -300,11 +304,11 @@ private[hive] class SparkExecuteStatementOperation(
   private def dropSqlserverTables(): Unit = {
     val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
     if (null!=tableVar) {
-      while (tableVar.iterator().hasNext) {
-        sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + tableVar.iterator().next())
+      val iterator = tableVar.iterator();
+      while (iterator.hasNext) {
+        sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + iterator.next())
       }
     }
-
   }
 
   private def clearCrudTableMap(plan: LogicalPlan) = {

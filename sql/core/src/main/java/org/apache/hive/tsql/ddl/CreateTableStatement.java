@@ -37,15 +37,26 @@ public class CreateTableStatement extends SqlStatement {
         HashMap<Integer, HashSet<String>> map = getExecSession().getSparkSession().getSqlServerTable();
         if (tableNameUtils.checkIsTmpTable(tableName)) {
             addTmpTable(tableName, tableAliasName);
-            map.get(2).add(tableAliasName);
+            addTableToSparkSeesion(tableAliasName, map,2);
+
         }
         if(tableNameUtils.checkIsGlobalTmpTable(tableName)){
             addTmpTable(tableName, tableAliasName);
-            map.get(3).add(tableAliasName);
+            addTableToSparkSeesion(tableAliasName, map,3);
         }
         setAddResult(false);
         commitStatement(sb.toString());
         return 1;
+    }
+
+    private void addTableToSparkSeesion(String tableAliasName, HashMap<Integer, HashSet<String>> map , int key) {
+        if(null!=map.get(key)){
+            map.get(key).add(tableAliasName);
+        }else{
+            HashSet<String> tb = new HashSet<String>();
+            tb.add(tableAliasName);
+            map.put(key,tb);
+        }
     }
 
     public CreateTableStatement(String tableName) {

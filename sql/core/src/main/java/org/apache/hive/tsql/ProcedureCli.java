@@ -121,7 +121,7 @@ public class ProcedureCli {
     private void clean() {
         //清理表变量
         if (null != session) {
-            Set<String> allAlias = new HashSet<String>();
+            HashSet<String> allAlias = new HashSet<String>();
             for (String name : session.getVariableContainer().getAllTableVarNames()) {
                 String alias = session.getVariableContainer().findTableVarAlias(name);
                 if (StringUtils.isBlank(alias)) {
@@ -129,7 +129,13 @@ public class ProcedureCli {
                 }
                 allAlias.add(alias);
             }
-            session.getSparkSession().getSqlServerTable().get(1).addAll(allAlias);
+            HashSet<String> table = sparkSession.getSqlServerTable().get(1);
+            if(null!=table){
+                sparkSession.getSqlServerTable().get(1).addAll(allAlias);
+            }else{
+                sparkSession.getSqlServerTable().put(1,allAlias);
+            }
+
             /* for (String name : session.getVariableContainer().getAllTmpTableNames()) {
                 String alias = session.getVariableContainer().findTmpTaleAlias(name);
                 if (StringUtils.isBlank(alias)) {
