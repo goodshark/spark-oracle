@@ -296,8 +296,8 @@ private[hive] class SparkExecuteStatementOperation(
 
   private def dropSqlserverTables(): Unit = {
     val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
-    for (table <- tableVar) {
-      sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + table)
+    while(tableVar.iterator().hasNext) {
+      sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + tableVar.iterator().next())
     }
   }
 
