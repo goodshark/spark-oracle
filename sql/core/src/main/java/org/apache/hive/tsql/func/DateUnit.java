@@ -19,7 +19,7 @@ public enum DateUnit {
             return MONTH;
         }
         if ("dayofyear".equals(value) || "dy".equals(value) || "y".equals(value)) {
-            return MONTH;
+            return DAYOFYEAR;
         }
         if ("day".equals(value) || "d".equals(value) || "dd".equals(value)) {
             return DAY;

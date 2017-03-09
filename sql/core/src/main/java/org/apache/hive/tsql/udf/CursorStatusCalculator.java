@@ -17,16 +17,33 @@ public class CursorStatusCalculator extends BaseCalculator {
     public Var compute() throws Exception {
         String scope = StrUtils.trimQuot(getArguments(0).getString()).toUpperCase();
         String cursorName = StrUtils.trimQuot(getArguments(1).getString()).toUpperCase();
+        boolean isVariable = isVariable(cursorName);
+        Var ret = new Var(-3, Var.DataType.INT);
+
         Cursor cursor = null;
         if ("LOCAL".equals(scope)) {
+            if (isVariable) {
+                return ret;
+            }
             cursor = getExecSession().getVariableContainer().findCursor(cursorName, false);
         } else if ("GLOBAL".equals(scope)) {
+            if (isVariable) {
+                return ret;
+            }
             cursor = getExecSession().getVariableContainer().findCursor(cursorName, true);
+        } else if ("VARIABLE".equals(scope)) {
+            if (!isVariable) {
+                return ret;
+            }
+            cursor = getExecSession().getVariableContainer().findCursor(cursorName);
         } else {
             throw new IllegalArgumentException("Function [CURSOR_STATUS] first argument must be local/global");
         }
-        Var ret = new Var(-3, Var.DataType.INT);
+
         if (null == cursor) {
+            if(isVariable) {
+                ret.setVarValue(-2);
+            }
             return ret;
         }
 
@@ -41,5 +58,9 @@ public class CursorStatusCalculator extends BaseCalculator {
         }
         ret.setVarValue(1);
         return ret;
+    }
+
+    private boolean isVariable(String cursorName) {
+        return '@' == cursorName.charAt(0);
     }
 }

@@ -19,6 +19,7 @@ package org.apache.spark.sql.hive.thriftserver
 
 import java.security.PrivilegedExceptionAction
 import java.sql.{Date, Timestamp}
+import java.util
 import java.util.{Arrays, UUID, Map => JMap}
 import java.util.concurrent.RejectedExecutionException
 
@@ -220,10 +221,10 @@ private[hive] class SparkExecuteStatementOperation(
       sqlContext.sparkContext.setLocalProperty("spark.scheduler.pool", pool)
     }
     var plan: LogicalPlan = null
+    val sqlServerEngine = sqlContext.sessionState.
+      conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
     try {
       // 执行sqlserver
-      val sqlServerEngine = sqlContext.sessionState.
-        conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
       if (sqlServerEngine.equalsIgnoreCase("true")) {
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement)
@@ -233,11 +234,20 @@ private[hive] class SparkExecuteStatementOperation(
           result = sqlContext.sparkSession.createDataset(Seq[String]()).toDF()
         } else {
           result = sqlServerRs.get(sqlServerRs.size()-1).asInstanceOf[SparkResultSet].getDataset
-          logInfo("sqlServer result is ==>" + result.queryExecution.toString())
+          // logInfo("sqlServer result is ==>" + result.queryExecution.toString())
         }
-
-        HiveThriftServer2.sqlSessionListenr.addTable(parentSession.getSessionHandle.getSessionId.toString,
-                                                     procCli.getTempTables)
+        val allTable = new util.HashSet[String]()
+        val tmpTable = sqlContext.sparkSession.getSqlServerTable.get(2)
+        val globalTable = sqlContext.sparkSession.getSqlServerTable.get(3)
+        if (null != tmpTable ) {
+          allTable.addAll(tmpTable)
+        }
+        if(null!=globalTable) {
+          allTable.addAll(globalTable)
+        }
+        HiveThriftServer2.sqlSessionListenr.addTable(
+          parentSession.getSessionHandle.getSessionId.toString,
+          allTable)
       } else {
         plan = sqlContext.sessionState.sqlParser.parsePlan(statement)
         result = sqlContext.sql(statement)
@@ -281,10 +291,24 @@ private[hive] class SparkExecuteStatementOperation(
           statementId, e.getMessage, SparkUtils.exceptionString(e))
         throw new HiveSQLException(e.toString)
     } finally {
-      // clearCrudTableMap(plan)
+       clearCrudTableMap(plan)
+      if (sqlServerEngine.equalsIgnoreCase("true")) {
+        dropSqlserverTables
+      }
+
     }
     setState(OperationState.FINISHED)
     HiveThriftServer2.listener.onStatementFinish(statementId)
+  }
+
+  private def dropSqlserverTables(): Unit = {
+    val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
+    if (null!=tableVar) {
+      val iterator = tableVar.iterator();
+      while (iterator.hasNext) {
+        sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + iterator.next())
+      }
+    }
   }
 
   private def clearCrudTableMap(plan: LogicalPlan) = {

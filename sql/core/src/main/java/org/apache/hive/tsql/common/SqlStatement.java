@@ -2,6 +2,7 @@ package org.apache.hive.tsql.common;
 
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 
 import java.io.Serializable;
 
@@ -36,13 +37,13 @@ public class SqlStatement extends BaseStatement implements Serializable {
      * @param tableName
      * @param sql
      */
-    public String replaceTableName(String tableName, String sql) {
+    public String replaceTableName(String tableName, String sql) throws Exception {
         String realTableName = getRealTableName(tableName);
         return sql.replaceAll(tableName, realTableName);
     }
 
 
-    public String getRealTableName(String tableName){
+    public String getRealTableName(String tableName)throws Exception{
         String realTableName = "";
         TmpTableNameUtils tableNameUtils = new TmpTableNameUtils();
         if (tableName.indexOf("@") != -1) {
@@ -58,6 +59,9 @@ public class SqlStatement extends BaseStatement implements Serializable {
             }
         } else{
             realTableName = tableName;
+        }
+        if(StringUtils.isBlank(realTableName)){
+            throw new Exception("Table "+ tableName +" is not  exist ");
         }
         return  realTableName;
     }

@@ -28,7 +28,6 @@ import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.control.NonFatal
-
 import org.apache.spark.{SPARK_VERSION, SparkConf, SparkContext}
 import org.apache.spark.annotation.{DeveloperApi, Experimental, InterfaceStability}
 import org.apache.spark.api.java.JavaRDD
@@ -53,8 +52,8 @@ import org.apache.spark.sql.streaming._
 import org.apache.spark.sql.types.{DataType, LongType, StructType}
 import org.apache.spark.sql.util.ExecutionListenerManager
 import org.apache.spark.util.Utils
-
 import scala.collection.mutable
+
 
 
 /**
@@ -85,6 +84,20 @@ class SparkSession private(
 
   private[sql] def this(sc: SparkContext) {
     this(sc, None)
+  }
+  /**
+    * 用于保存sqlserver模式下的表名称
+    * key=1 表示存储的表变量 DECLARE @t_a as TABLE(name VARCHAR(50))
+    * key=2 表示存储的临时表 #t1
+    * key=3 表示存储的全局表 ##t2
+    *
+    */
+  import  java.util.HashMap
+  import java.util.HashSet
+  private val sqlServerTable = new HashMap[Integer, HashSet[String]]()
+
+  def getSqlServerTable: HashMap[Integer, HashSet[String]] = {
+    sqlServerTable
   }
 
   sparkContext.assertNotStopped()
@@ -621,13 +634,13 @@ class SparkSession private(
       val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
       val tb: String = sessionState.catalog.getTableName(tableIdent)
       val db: String = sessionState.catalog.getDbName(tableIdent)
-      // checkConcurrentOperation(db, tb, "deleting")
+       checkConcurrentOperation(db, tb, "deleting")
       sql = plan.asInstanceOf[AcidDelCommand].parseAcidSql(sessionState)
     } else if (plan.isInstanceOf[AcidUpdateCommand]) {
       val tableIdent = plan.asInstanceOf[AcidUpdateCommand].tableIdent
       val tb: String = sessionState.catalog.getTableName(tableIdent)
       val db: String = sessionState.catalog.getDbName(tableIdent)
-       // checkConcurrentOperation(db, tb, "updating")
+        checkConcurrentOperation(db, tb, "updating")
       sql = plan.asInstanceOf[AcidUpdateCommand].parseAcidSql(sessionState)
     } else if (plan.isInstanceOf[InsertIntoTable]) {
       val tableName = plan.asInstanceOf[InsertIntoTable].tableName
@@ -638,7 +651,7 @@ class SparkSession private(
       val db: String = sessionState.catalog.getDbName(tableIdent)
       val tableMetadata = sessionState.catalog.getTableMetadata(tableIdent)
       if (sessionState.catalog.checkAcidTable(tableMetadata)) {
-        // checkConcurrentOperation(db, tb, "insert")
+         checkConcurrentOperation(db, tb, "insert")
         sessionState.conf.setConfString(OPTION_TYPE, "0")
         sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
       }

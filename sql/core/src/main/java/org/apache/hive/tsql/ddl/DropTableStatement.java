@@ -31,7 +31,7 @@ public class DropTableStatement extends SqlStatement {
         for (String tableName : tableNames) {
             boolean b1=objectIdCalculator.databaseFind(getRealTableName(tableName),"U");
             if(!b1){
-                throw new Exception("table :"+tableName +" is not exist.");
+                throw new Exception("Table or view :"+tableName +" is not exist.");
             }
         }
     }

@@ -72,15 +72,6 @@ public class SelectStatement extends SqlStatement {
                 updateResultVar((SparkResultSet) getRs());
             }
         }
-
-
-        try {
-            if (getRs().getRow() > 0) {
-
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         return 1;
     }
 
@@ -116,7 +107,7 @@ public class SelectStatement extends SqlStatement {
         replaceTableNames();
     }
 
-    private void replaceTableNames() {
+    private void replaceTableNames() throws Exception{
         if (!tableNames.isEmpty()) {
             for (String tableName : tableNames) {
                 execSQL = replaceTableName(tableName, execSQL);

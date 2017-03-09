@@ -20,6 +20,10 @@ public class SubStringCalculator extends BaseCalculator {
         if (length < 0) {
             throw new IllegalArgumentException("Substring function argument length cannot less zero.");
         }
+        if (beginIndex < 0 || length == 0) {
+            return new Var("", Var.DataType.STRING);
+        }
+
         int endIndex = beginIndex + length;
         endIndex = endIndex < source.length() ? endIndex : source.length();
         if (beginIndex < 0) {

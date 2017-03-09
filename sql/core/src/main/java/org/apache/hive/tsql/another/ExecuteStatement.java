@@ -112,6 +112,7 @@ public class ExecuteStatement extends BaseStatement {
             }
         }
 
+        int rsCount = getExecSession().getResultSets().size();
         new Executor(getExecSession(), function.getSqlClauses()).run();
 
         if (null != returnVar) {
@@ -139,6 +140,10 @@ public class ExecuteStatement extends BaseStatement {
         }
         if (null != returnVar) {
             addVar(returnVar);
+        }
+        int newRsCount = getExecSession().getResultSets().size();
+        if (newRsCount > rsCount) {
+            this.setRs(getExecSession().getResultSets().get(newRsCount - 1));
         }
         return 0;
     }
