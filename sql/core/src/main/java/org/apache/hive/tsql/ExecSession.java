@@ -24,6 +24,7 @@ public class ExecSession {
 //    private List<Exception> exceptions;
     private AbstractParseTreeVisitor visitor;
     private boolean isReset = true;
+    private String errorStr = "";
     // mark break/continue/goto/return/raise/throw cmd
     public enum Scope {
         BEGIN, IF, WHILE, PROCEDURE, TRY, CATCH
@@ -90,4 +91,11 @@ public class ExecSession {
         return resultSets;
     }
 
+    public void setErrorStr(String str) {
+        errorStr = str;
+    }
+
+    public String getErrorStr() {
+        return errorStr;
+    }
 }

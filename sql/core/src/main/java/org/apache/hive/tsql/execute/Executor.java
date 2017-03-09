@@ -393,8 +393,12 @@ public class Executor {
     }
 
     public void throwExecute(TreeNode exceptionNode) throws Exception {
-        // get exception info
-        exceptionNode.execute();
+        // get exception info, when THROW without args do not need execute
+        if (!(exceptionNode.getNodeType() == TreeNode.Type.THROW && ((ThrowStatement)exceptionNode).isEmptyArg())) {
+            exceptionNode.execute();
+        } else {
+            ((ThrowStatement)exceptionNode).setThrowExeceptionStr(session.getErrorStr());
+        }
         // get catch block if there exists try-catch block
         TreeNode node = null;
         while (!stack.empty()) {
@@ -409,8 +413,14 @@ public class Executor {
             }
         }
         // exception catched by TRY-CATCH block
-        if (node != null && node.getNodeType() == TreeNode.Type.TRY)
+        if (node != null && node.getNodeType() == TreeNode.Type.TRY) {
+            // record this exception that maybe THROW without args in subsequent CATCH block
+            if (exceptionNode.getNodeType() == TreeNode.Type.THROW) {
+                String errorStr = ((ThrowStatement) exceptionNode).getThrowExeceptionStr();
+                session.setErrorStr(errorStr);
+            }
             return;
+        }
         // exception is out of try-catch, just throw exception
         String expStr = "";
         if (exceptionNode.getNodeType() == TreeNode.Type.THROW) {
