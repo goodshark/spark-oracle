@@ -71,11 +71,15 @@ public class InsertStatement extends SqlStatement {
             case EXECUTE_STATEMENT:
                 //执行的结果作为sql的一部分
                 //values(1,'b1-1',11),(2,'b1-2',12),(3,'b1-3',13)
-                StringBuffer sql = new StringBuffer();
-                sql.append(" values");
+
                 treeNode.setExecSession(getExecSession());
                 treeNode.execute();
                 SparkResultSet sparkResultSet = (SparkResultSet) treeNode.getRs();
+                if(null==sparkResultSet){
+                    throw new Exception( treeNode.getSql() + " has not resultSet");
+                }
+                StringBuffer sql = new StringBuffer();
+                sql.append(" values");
                 int columnSize = sparkResultSet.getColumnSize();
                 while (sparkResultSet.next()) {
                     sql.append("(");
