@@ -519,12 +519,12 @@ public class PredicateNode extends LogicNode {
             if (operator.equals("<") || operator.equals("<=") || operator.equals("!="))
                 return notComp ? false : true;
             if (notComp && (operator.equals(">") || operator.equals(">=")))
-                return notComp ? false : true;
+                return notComp ? true : false;
         } else if (res == 1) {
             if (operator.equals(">") || operator.equals(">=") || operator.equals("!="))
                 return notComp ? false : true;
             if (notComp && (operator.equals("<") || operator.equals("<=")))
-                return notComp ? false : true;
+                return notComp ? true : false;
         }
         return false;
     }
