@@ -2,6 +2,7 @@ package org.apache.hive.tsql.common;
 
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 
 import java.io.Serializable;
 
@@ -36,8 +37,11 @@ public class SqlStatement extends BaseStatement implements Serializable {
      * @param tableName
      * @param sql
      */
-    public String replaceTableName(String tableName, String sql) {
+    public String replaceTableName(String tableName, String sql) throws Exception {
         String realTableName = getRealTableName(tableName);
+        if(StringUtils.isBlank(realTableName)){
+            throw new Exception("Table "+ tableName +" is not  exist ");
+        }
         return sql.replaceAll(tableName, realTableName);
     }
 
