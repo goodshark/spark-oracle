@@ -13,6 +13,7 @@ public class ThrowStatement extends BaseStatement {
     private String msg = null;
     private String errorNumStr = null;
     private String stateNumStr = null;
+    private boolean emptyArg = false;
 
     private String errorMsg = null;
     private int errorNum = -1;
@@ -26,6 +27,14 @@ public class ThrowStatement extends BaseStatement {
     public ThrowStatement(TreeNode.Type t) {
         super();
         setNodeType(t);
+    }
+
+    public void setEmptyArg() {
+        emptyArg = true;
+    }
+
+    public boolean isEmptyArg() {
+        return emptyArg;
     }
 
     public void setMsg(String message) {
