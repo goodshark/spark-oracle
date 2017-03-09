@@ -517,14 +517,14 @@ public class PredicateNode extends LogicNode {
                 return true;
         } else if (res == -1) {
             if (operator.equals("<") || operator.equals("<=") || operator.equals("!="))
-                return true;
+                return notComp ? false : true;
             if (notComp && (operator.equals(">") || operator.equals(">=")))
-                return true;
+                return notComp ? false : true;
         } else if (res == 1) {
             if (operator.equals(">") || operator.equals(">=") || operator.equals("!="))
-                return true;
+                return notComp ? false : true;
             if (notComp && (operator.equals("<") || operator.equals("<=")))
-                return true;
+                return notComp ? false : true;
         }
         return false;
     }
