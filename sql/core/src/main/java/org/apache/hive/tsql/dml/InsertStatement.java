@@ -76,7 +76,7 @@ public class InsertStatement extends SqlStatement {
                 treeNode.execute();
                 SparkResultSet sparkResultSet = (SparkResultSet) treeNode.getRs();
                 if(null==sparkResultSet){
-                    throw new Exception( treeNode.getSql() + " has not resultSet");
+                    throw new Exception( "it has not resultSet to insert ");
                 }
                 StringBuffer sql = new StringBuffer();
                 sql.append(" values");
