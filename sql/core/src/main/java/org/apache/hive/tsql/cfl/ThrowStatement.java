@@ -71,6 +71,10 @@ public class ThrowStatement extends BaseStatement {
         return throwExeceptionStr;
     }
 
+    public void setThrowExeceptionStr(String errorStr) {
+        throwExeceptionStr = errorStr;
+    }
+
     public int execute() throws Exception {
         errorMsg = msg;
         if (msg.startsWith("@")) {
