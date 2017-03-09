@@ -79,6 +79,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 }
             }
         }
+        rootNode.setCurrentGoStmt(goStatement);
         visitSql_clauses(ctx.sql_clauses());
         addNode(goStatement);
         this.rootNode.addNode(goStatement);
@@ -262,6 +263,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         CreateProcedureStatement.Action action = null != ctx.CREATE() ? CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
         CreateProcedureStatement statement = new CreateProcedureStatement(func, action);
         pushStatement(statement);
+        rootNode.currentGoStmt().addCreateProcStmt(statement);
         return statement;
     }
 
@@ -973,8 +975,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (ctx.GOTO() != null) {
             gotoCmd.setAction();
         }
-        gotoCmd.setLabel(label);
+        // goSeq + label allow same label occured in different GO block
+        gotoCmd.setLabel(rootNode.currentGoStmt().getGoSeq()+label);
         pushStatement(gotoCmd);
+        if (gotoCmd.getAction())
+            rootNode.currentGoStmt().addGotoAction(gotoCmd);
+        else
+            rootNode.currentGoStmt().addGotoLabel(gotoCmd);
         return gotoCmd;
     }
 
@@ -991,6 +998,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public Object visitThrow_statement(TSqlParser.Throw_statementContext ctx) {
         ThrowStatement throwCmd = new ThrowStatement(TreeNode.Type.THROW);
+        // THROW stmt without any args can only exists in CATCH stmt
+        if (ctx.message == null && ctx.error_number == null && ctx.state == null) {
+            throwCmd.setEmptyArg();
+            pushStatement(throwCmd);
+            rootNode.currentGoStmt().addThrowStmt(throwCmd);
+            return throwCmd;
+        }
         if (ctx.message == null || ctx.error_number == null || ctx.state == null)
             addException("throw stmt miss args", locate(ctx));
         throwCmd.setMsg(ctx.message.getText());
