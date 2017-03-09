@@ -1,6 +1,7 @@
 package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.ExecSession;
+import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cursor.Cursor;
 import org.apache.hive.tsql.func.Procedure;
@@ -28,6 +29,7 @@ public abstract class TreeNode implements Serializable {
     private ExecSession execSession;
     private String sql;
     private boolean addResult = false;
+    private GoStatement goStmt = null;
 
     public enum Type {
         IF, AND, OR, NOT, PREDICATE, WHILE, BREAK, CONTINUE, RETURN, GOTO, PRINT,
@@ -242,5 +244,13 @@ public abstract class TreeNode implements Serializable {
 //            e.printStackTrace();
 //        }
 //        return var;
+    }
+
+    public void setCurrentGoStmt(GoStatement stmt) {
+        goStmt = stmt;
+    }
+
+    public GoStatement currentGoStmt() {
+        return goStmt;
     }
 }
