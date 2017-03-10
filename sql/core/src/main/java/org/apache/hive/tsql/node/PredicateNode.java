@@ -64,11 +64,11 @@ public class PredicateNode extends LogicNode {
         } else if (origialOp.equalsIgnoreCase("<>")) {
             operator = "!=";
         } else if (origialOp.equalsIgnoreCase("!>")) {
-            setNotComp();
-            operator = ">";
+//            setNotComp();
+            operator = "<=";
         } else if (origialOp.equalsIgnoreCase("!<")) {
-            setNotComp();
-            operator = "<";
+//            setNotComp();
+            operator = ">=";
         } else {
             operator = origialOp;
         }
