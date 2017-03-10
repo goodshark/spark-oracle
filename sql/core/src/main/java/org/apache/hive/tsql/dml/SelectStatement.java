@@ -67,7 +67,7 @@ public class SelectStatement extends SqlStatement {
         //TODO 如果select中的含有结果,将改变变量的值
         if (resultSetVariable.size() > 0) {
             if (getRs().getRow() <= 0) {
-                throw new Exception("向变量赋值的 SELECT 语句没有结果集");
+                throw new Exception(" it has not resultSet in select statement");
             } else {
                 updateResultVar((SparkResultSet) getRs());
             }
@@ -90,14 +90,14 @@ public class SelectStatement extends SqlStatement {
     public void updateResultVar(SparkResultSet resultSet) throws Exception {
         List<String> filedNames = resultSet.getFiledName();
         if (resultSetVariable.size() != filedNames.size()) {
-            throw new Exception("向变量赋值的 SELECT 语句不能与数据检索操作结合使用");
+            throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
         }
         Row row = null;
         while (resultSet.next()) {
             row = resultSet.fetchRow();
         }
         for (int i = 0; i < resultSetVariable.size(); i++) {
-            LOG.info("对变量:" + resultSetVariable.get(i) + " 赋值:" + row.getColumnVal(i));
+            LOG.info("var :" + resultSetVariable.get(i) + " equals:" + row.getColumnVal(i));
             getExecSession().getVariableContainer().setVarValue(resultSetVariable.get(i), row.getColumnVal(i));
         }
     }
@@ -122,7 +122,7 @@ public class SelectStatement extends SqlStatement {
             for (String s : localIdVariable) {
                 Var v = s.startsWith("@@") ? findSystemVar(s) : findVar(s);
                 if(v==null){
-                    throw new Exception("变量:"+s+" 没有定义");
+                    throw new Exception("variable:" + s + " not defined");
                 }
 //                String value = v.getVarValue().toString();
                 execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? StrUtils.addQuot(""): StrUtils.addQuot(v.getVarValue().toString()));

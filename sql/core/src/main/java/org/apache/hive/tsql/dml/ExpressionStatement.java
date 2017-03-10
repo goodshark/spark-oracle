@@ -232,8 +232,4 @@ public class ExpressionStatement extends SqlStatement {
         this.expressionBean = expressionBean;
     }
 
-    public static void main(String[] args) {
-        String aaa = "@yyy";
-        System.out.print(aaa.indexOf("@@"));
-    }
 }
