@@ -22,7 +22,7 @@ public class CreateTableStatement extends SqlStatement {
         StringBuffer sb = new StringBuffer();
         sb.append("CREATE TABLE ");
         TmpTableNameUtils tableNameUtils = new TmpTableNameUtils();
-        String tableAliasName = tableNameUtils.getRelTableName(tableName);
+        String tableAliasName = tableNameUtils.createTableName(tableName);
         sb.append(tableAliasName)
                 .append(" (")
                 .append(columnDefs)

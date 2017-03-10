@@ -49,14 +49,9 @@ public class SqlStatement extends BaseStatement implements Serializable {
         if (tableName.indexOf("@") != -1) {
             realTableName = findTableVarAlias(tableName);
         } else if (tableNameUtils.checkIsGlobalTmpTable(tableName)) {
-            realTableName = tableNameUtils.getRelTableName(tableName);
+            realTableName = tableNameUtils.createTableName(tableName);
         } else if(tableNameUtils.checkIsTmpTable(tableName)){
-            //临时表，先从内存中找，如果没有找到，需要创建
             realTableName=findTmpTaleAlias(tableName);
-            if(StringUtils.isBlank(realTableName)){
-                realTableName = tableNameUtils.getRelTableName(tableName);
-                addTmpTable(tableName,realTableName);
-            }
         } else{
             realTableName = tableName;
         }

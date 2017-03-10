@@ -17,7 +17,7 @@ public class TmpTableNameUtils{
 
 
 
-    public String getRelTableName(String tableName) {
+    public String createTableName(String tableName) {
         StringBuffer sb = new StringBuffer();
         //TODO GET FROM HADOOP CONF
         if (checkIsGlobalTmpTable(tableName)) {
