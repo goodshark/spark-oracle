@@ -6,6 +6,7 @@ import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.dbservice.DbUtils;
 import org.apache.hive.tsql.dbservice.ProcService;
 import org.apache.hive.tsql.exception.FunctionArgumentException;
+import org.apache.hive.tsql.util.StrUtils;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ public class ObjectIdCalculator extends BaseCalculator {
     public ObjectIdCalculator() {
     }
 
-    private String trimName(String objName) {
+    /*private String trimName(String objName) {
         objName = objName.trim();
         if (!objName.isEmpty() && objName.startsWith("\'") && objName.endsWith("\'"))
             objName = objName.substring(1, objName.length() - 1);
@@ -36,7 +37,7 @@ public class ObjectIdCalculator extends BaseCalculator {
             return objName;
         else
             return objName.substring(index + 1);
-    }
+    }*/
 
     /**
      * AF = 聚合函数 (CLR)
@@ -80,7 +81,7 @@ public class ObjectIdCalculator extends BaseCalculator {
             throw new FunctionArgumentException("OBJECT_ID", argList.size(), 1, 2);
 
         String objName = getArguments(0).getVarValue().toString();
-        objName = trimName(objName);
+        objName = StrUtils.trimQuot(objName);
         if (argList.size() == 1) {
             LOG.info("ObjectId check all object");
             res = memoryFind(objName);
@@ -88,7 +89,7 @@ public class ObjectIdCalculator extends BaseCalculator {
                 res = databaseFind(objName, "");
         } else {
             String arg = getArguments(1).getVarValue().toString();
-            arg = trimName(arg).toUpperCase();
+            arg = StrUtils.trimQuot(arg).toUpperCase();
             switch (arg) {
                 case "AF":
                 case "FN":
