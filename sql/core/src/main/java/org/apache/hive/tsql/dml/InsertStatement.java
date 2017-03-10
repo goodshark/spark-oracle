@@ -123,7 +123,7 @@ public class InsertStatement extends SqlStatement {
             for (String s : localIdVariableName) {
                 Var v = s.startsWith("@@") ? findSystemVar(s) : findVar(s);
                 if (v == null) {
-                    throw new Exception("变量:" + s + " 没有定义");
+                    throw new Exception("variable:" + s + " not defined");
                 }
 //                String value = v.getVarValue().toString();
                 sql = sql.replaceAll(s, null == v.getVarValue() ? "" : "'" + v.getVarValue().toString() + "'");

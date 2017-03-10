@@ -17,8 +17,7 @@ public class TruncateTableStatement  extends SqlStatement {
     public int execute() throws Exception {
         StringBuffer sb = new StringBuffer();
         sb.append("TRUNCATE TABLE ");
-        TmpTableNameUtils tableNameUtils = new TmpTableNameUtils();
-        String tableAliasName = tableNameUtils.getRelTableName(tableName);
+        String tableAliasName = getRealTableName(tableName);
         sb.append(tableAliasName);
         commitStatement(sb.toString());
         return 1;
