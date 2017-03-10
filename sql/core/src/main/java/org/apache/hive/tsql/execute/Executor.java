@@ -4,11 +4,13 @@ import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.ddl.CreateProcedureStatement;
 import org.apache.hive.tsql.exception.UnsupportedException;
 import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Stack;
 
@@ -65,40 +67,51 @@ public class Executor {
     }
 
     public void executeStmt(TreeNode node) throws Exception {
-        switch (node.getNodeType()) {
-            case IF:
-                ifExecute(node);
-                break;
-            case WHILE:
-                whileExecute(node);
-                break;
-            case BREAK:
-                breakExecute();
-                break;
-            case CONTINUE:
-                continueExecute();
-                break;
-            case GOTO:
-                gotoExecute(node);
-                break;
-            case RETURN:
-                returnExecute(node);
-                break;
-            case TRY:
-                tryExecute(node);
-                break;
-            case THROW:
-                throwExecute(node);
-                break;
-            case RAISE:
-                raiseExecute(node);
-                break;
-            case GO:
-                goExecute(node);
-                break;
-            default:
-                node.execute();
-                pushChild(node);
+        try {
+            switch (node.getNodeType()) {
+                case IF:
+                    ifExecute(node);
+                    break;
+                case WHILE:
+                    whileExecute(node);
+                    break;
+                case BREAK:
+                    breakExecute();
+                    break;
+                case CONTINUE:
+                    continueExecute();
+                    break;
+                case GOTO:
+                    gotoExecute(node);
+                    break;
+                case RETURN:
+                    returnExecute(node);
+                    break;
+                case TRY:
+                    tryExecute(node);
+                    break;
+                case THROW:
+                    throwExecute(node);
+                    break;
+                case RAISE:
+                    raiseExecute(node);
+                    break;
+                case GO:
+                    goBlockCheck(node);
+                    goExecute(node);
+                    break;
+                default:
+                    node.execute();
+                    pushChild(node);
+            }
+        } catch (Exception e) {
+            // throw statement exception, if stmt in try-catch, handle it
+            ThrowStatement throwStmt = new ThrowStatement(TreeNode.Type.THROW);
+            throwStmt.setMsg(e.getMessage());
+            // TODO make error number map error msg
+            throwStmt.setStateNumStr("200");
+            throwStmt.setErrorNumStr("60000");
+            throwExecute(throwStmt);
         }
     }
 
@@ -109,49 +122,103 @@ public class Executor {
     }
 
     public void goExecute(TreeNode node) throws Exception {
-        // check procedure in GO-block
-        LOG.info("sql-server executor check GO block");
-        boolean pass = procCheck(node);
-        if (!pass) {
-            LOG.error("sql-server executor check procedure node failed");
-            throw new Exception("create procedure should be the 1st in GO block");
-        }
         node.execute();
         GoStatement goNode = (GoStatement) node;
-        LOG.info("sql-server executor check GO block all ok, start execute GO block, repeat number: " + goNode.getRepeat());
+        LOG.info("sql-server executor start execute GO block, repeat number: " + goNode.getRepeat());
         goNode.decRepeat();
         if (goNode.getRepeat() >= 1)
             stack.push(goNode);
         pushChild(node);
     }
 
-    public boolean procCheck(TreeNode node) {
+    private void goBlockCheck(TreeNode node) throws Exception {
+        LOG.info("sql-server executor start check GO block");
+        GoStatement goNode = (GoStatement) node;
+        checkCreateProc(goNode.getProcList());
+        checkThrow(goNode.getThrowList());
+        checkGoto(goNode.getGotoActionList(), goNode.getGotoLabelList());
+        LOG.info("sql-server executor check GO block success");
+    }
+
+    private void checkCreateProc(List<CreateProcedureStatement> procList) throws Exception {
+        LOG.info("sql-server executor start check create procedure in GO block");
+        for (CreateProcedureStatement CPStmt: procList) {
+            TreeNode pNode = CPStmt.getParentNode();
+            if (pNode != null) {
+                List<TreeNode> sqlClauesChilds = pNode.getChildrenNodes();
+                if (sqlClauesChilds.isEmpty() || !sqlClauesChilds.get(0).equals(CPStmt))
+                    throw new Exception("create procedure should be the 1st in GO block");
+                TreeNode ppNode = pNode.getParentNode();
+                if (ppNode == null || ppNode.getNodeType() != TreeNode.Type.GO)
+                    throw new Exception("create procedure should be the 1st in GO block");
+            } else
+                throw new Exception("create procedure should be the 1st in GO block");
+        }
+    }
+
+    private void checkThrow(List<ThrowStatement> throwList) throws Exception {
+        LOG.info("sql-server executor start check throw without args in GO block");
+        for (ThrowStatement throwNode: throwList) {
+            TreeNode catchNode = findAncestorCatch(throwNode);
+            if (catchNode == null)
+                throw new Exception("throw without args can only exists in CATCH block");
+        }
+    }
+
+    private TreeNode findAncestorCatch(TreeNode node) {
         if (node != null) {
-            if (node.getNodeName() == "_CSP_") {
-                TreeNode pNode = node.getParentNode();
-                if (pNode != null) {
-                    List<TreeNode> sqlClauesChilds = pNode.getChildrenNodes();
-                    if (sqlClauesChilds.isEmpty() || !sqlClauesChilds.get(0).equals(node))
-                        return false;
-                    TreeNode ppNode = pNode.getParentNode();
-                    if (ppNode == null || ppNode.getNodeType() != TreeNode.Type.GO)
-                        return false;
-                    else
-                        return true;
-                } else {
-                    return false;
-                }
+            TreeNode pNode = node.getParentNode();
+            if (pNode == null) {
+                return null;
             } else {
-                List<TreeNode> childList = node.getChildrenNodes();
-                for (TreeNode child: childList) {
-                    boolean flag = procCheck(child);
-                    if (!flag)
-                        return flag;
+                if (pNode.getNodeType() == TreeNode.Type.TRY) {
+                    List<TreeNode> childList = pNode.getChildrenNodes();
+                    if (childList.size() == 2 && node.equals(childList.get(1)))
+                        return pNode;
+                    else {
+                        return null;
+                    }
+                } else {
+                    return findAncestorCatch(pNode);
                 }
-                return true;
             }
         } else {
-            return true;
+            return null;
+        }
+    }
+
+    private void checkGoto(List<GotoStatement> actionList, List<GotoStatement> labelList) throws Exception {
+        LOG.info("sql-server executor start check goto in GO block");
+        // check all label exists
+        HashSet<String> labelSet = new HashSet<String>();
+        for (GotoStatement labelNode: labelList) {
+            if (labelSet.contains(labelNode.getLabel().toUpperCase()))
+                throw new Exception("GOTO reference label " + labelNode.getLabel() + " that appear more than twice");
+            else
+                labelSet.add(labelNode.getLabel().toUpperCase());
+        }
+        for (GotoStatement actionNode: actionList) {
+            if (!labelSet.contains(actionNode.getLabel().toUpperCase()))
+                throw new Exception("GOTO reference label " + actionNode.getLabel() + " that NOT exists");
+        }
+        // check goto location sensitive(try-catch)
+        for (GotoStatement labelNode: labelList) {
+            for (GotoStatement actionNode: actionList) {
+                TryCatchStatement tryCatchNode1 = (TryCatchStatement) findTryAncestorNode(actionNode);
+                actionNode.setTryCatchNode(tryCatchNode1);
+                if (tryCatchNode1 != null && tryCatchNode1.isCatchBlock()) {
+                    actionNode.setBelongCatchBlock();
+                    tryCatchNode1.clearBlockStatus();
+                }
+                TryCatchStatement tryCatchNode2 = (TryCatchStatement) findTryAncestorNode(labelNode);
+                labelNode.setTryCatchNode(tryCatchNode2);
+                if (tryCatchNode2 != null && tryCatchNode2.isCatchBlock()) {
+                    labelNode.setBelongCatchBlock();
+                    tryCatchNode2.clearBlockStatus();
+                }
+                if (!isGotoLegal(actionNode, labelNode))
+                    throw new Exception("GOTO action and label are not in the same block (TRY-CATCH)");
+            }
         }
     }
 
@@ -215,11 +282,6 @@ public class Executor {
         }
         TreeNode rootNode = session.getRootNode();
         TreeNode labelNode = findGotoLabel(gotoStmt.getLabel(), rootNode);
-        // check if goto-action or goto-label in try-catch block
-        TreeNode tryCatchNode1 = findTryAncestorNode(node);
-        TreeNode tryCatchNode2 = findTryAncestorNode(labelNode);
-        if (!isGotoLegal(tryCatchNode1, tryCatchNode2))
-            throw new UnsupportedException("GOTO can not jump into TRY-CATCH block");
         buildReverseStack(labelNode);
         rebuildStack();
     }
@@ -228,7 +290,7 @@ public class Executor {
         if (node != null) {
             if (node.getNodeType() == TreeNode.Type.GOTO) {
                 GotoStatement stmt = (GotoStatement) node;
-                if (!stmt.getAction() && stmt.getLabel().equals(label))
+                if (!stmt.getAction() && stmt.getLabel().equalsIgnoreCase(label))
                     return node;
             }
             List<TreeNode> list = node.getChildrenNodes();
@@ -271,27 +333,38 @@ public class Executor {
         }
     }
 
+    // null means outside goto, else means try-catch block goto
     private TreeNode findTryAncestorNode(TreeNode node) {
         if (node == null || node.getParentNode() == null)
             return null;
         TreeNode pNode = node.getParentNode();
-        if (pNode.getNodeType() == TreeNode.Type.TRY)
+        if (pNode.getNodeType() == TreeNode.Type.TRY) {
+            List<TreeNode> childList = pNode.getChildrenNodes();
+            if (childList.size() == 2) {
+                if (childList.get(1).equals(node)) {
+                    ((TryCatchStatement) pNode).setCatchBlock();
+                }
+            }
             return pNode;
-        else
+        } else
             return findTryAncestorNode(pNode);
     }
 
-    private boolean isGotoLegal(TreeNode node1, TreeNode node2) {
-        if (node1 == null && node2 == null)
+    private boolean isGotoLegal(GotoStatement action, GotoStatement label) {
+        if (action.getTryCatchNode() == null && label.getTryCatchNode() == null)
             return true;
-        if (node1 != null && node2 == null)
+        if (action.getTryCatchNode() != null && label.getTryCatchNode() == null)
             return true;
-        if (node1 == null && node2 != null)
+        if (action.getTryCatchNode() == null && label.getTryCatchNode() != null)
             return false;
-        if (node1 != null && node2 != null && node1.equals(node2))
-            return true;
-        else
-            return false;
+        if (action.getTryCatchNode() != null && label.getTryCatchNode() != null) {
+            if ((action.isBelongCatchBlock() && label.isBelongCatchBlock()) ||
+                    (!action.isBelongCatchBlock() && !label.isBelongCatchBlock())) {
+                return true;
+            } else
+                return false;
+        }
+        return true;
     }
 
     public void returnExecute(TreeNode returnNode) throws Exception {
@@ -320,8 +393,12 @@ public class Executor {
     }
 
     public void throwExecute(TreeNode exceptionNode) throws Exception {
-        // get exception info
-        exceptionNode.execute();
+        // get exception info, when THROW without args do not need execute
+        if (!(exceptionNode.getNodeType() == TreeNode.Type.THROW && ((ThrowStatement)exceptionNode).isEmptyArg())) {
+            exceptionNode.execute();
+        } else {
+            ((ThrowStatement)exceptionNode).setThrowExeceptionStr(session.getErrorStr());
+        }
         // get catch block if there exists try-catch block
         TreeNode node = null;
         while (!stack.empty()) {
@@ -336,8 +413,14 @@ public class Executor {
             }
         }
         // exception catched by TRY-CATCH block
-        if (node != null && node.getNodeType() == TreeNode.Type.TRY)
+        if (node != null && node.getNodeType() == TreeNode.Type.TRY) {
+            // record this exception that maybe THROW without args in subsequent CATCH block
+            if (exceptionNode.getNodeType() == TreeNode.Type.THROW) {
+                String errorStr = ((ThrowStatement) exceptionNode).getThrowExeceptionStr();
+                session.setErrorStr(errorStr);
+            }
             return;
+        }
         // exception is out of try-catch, just throw exception
         String expStr = "";
         if (exceptionNode.getNodeType() == TreeNode.Type.THROW) {

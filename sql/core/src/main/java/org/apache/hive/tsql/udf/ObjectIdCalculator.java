@@ -170,12 +170,12 @@ public class ObjectIdCalculator extends BaseCalculator {
             curDb = ss.sessionState().catalog().getCurrentDatabase();
             obj = objArray[0];
         }
-        LOG.info("ObjectId check obj in database, sql: " + sqlStr + ", table: " + obj + ", db: " + curDb);
+        LOG.info("ObjectId check obj in database, sql: " + sqlStr + ", table: " + obj.toLowerCase() + ", db: " + curDb.toLowerCase());
 
         Connection conn = createDbConn();
         PreparedStatement stmt = conn.prepareStatement(sqlStr);
-        stmt.setString(1, obj);
-        stmt.setString(2, curDb);
+        stmt.setString(1, obj.toLowerCase());
+        stmt.setString(2, curDb.toLowerCase());
         ResultSet rs = stmt.executeQuery();
         int count = 0;
         while (rs.next()) {

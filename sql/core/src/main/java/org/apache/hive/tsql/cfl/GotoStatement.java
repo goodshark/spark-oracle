@@ -9,6 +9,9 @@ import org.apache.hive.tsql.common.TreeNode;
 public class GotoStatement extends BaseStatement {
     private boolean action = false;
     private String label = null;
+    // for goto in TRY-CATCH block
+    private TryCatchStatement tryCatchNode = null;
+    private boolean belongCatchBlock = false;
 
     public GotoStatement() {
     }
@@ -40,5 +43,21 @@ public class GotoStatement extends BaseStatement {
 
     public BaseStatement createStatement() {
         return null;
+    }
+
+    public void setTryCatchNode(TryCatchStatement node) {
+        tryCatchNode = node;
+    }
+
+    public TryCatchStatement getTryCatchNode() {
+        return tryCatchNode;
+    }
+
+    public void setBelongCatchBlock() {
+        belongCatchBlock = true;
+    }
+
+    public boolean isBelongCatchBlock() {
+        return belongCatchBlock;
     }
 }

@@ -44,6 +44,7 @@ public class PrintStatement extends BaseStatement {
         } catch (Exception e) {
             System.out.println("print error");
             e.printStackTrace();
+            throw e;
         }
         return 0;
     }

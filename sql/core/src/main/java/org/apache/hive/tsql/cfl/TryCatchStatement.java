@@ -8,6 +8,8 @@ import org.apache.hive.tsql.common.TreeNode;
  */
 public class TryCatchStatement extends BaseStatement {
     private boolean executed = false;
+    // only use for goto up-search parent node
+    private boolean catchBlock = false;
 
     public TryCatchStatement() {
     }
@@ -27,6 +29,18 @@ public class TryCatchStatement extends BaseStatement {
 
     public int execute() throws Exception {
         return 0;
+    }
+
+    public void setCatchBlock() {
+        catchBlock = true;
+    }
+
+    public boolean isCatchBlock() {
+        return catchBlock;
+    }
+
+    public void clearBlockStatus() {
+        catchBlock = false;
     }
 
     public BaseStatement createStatement() {
