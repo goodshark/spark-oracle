@@ -870,7 +870,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             node.setNotComp();
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() != 3) {
-            addException("BETWEEN expression count not equal e", locate(ctx));
+            addException("BETWEEN expression count not equal 3", locate(ctx));
             return;
         }
         for (TSqlParser.ExpressionContext exprCtx : list) {
