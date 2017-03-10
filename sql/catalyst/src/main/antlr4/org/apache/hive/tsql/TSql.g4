@@ -469,7 +469,7 @@ drop_index
 
 // https://msdn.microsoft.com/zh-cn/library/ms174969.aspx
 drop_procedure
-    : DROP PROCEDURE (IF EXISTS)? func_proc_name (',' func_proc_name)* ';'?
+    : DROP proc=(PROC | PROCEDURE) (IF EXISTS)? func_proc_name (',' func_proc_name)* ';'?
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms175075.aspx
