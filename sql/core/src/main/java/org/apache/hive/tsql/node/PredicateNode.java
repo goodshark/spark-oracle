@@ -396,8 +396,10 @@ public class PredicateNode extends LogicNode {
             ResultSet rightRes = rightExpr.getRs();
             try {
                 Var leftVal = (Var) leftRes.getObject(0);
-                List<Var> rightValList = (List<Var>) rightRes.getObject(0);
-                for (Var rightVal : rightValList) {
+//                List<Var> rightValList = (List<Var>) rightRes.getObject(0);
+                Var rightResVar = (Var) rightRes.getObject(0);
+                List<Var> rightValList = (List<Var>) rightResVar.getVarValue();
+                /*for (Var rightVal : rightValList) {
                     int res = leftVal.compareTo(rightVal);
                     if (res == 0) {
                         if (notComp) {
@@ -407,6 +409,33 @@ public class PredicateNode extends LogicNode {
                             return true;
                         }
                     }
+                }*/
+                for (Var rightVal : rightValList) {
+                    if (rightVal.getDataType() == Var.DataType.LIST) {
+                        List<Var> realVarList = (List<Var>) rightVal.getVarValue();
+                        for (Var realVar : realVarList) {
+                            int res = leftVal.compareTo(realVar);
+                            if (res == 0) {
+                                if (notComp) {
+                                    matched = true;
+                                    break;
+                                } else {
+                                    return true;
+                                }
+                            }
+                        }
+                    } else {
+                        int res = leftVal.compareTo(rightVal);
+                        if (res == 0) {
+                            if (notComp) {
+                                matched = true;
+                                break;
+                            } else {
+                                return true;
+                            }
+                        }
+                    }
+
                 }
             } catch (Exception e) {
                 System.out.println("error");

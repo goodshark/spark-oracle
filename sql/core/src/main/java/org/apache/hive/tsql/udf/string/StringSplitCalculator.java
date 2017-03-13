@@ -5,6 +5,9 @@ import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.udf.BaseCalculator;
 import org.apache.hive.tsql.util.StrUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by dengrb1 on 2/16 0016.
  */
@@ -28,7 +31,13 @@ public class StringSplitCalculator extends BaseCalculator {
             strs = argStr.split(sepStr);
         }
         // TODO Var do NOT support LIST type
-        var.setVarValue(strs);
+        List<Var> finalRes = new ArrayList<>();
+        for (String str: strs) {
+            Var ele = new Var("ele", str, Var.DataType.STRING);
+            finalRes.add(ele);
+        }
+        var.setVarValue(finalRes);
+        var.setDataType(Var.DataType.LIST);
         return var;
     }
 }
