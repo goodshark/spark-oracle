@@ -19,6 +19,8 @@ public class FunctionAliasName {
         functionAliasNames.put("len".toUpperCase(), "length".toUpperCase());
         functionAliasNames.put("atn2".toUpperCase(), "atan2".toUpperCase());
         functionAliasNames.put("tsubstring".toUpperCase(), "substring".toUpperCase());
+        functionAliasNames.put("left".toUpperCase(), "substring".toUpperCase());
+        functionAliasNames.put("right".toUpperCase(), "substring".toUpperCase());
     }
 
     private static class FunctionAliasNameHolder {
