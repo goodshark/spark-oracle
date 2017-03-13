@@ -2951,7 +2951,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sb.append(ctx.NTILE().getText());
             sb.append("(");
             sb.append(getExpressionSql(ctx.expression()));
-            sb.append(")");
+            sb.append(") ");
             funcName = ctx.NTILE().getText();
         }
 
