@@ -96,6 +96,11 @@ public class DateUtil {
             strDate = fillDate(strDate);
         }
 
+        if ("HH:mm:ss".equals(pattern) && strDate.trim().indexOf(" ") != -1) {
+            String[] strDateFields = strDate.trim().split(" ");
+            strDate = strDateFields[strDateFields.length -1];
+        }
+
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
         simpleDateFormat.setLenient(false);
         return simpleDateFormat.parse(strDate);
