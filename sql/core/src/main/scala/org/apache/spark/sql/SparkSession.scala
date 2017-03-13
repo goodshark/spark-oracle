@@ -719,7 +719,7 @@ class SparkSession private(
     while (!flag) {
       val sparkOp = sparkContext.crudTbOperationRecordMap.contains(fullTableName)
       if (sparkOp) {
-        val op = sparkContext.crudTbOperationRecordMap.get(fullTableName).get
+        val op = sparkContext.crudTbOperationRecordMap.get(fullTableName)
         logWarning(s" table($db:$tableName) is $op data...")
         Thread.sleep(10 * 1000)
       } else {
@@ -728,7 +728,7 @@ class SparkSession private(
           logWarning(s" table($db.$tableName) is merging small file...")
           Thread.sleep(10 * 1000)
         } else {
-          sparkContext.crudTbOperationRecordMap += (fullTableName -> op)
+          sparkContext.crudTbOperationRecordMap.put(fullTableName, op)
           flag = true
         }
       }

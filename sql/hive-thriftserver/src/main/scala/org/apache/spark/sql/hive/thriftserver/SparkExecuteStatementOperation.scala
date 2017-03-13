@@ -323,18 +323,17 @@ private[hive] class SparkExecuteStatementOperation(
   }
 
   private def clearCrudTableMap(plan: LogicalPlan) = {
-    sqlContext.sparkContext.crudTbOperationRecordMap.keySet.foreach(
-      t => logInfo(s"crud table: $t" ))
+
     if (plan.isInstanceOf[AcidDelCommand]) {
       val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
       val fullTableName: String = sqlContext.sparkSession.getFullTableName(tableIdent)
       logInfo(s" del tableName:" + fullTableName)
-      sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
+      sqlContext.sparkContext.crudTbOperationRecordMap.remove(fullTableName)
     } else if (plan.isInstanceOf[AcidUpdateCommand]) {
       val tableIdent = plan.asInstanceOf[AcidUpdateCommand].tableIdent
       val fullTableName: String = sqlContext.sparkSession.getFullTableName(tableIdent)
       logInfo(s" up tableName:" + fullTableName)
-      sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
+      sqlContext.sparkContext.crudTbOperationRecordMap.remove(fullTableName)
     } else if (plan.isInstanceOf[InsertIntoTable]) {
       val tableName = plan.asInstanceOf[InsertIntoTable].tableName
       val dbName = plan.asInstanceOf[InsertIntoTable].dbName
@@ -344,7 +343,7 @@ private[hive] class SparkExecuteStatementOperation(
         new TableIdentifier(tableName, dbName))
       logInfo(s" insert tableName:" + fullTableName)
       if (sqlContext.sessionState.catalog.checkAcidTable(tableMetadata)) {
-        sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
+        sqlContext.sparkContext.crudTbOperationRecordMap.remove(fullTableName)
       }
     }
   }

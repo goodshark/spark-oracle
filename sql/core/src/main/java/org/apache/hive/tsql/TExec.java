@@ -1659,8 +1659,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public SqlStatement visitInsert_statement(TSqlParser.Insert_statementContext ctx) {
         InsertStatement insertStatement = new InsertStatement(Common.INSERT);
         cleanTableVariable();
+        StringBuffer sql = new StringBuffer();
         if (null != ctx.with_expression()) {
-            visitWith_expression(ctx.with_expression());
+            sql.append(visitWith_expression(ctx.with_expression()));
         }
         if (null != ctx.TOP()) {
             LimitStatement limitStatement = new LimitStatement();
@@ -1674,7 +1675,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 addException("PERCENT", locate(ctx));
             }
         }
-        StringBuffer sql = new StringBuffer();
+
         sql.append("Insert into ").append(Common.SPACE);
         if (null != ctx.ddl_object()) {
             sql.append(visitDdl_object(ctx.ddl_object())).append(Common.SPACE);
@@ -1786,7 +1787,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         StringBuffer sql = new StringBuffer();
         cleanTableVariable();
         if (null != ctx.with_expression()) {
-            visitWith_expression(ctx.with_expression());
+           visitWith_expression(ctx.with_expression());
         }
         sql.append(ctx.UPDATE().getText()).append(Common.SPACE);
         if (null != ctx.TOP()) {
@@ -1907,10 +1908,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public SqlStatement visitDelete_statement(TSqlParser.Delete_statementContext ctx) {
         DeleteStatement deleteStatement = new DeleteStatement(Common.DELETE);
         cleanTableVariable();
+        StringBuffer sql = new StringBuffer();
         if (null != ctx.with_expression()) {
             visitWith_expression(ctx.with_expression());
         }
-        StringBuffer sql = new StringBuffer();
+
         sql.append(ctx.DELETE().getText()).append(Common.SPACE);
         if (null != ctx.TOP()) {
             LimitStatement limitStatement = new LimitStatement();
@@ -2160,7 +2162,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         StringBuffer sql = new StringBuffer();
         clearVariable();
         if (null != ctx.with_expression()) {
-            visitWith_expression(ctx.with_expression());
+            sql.append(visitWith_expression(ctx.with_expression()));
         }
         sql.append(visitQuery_expression(ctx.query_expression()));
         if (null != ctx.order_by_clause()) {
@@ -2209,7 +2211,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public String visitWith_expression(TSqlParser.With_expressionContext ctx) {
-        if (null != ctx.XMLNAMESPACES()) {
+       /* if (null != ctx.XMLNAMESPACES()) {
             addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
         }
         if (!ctx.common_table_expression().isEmpty()) {
@@ -2217,14 +2219,36 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 visitCommon_table_expression(ctx.common_table_expression(i));
             }
         }
-        return "";
+        return "";*/
+        if (null != ctx.XMLNAMESPACES()) {
+            addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
+        }
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("with ");
+        if (!ctx.common_table_expression().isEmpty()) {
+            for (int i = 0; i < ctx.common_table_expression().size(); i++) {
+                if (i != 0) {
+                    stringBuffer.append(",").append(Common.SPACE);
+                }
+                stringBuffer.append(visitCommon_table_expression(ctx.common_table_expression(i)));
+            }
+        }
+        return stringBuffer.toString();
     }
 
     private Queue<String> withColmnNameAlias = new LinkedList<>();
 
+    /**
+     * common_table_expression
+     * : expression_name=id ('(' column_name_list ')')? AS '(' select_statement ')'
+     *
+     * @param ctx
+     * @return
+     */
+
     @Override
     public String visitCommon_table_expression(TSqlParser.Common_table_expressionContext ctx) {
-        //SqlStatement rs = new SqlStatement();
+       /* //SqlStatement rs = new SqlStatement();
         withColmnNameAlias.clear();
         if (null != ctx.column_name_list()) {
             List<String> list = visitColumn_name_list(ctx.column_name_list());
@@ -2236,7 +2260,26 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE));
         popStatement();
         withColmnNameAlias.clear();
-        return "";
+        return "";*/
+
+        StringBuffer stringBuffer = new StringBuffer();
+        withColmnNameAlias.clear();
+        if (null != ctx.column_name_list()) {
+            List<String> list = visitColumn_name_list(ctx.column_name_list());
+            for (String c : list) {
+                withColmnNameAlias.add(c);
+            }
+        }
+        stringBuffer.append(visitId(ctx.id())).append(Common.SPACE);
+        stringBuffer.append("as (").append(Common.SPACE);
+        String sql=visitSelect_statement(ctx.select_statement())
+                .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE);
+        stringBuffer.append(sql);
+        withExpressionSqlMap.put(visitId(ctx.id()), sql);
+        stringBuffer.append(" )").append(Common.SPACE);
+        popStatement();
+        withColmnNameAlias.clear();
+        return stringBuffer.toString();
     }
 
     @Override
@@ -2447,12 +2490,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         //需要转化为`Time Range`
         String columnAliasName = ctx.getText().trim();
         StringBuffer stringBuffer = new StringBuffer();
-        if (columnAliasName.indexOf("'")!=-1 || columnAliasName.lastIndexOf("'")!=-1 ) {
-            stringBuffer.append("`").append(columnAliasName.substring(1,columnAliasName.length()-1));
+        if (columnAliasName.indexOf("'") != -1 || columnAliasName.lastIndexOf("'") != -1) {
+            stringBuffer.append("`").append(columnAliasName.substring(1, columnAliasName.length() - 1));
             stringBuffer.append("`");
             return stringBuffer.toString();
-        }else if(columnAliasName.indexOf("\"")!=-1&&columnAliasName.lastIndexOf("\"")!=-1){
-            stringBuffer.append("`").append(columnAliasName.substring(1,columnAliasName.length()-1));
+        } else if (columnAliasName.indexOf("\"") != -1 && columnAliasName.lastIndexOf("\"") != -1) {
+            stringBuffer.append("`").append(columnAliasName.substring(1, columnAliasName.length() - 1));
             stringBuffer.append("`");
             return stringBuffer.toString();
         }
@@ -2519,7 +2562,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 sql.append(visitOver_clause(ctx.over_clause()));
             }
         }
-        rs.setSql(sql.toString());
+        rs.setSql(sql.append(Common.SPACE).toString());
         pushStatement(rs);
         return rs;
     }
@@ -2763,32 +2806,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitLeft_function(TSqlParser.Left_functionContext ctx) {
-        LeftFunction function = new LeftFunction(new FuncName(null, "left", null));
-        List<TreeNode> exprList = new ArrayList<TreeNode>();
-        visit(ctx.expression().get(0));
-        exprList.add(popStatement());
-        visit(ctx.expression().get(1));
-        exprList.add(popStatement());
-        function.setExprList(exprList);
-        pushStatement(function);
-        return function;
-    }
-
-    @Override
-    public Object visitRight_function(TSqlParser.Right_functionContext ctx) {
-        RightFunction function = new RightFunction(new FuncName(null, "right", null));
-        List<TreeNode> exprList = new ArrayList<TreeNode>();
-        visit(ctx.expression().get(0));
-        exprList.add(popStatement());
-        visit(ctx.expression().get(1));
-        exprList.add(popStatement());
-        function.setExprList(exprList);
-        pushStatement(function);
-        return visitChildren(ctx);
-    }
-
-    @Override
     public Object visitIsnull_function(TSqlParser.Isnull_functionContext ctx) {
         IsNullFunction func = new IsNullFunction(new FuncName(null, "ISNULL", null));
         List<TSqlParser.ExpressionContext> list = ctx.expression();
@@ -2804,8 +2821,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
         pushStatement(func);
         return func;
     }
-
-
 
     @Override
     public Object visitTrim_function(TSqlParser.Trim_functionContext ctx) {

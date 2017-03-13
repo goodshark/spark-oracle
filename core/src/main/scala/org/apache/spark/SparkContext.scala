@@ -88,7 +88,8 @@ class SparkContext(config: SparkConf) extends Logging {
   val startTime = System.currentTimeMillis()
 
   // record the operation  for crud table ,key:tableName values: operation
-  var crudTbOperationRecordMap: Map[String, String] = Map()
+  var crudTbOperationRecordMap: ConcurrentHashMap[String, String] = new ConcurrentHashMap[String, String]()
+
 
   private[spark] val stopped: AtomicBoolean = new AtomicBoolean(false)
 
