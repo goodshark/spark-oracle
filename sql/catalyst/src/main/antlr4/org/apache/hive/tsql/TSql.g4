@@ -993,6 +993,7 @@ function_call
     | ISNULL '(' expression ',' expression ')'      #isnull_function
     | TSUBSTRING '(' expression ',' expression ',' expression ')'      #tsubstring_function
     | TRIM '(' (expression FROM)? expression ')'    #trim_function
+    | LEN '(' expression ')'                       #len_function
     ;
 
 switch_section
@@ -1703,6 +1704,7 @@ INSERTED:                              I N S E R T E D;
 ISOLATION:                             I S O L A T I O N;
 ISNULL:                                I S N U L L;
 TSUBSTRING:                            T S U B S T R I N G;
+LEN:                                   L E N;
 KB:                                    K B;
 KEEP:                                  K E E P;
 KEEPFIXED:                             K E E P F I X E D;
