@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.exception.ParserErrorListener;
 import org.apache.hive.tsql.exception.ParserException;
@@ -117,6 +118,7 @@ public class ProcedureCli {
     }*/
 
     private void clean() {
+        GoStatement.clearGoSeq();
         //清理表变量
         if (null != session) {
             HashMap<String, String> allAlias = new HashMap<>();
