@@ -34,27 +34,27 @@ public class CreateTableStatement extends SqlStatement {
          * key=2 表示存储的临时表 #t1
          * key=3 表示存储的全局表 ##t2
          */
-        HashMap<Integer, HashSet<String>> map = getExecSession().getSparkSession().getSqlServerTable();
+        HashMap<Integer, HashMap<String,String>> sparkSessonTableMap = getExecSession().getSparkSession().getSqlServerTable();
         if (tableNameUtils.checkIsTmpTable(tableName)) {
             addTmpTable(tableName, tableAliasName);
-            addTableToSparkSeesion(tableAliasName, map,2);
+            addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,2);
 
         }
         if(tableNameUtils.checkIsGlobalTmpTable(tableName)){
             addTmpTable(tableName, tableAliasName);
-            addTableToSparkSeesion(tableAliasName, map,3);
+            addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,3);
         }
         setAddResult(false);
         commitStatement(sb.toString());
         return 1;
     }
 
-    private void addTableToSparkSeesion(String tableAliasName, HashMap<Integer, HashSet<String>> map , int key) {
+    private void addTableToSparkSeesion(String tableName,String tableAliasName, HashMap<Integer, HashMap<String,String>> map , int key) {
         if(null!=map.get(key)){
-            map.get(key).add(tableAliasName);
+            map.get(key).put(tableName,tableAliasName);
         }else{
-            HashSet<String> tb = new HashSet<String>();
-            tb.add(tableAliasName);
+            HashMap<String,String> tb = new HashMap<>();
+            tb.put(tableName,tableAliasName);
             map.put(key,tb);
         }
     }
