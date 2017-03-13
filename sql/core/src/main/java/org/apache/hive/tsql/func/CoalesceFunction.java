@@ -27,7 +27,9 @@ public class CoalesceFunction extends BaseFunction {
         if (null != exprs) {
             exprs.setExecSession(getExecSession());
             exprs.execute();
-            results = (List<Var>) exprs.getRs().getObject(0);
+            Var res = (Var) exprs.getRs().getObject(0);
+            results = (List<Var>) res.getVarValue();
+//            results = (List<Var>) exprs.getRs().getObject(0);
         }
         System.out.println("Excuting function # " + this.getSql());
         doCall(results);

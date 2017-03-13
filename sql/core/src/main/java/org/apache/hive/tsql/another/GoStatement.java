@@ -113,4 +113,8 @@ public class GoStatement extends BaseStatement {
     public String getGoSeq() {
         return "GO" + Integer.toString(goSeq) + "-";
     }
+
+    public static void clearGoSeq() {
+        goSeq = 0;
+    }
 }

@@ -34,8 +34,8 @@ public class UdfFactory {
             registFunction("STUFF".toUpperCase(), "org.apache.hive.tsql.udf.string.StuffCalculator");
             registFunction("REPLACE".toUpperCase(), "org.apache.hive.tsql.udf.string.ReplaceCalculator");
             registFunction("CHAR".toUpperCase(), "org.apache.hive.tsql.udf.string.CharCalculator");
-            registFunction("LEFT".toUpperCase(), "org.apache.hive.tsql.udf.string.LeftCalculator");
-            registFunction("RIGHT".toUpperCase(), "org.apache.hive.tsql.udf.string.RightCalculator");
+            registFunction("LEFT".toUpperCase(), "org.apache.hive.tsql.udf.string.SubStringCalculator");
+            registFunction("RIGHT".toUpperCase(), "org.apache.hive.tsql.udf.string.SubStringCalculator");
             registFunction("PATINDEX".toUpperCase(), "org.apache.hive.tsql.udf.string.PatIndexCalculator");
             //cursor function
             registFunction("CURSOR_STATUS".toUpperCase(), "org.apache.hive.tsql.udf.CursorStatusCalculator");

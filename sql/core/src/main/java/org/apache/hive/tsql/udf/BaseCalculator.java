@@ -5,6 +5,7 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.func.DateUnit;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -13,7 +14,7 @@ import java.util.List;
  * Created by zhongdg1 on 2017/1/19.
  */
 public abstract class BaseCalculator implements Calculator {
-    private List<Var> arguments;
+    private List<Var> arguments = new ArrayList<>();
     private String funcName;
     private int minSize = 0;
     private int maxSize = Integer.MAX_VALUE;
@@ -35,7 +36,13 @@ public abstract class BaseCalculator implements Calculator {
     }
 
     public BaseCalculator setArguments(List<Var> arguments) {
-        this.arguments = arguments;
+//        this.arguments = arguments;
+        if(null == arguments || arguments.size() == 0) {
+            return this;
+        }
+        for(Var var : arguments) {
+            this.arguments.add(var.clone());
+        }
         size = null == arguments ? 0 : arguments.size();
         return this;
     }

@@ -71,6 +71,9 @@ public class DateUtil {
         }
         strDate = StrUtils.trimQuot(strDate);
         StringBuffer sb = new StringBuffer();
+        if(strDate.indexOf("-") == -1) {
+            sb.append("1970-01-01 ");
+        }
         sb.append(strDate);
         int indexFirst = strDate.indexOf(":");
         if (-1 == indexFirst) {
@@ -94,6 +97,11 @@ public class DateUtil {
         }
         if ("yyyy-MM-dd HH:mm:ss".equals(pattern)) {
             strDate = fillDate(strDate);
+        }
+
+        if ("HH:mm:ss".equals(pattern) && strDate.trim().indexOf(" ") != -1) {
+            String[] strDateFields = strDate.trim().split(" ");
+            strDate = strDateFields[strDateFields.length -1];
         }
 
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
