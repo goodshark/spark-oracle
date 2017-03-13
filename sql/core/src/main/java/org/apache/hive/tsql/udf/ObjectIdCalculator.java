@@ -24,6 +24,7 @@ public class ObjectIdCalculator extends BaseCalculator {
     private static final Logger LOG = LoggerFactory.getLogger(ObjectIdCalculator.class);
     private final String OBJ_TABLE_NAME = "TBLS";
     private final String DB_TABLE_NAME = "DBS";
+    private final String TEMP_TBL_DB = "tmp";
 
     public ObjectIdCalculator() {
     }
@@ -148,14 +149,20 @@ public class ObjectIdCalculator extends BaseCalculator {
     private boolean objCheck(String objName, String type) throws Exception {
         LOG.info("ObjectId check obj in database, type: " + type);
         // transform table name into real table name
-        TmpTableNameUtils tableNameCheck = new TmpTableNameUtils();
+        boolean tempTblFlag = true;
+        String tmpTbl = getExecSession().getSparkSession().getRealTable(objName);
+        if (tmpTbl.equalsIgnoreCase(objName))
+            tempTblFlag = false;
+        /*TmpTableNameUtils tableNameCheck = new TmpTableNameUtils();
         if (tableNameCheck.checkIsTmpTable(objName)) {
-            String tmpTbl = getExecSession().getVariableContainer().findTmpTaleAlias(objName);
+            String tmpTbl = getExecSession().getSparkSession().getRealTable(objName);
             if (tmpTbl != null)
                 objName = tmpTbl;
         } else if (tableNameCheck.checkIsGlobalTmpTable(objName)) {
             objName = objName.substring(2);
-        }
+        } else {
+            tempTblFlag = false;
+        }*/
 
         // generate sql
         String sqlStr = genSql(type);
@@ -168,7 +175,11 @@ public class ObjectIdCalculator extends BaseCalculator {
             obj = objArray[1];
         } else if (objArray.length == 1) {
             SparkSession ss = getExecSession().getSparkSession();
-            curDb = ss.sessionState().catalog().getCurrentDatabase();
+            if (tempTblFlag) {
+                curDb = TEMP_TBL_DB;
+            } else {
+                curDb = ss.sessionState().catalog().getCurrentDatabase();
+            }
             obj = objArray[0];
         }
         LOG.info("ObjectId check obj in database, sql: " + sqlStr + ", table: " + obj.toLowerCase() + ", db: " + curDb.toLowerCase());
