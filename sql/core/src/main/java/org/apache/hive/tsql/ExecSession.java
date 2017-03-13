@@ -6,6 +6,8 @@ import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.RootNode;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
+import org.apache.spark.sql.execution.SparkPlan;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -16,6 +18,9 @@ import java.util.Stack;
  * Created by zhongdg1 on 2016/11/29.
  */
 public class ExecSession {
+
+
+    private List<LogicalPlan> logicalPlans = new ArrayList<>();
     private TreeNode rootNode;
     private VariableContainer variableContainer;
     private SparkSession sparkSession;
@@ -46,6 +51,13 @@ public class ExecSession {
 
 //    }
 
+    public void addLogicalPlans(LogicalPlan plan){
+        logicalPlans.add(plan);
+    }
+
+    public List<LogicalPlan> getLogicalPlans() {
+        return logicalPlans;
+    }
 
     public boolean isReset() {
         return isReset;

@@ -3,6 +3,7 @@ package org.apache.hive.tsql.common;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 
 import java.sql.ResultSet;
 import java.util.Map;
@@ -50,6 +51,8 @@ public abstract class BaseStatement extends TreeNode {
         return sparkResultSet;*/
         //For testing end
         SparkSession sparkSession = getExecSession().getSparkSession();
+        LogicalPlan plan = sparkSession.sqlContext().sessionState().sqlParser().parsePlan(exeSql);
+        getExecSession().addLogicalPlans(plan);
         Dataset dataset = sparkSession.sql(exeSql);
         SparkResultSet sparkResultSet = new SparkResultSet(dataset);
         if(isAddResult()) {

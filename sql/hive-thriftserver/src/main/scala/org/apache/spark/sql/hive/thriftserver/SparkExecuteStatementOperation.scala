@@ -221,6 +221,7 @@ private[hive] class SparkExecuteStatementOperation(
       sqlContext.sparkContext.setLocalProperty("spark.scheduler.pool", pool)
     }
     var plan: LogicalPlan = null
+    var sqlServerPlans: java.util.List[LogicalPlan] = new util.ArrayList[LogicalPlan]()
     val sqlServerEngine = sqlContext.sessionState.
       conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
     try {
@@ -229,6 +230,7 @@ private[hive] class SparkExecuteStatementOperation(
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement)
         val sqlServerRs = procCli.getExecSession().getResultSets()
+        sqlServerPlans = procCli.getExecSession.getLogicalPlans
         if (null == sqlServerRs || sqlServerRs.size() == 0) {
           import sqlContext.implicits._
           result = sqlContext.sparkSession.createDataset(Seq[String]()).toDF()
@@ -293,7 +295,10 @@ private[hive] class SparkExecuteStatementOperation(
     } finally {
        clearCrudTableMap(plan)
       if (sqlServerEngine.equalsIgnoreCase("true")) {
+        clearCrudTableMapForSqlServer(sqlServerPlans)
         dropSqlserverTables
+      } else {
+        clearCrudTableMap(plan)
       }
 
     }
@@ -311,13 +316,19 @@ private[hive] class SparkExecuteStatementOperation(
     }
   }
 
+  private def clearCrudTableMapForSqlServer(plans: java.util.List[LogicalPlan]) = {
+    plans.toArray.foreach(p => {
+      clearCrudTableMap(p.asInstanceOf[LogicalPlan])
+    })
+  }
+
   private def clearCrudTableMap(plan: LogicalPlan) = {
     sqlContext.sparkContext.crudTbOperationRecordMap.keySet.foreach(
       t => logInfo(s"crud table: $t" ))
     if (plan.isInstanceOf[AcidDelCommand]) {
       val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
       val fullTableName: String = sqlContext.sparkSession.getFullTableName(tableIdent)
-       logInfo(s" del tableName:" + fullTableName)
+      logInfo(s" del tableName:" + fullTableName)
       sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
     } else if (plan.isInstanceOf[AcidUpdateCommand]) {
       val tableIdent = plan.asInstanceOf[AcidUpdateCommand].tableIdent
