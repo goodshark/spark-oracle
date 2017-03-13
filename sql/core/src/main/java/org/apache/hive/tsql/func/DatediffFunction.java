@@ -53,6 +53,9 @@ public class DatediffFunction extends BaseFunction {
 
         StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
+        if(rightExpr == null || leftExpr == null) {
+            return sb.toString();
+        }
         sb.append("(").append(rightExpr.getSql()).append(", ").append(leftExpr.getSql()).append(")");
         return sb.toString();
     }

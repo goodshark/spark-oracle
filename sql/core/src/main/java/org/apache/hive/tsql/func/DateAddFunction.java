@@ -53,6 +53,9 @@ public class DateAddFunction extends BaseFunction {
 
         StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
+        if(date == null || number == null) {
+            return sb.toString();
+        }
         sb.append("(").append(date.getSql()).append(", ").append(number.getSql()).append(")");
         return sb.toString();
     }
