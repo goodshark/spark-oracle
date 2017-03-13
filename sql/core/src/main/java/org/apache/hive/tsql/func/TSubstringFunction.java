@@ -2,6 +2,7 @@ package org.apache.hive.tsql.func;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.util.StrUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,7 +68,7 @@ public class TSubstringFunction extends BaseFunction {
                 .getFunctionAliasName(getName().getFullFuncName()));
         try {
             List<Var> vars = getExprsValues();
-            sb.append("(").append(vars.get(0).getVarValue()).append(", ").append(vars.get(1).getVarValue()).append(", ").append(vars.get(2).getVarValue()).append(")");
+            sb.append("(").append(StrUtils.addQuot(vars.get(0).getVarValue().toString())).append(", ").append(vars.get(1).getVarValue()).append(", ").append(vars.get(2).getVarValue()).append(")");
         } catch (Exception e) {
             e.printStackTrace();
         }
