@@ -41,6 +41,7 @@ public class ExpressionListStatement extends SqlStatement {
         }
         SparkResultSet rs = new SparkResultSet();
         Var exprsResults = new Var();
+        exprsResults.setVarName("list");
         exprsResults.setDataType(Var.DataType.LIST);
         try {
             List<Var> listVar=new ArrayList<>();

@@ -27,7 +27,9 @@ public class ScalarFunction extends BaseFunction {
         if (null != exprs) {
             exprs.setExecSession(getExecSession());
             exprs.execute();
-            results = (List<Var>) exprs.getRs().getObject(0);
+            Var resultVar = (Var) exprs.getRs().getObject(0);
+//            results = (List<Var>) exprs.getRs().getObject(0);
+            results = (List<Var>) resultVar.getVarValue();
         }
         System.out.println("Excuting function # " + this.getSql());
         doCall(results);

@@ -9,6 +9,7 @@ import org.apache.hive.tsql.util.StrUtils;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Created by zhongdg1 on 2016/12/1.
@@ -390,6 +391,12 @@ public class Var implements Serializable {
                 case DATETIME2:
                 case TIME:
                     return getDateStr();
+                case LIST:
+                    String res = "";
+                    for (Object obj: (List<Object>)getVarValue()) {
+                        res += obj.toString();
+                    }
+                    return res;
                 default:
                     break;
             }
