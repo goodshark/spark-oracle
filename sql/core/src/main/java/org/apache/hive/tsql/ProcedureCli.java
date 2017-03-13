@@ -17,9 +17,7 @@ import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by zhongdg1 on 2017/1/6.
@@ -86,7 +84,7 @@ public class ProcedureCli {
             Executor executor = new Executor(session);
             executor.run();
 
-            LOG.info("size is =======>"+session.getResultSets().size());
+            LOG.info("size is =======>" + session.getResultSets().size());
 
 
         } catch (Throwable e) {
@@ -123,19 +121,19 @@ public class ProcedureCli {
         GoStatement.clearGoSeq();
         //清理表变量
         if (null != session) {
-            HashSet<String> allAlias = new HashSet<String>();
+            HashMap<String, String> allAlias = new HashMap<>();
             for (String name : session.getVariableContainer().getAllTableVarNames()) {
                 String alias = session.getVariableContainer().findTableVarAlias(name);
                 if (StringUtils.isBlank(alias)) {
                     continue;
                 }
-                allAlias.add(alias);
+                allAlias.put(name, alias);
             }
-            HashSet<String> table = sparkSession.getSqlServerTable().get(1);
-            if(null!=table){
-                sparkSession.getSqlServerTable().get(1).addAll(allAlias);
-            }else{
-                sparkSession.getSqlServerTable().put(1,allAlias);
+            HashMap<String, String> table = sparkSession.getSqlServerTable().get(1);
+            if (null != table) {
+                sparkSession.getSqlServerTable().get(1).putAll(allAlias);
+            } else {
+                sparkSession.getSqlServerTable().put(1, allAlias);
             }
 
             /* for (String name : session.getVariableContainer().getAllTmpTableNames()) {
