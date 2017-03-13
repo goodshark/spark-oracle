@@ -237,8 +237,8 @@ private[hive] class SparkExecuteStatementOperation(
           // logInfo("sqlServer result is ==>" + result.queryExecution.toString())
         }
         val allTable = new util.HashSet[String]()
-        val tmpTable = sqlContext.sparkSession.getSqlServerTable.get(2)
-        val globalTable = sqlContext.sparkSession.getSqlServerTable.get(3)
+        val tmpTable = sqlContext.sparkSession.getTables(2)
+        val globalTable = sqlContext.sparkSession.getTables(3)
         if (null != tmpTable ) {
           allTable.addAll(tmpTable)
         }
@@ -304,21 +304,25 @@ private[hive] class SparkExecuteStatementOperation(
   private def dropSqlserverTables(): Unit = {
     val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
     if (null!=tableVar) {
-      val iterator = tableVar.iterator();
+      val iterator = tableVar.keySet().iterator()
       while (iterator.hasNext) {
-        sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + iterator.next())
+        sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + tableVar.get(iterator.next()))
       }
     }
   }
 
   private def clearCrudTableMap(plan: LogicalPlan) = {
+    sqlContext.sparkContext.crudTbOperationRecordMap.keySet.foreach(
+      t => logInfo(s"crud table: $t" ))
     if (plan.isInstanceOf[AcidDelCommand]) {
       val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
       val fullTableName: String = sqlContext.sparkSession.getFullTableName(tableIdent)
+       logInfo(s" del tableName:" + fullTableName)
       sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
     } else if (plan.isInstanceOf[AcidUpdateCommand]) {
       val tableIdent = plan.asInstanceOf[AcidUpdateCommand].tableIdent
       val fullTableName: String = sqlContext.sparkSession.getFullTableName(tableIdent)
+      logInfo(s" up tableName:" + fullTableName)
       sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
     } else if (plan.isInstanceOf[InsertIntoTable]) {
       val tableName = plan.asInstanceOf[InsertIntoTable].tableName
@@ -327,6 +331,7 @@ private[hive] class SparkExecuteStatementOperation(
       val fullTableName = sqlContext.sparkSession.getFullTableName(identifier)
       val tableMetadata = sqlContext.sessionState.catalog.getTableMetadata(
         new TableIdentifier(tableName, dbName))
+      logInfo(s" insert tableName:" + fullTableName)
       if (sqlContext.sessionState.catalog.checkAcidTable(tableMetadata)) {
         sqlContext.sparkContext.crudTbOperationRecordMap -= (fullTableName)
       }

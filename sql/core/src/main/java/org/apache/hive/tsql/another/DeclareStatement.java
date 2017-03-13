@@ -2,8 +2,8 @@ package org.apache.hive.tsql.another;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
+import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.common.TreeNode;
-import org.apache.hive.tsql.exception.AlreadyDeclaredException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +31,8 @@ public class DeclareStatement extends BaseStatement {
 //            }
             switch (var.getValueType()) {
                 case TABLE:
-                    String aliasName = productAliasName(var.getVarName());
+                    TmpTableNameUtils tableNameUtils =new  TmpTableNameUtils();
+                    String aliasName = tableNameUtils.getTableName(var.getVarName());
                     StringBuffer sb = new StringBuffer();
                     sb.append("CREATE TABLE ").append(aliasName).append("(").
                             append(var.getVarValue().toString()).append(")");
