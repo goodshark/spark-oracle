@@ -956,6 +956,8 @@ derived_table
 function_call
     : ranking_windowed_function             #ranking_win_function
     | aggregate_windowed_function           #aggregate_win_function
+    | LEFT '(' expression ',' expression ')'        #left_function
+    | RIGHT '(' expression ',' expression ')'      #right_function
     | scalar_function_name '(' expression_list? ')'     #scalar_function
     // https://msdn.microsoft.com/zh-cn/library/ms173784.aspx
     | BINARY_CHECKSUM '(' '*' ')'       #binary_checksum_function
