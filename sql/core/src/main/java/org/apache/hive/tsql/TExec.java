@@ -2559,10 +2559,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return function;
     }
 
-    @Override
-    public Object visitRanking_win_function(TSqlParser.Ranking_win_functionContext ctx) {
-        return super.visitRanking_win_function(ctx);
-    }
+//    @Override
+//    public Object visitRanking_win_function(TSqlParser.Ranking_win_functionContext ctx) {
+//        return super.visitRanking_win_function(ctx);
+//    }
 
     @Override
     public Object visitAggregate_win_function(TSqlParser.Aggregate_win_functionContext ctx) {
@@ -2931,8 +2931,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
 
     @Override
-    public String visitRanking_windowed_function(TSqlParser.Ranking_windowed_functionContext ctx) {
+    public TreeNode visitRanking_windowed_function(TSqlParser.Ranking_windowed_functionContext ctx) {
         StringBuffer sb = new StringBuffer();
+
         if (null != ctx.RANK()) {
             sb.append(ctx.RANK().getText());
         }
@@ -2942,20 +2943,30 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.ROW_NUMBER()) {
             sb.append(ctx.ROW_NUMBER().getText());
         }
-        sb.append("()");
+        String funcName = sb.toString();
+        if (sb.length() > 0) {
+            sb.append("() ");
+        }
+        if (null != ctx.NTILE()) {
+            sb.append(ctx.NTILE().getText());
+            sb.append("(");
+            sb.append(getExpressionSql(ctx.expression()));
+            sb.append(")");
+            funcName = ctx.NTILE().getText();
+        }
+
         if (null != ctx.over_clause()) {
             sb.append(visitOver_clause(ctx.over_clause()));
         }
-        if (null != ctx.NTILE()) {
-            sb.append(ctx.NTILE().getText()).append(Common.SPACE);
-        }
-        sb.append("(");
-        sb.append(getExpressionSql(ctx.expression()));
-        popStatement();
-        sb.append(")");
-        sb.append(visitOver_clause(ctx.over_clause()));
 
-        return sb.toString();
+//        popStatement();
+
+//        sb.append(visitOver_clause(ctx.over_clause()));
+        RankWindowFunction function = new RankWindowFunction(new FuncName(null, funcName, null));
+        sb.append(" ");
+        function.setSql(sb.toString());
+        pushStatement(function);
+        return function;
     }
 
     @Override
@@ -2966,6 +2977,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.PARTITION()) {
             rs.append(ctx.PARTITION().getText()).append(Common.SPACE);
             rs.append(ctx.BY().getText()).append(Common.SPACE);
+            popStatement();
             rs.append(visitExpression_list(ctx.expression_list()));
         }
         if (null != ctx.order_by_clause()) {
