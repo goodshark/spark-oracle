@@ -978,7 +978,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             gotoCmd.setAction();
         }
         // goSeq + label allow same label occured in different GO block
-        gotoCmd.setLabel(rootNode.currentGoStmt().getGoSeq()+label);
+        gotoCmd.setLabel(rootNode.currentGoStmt().getGoSeq() + label);
         pushStatement(gotoCmd);
         if (gotoCmd.getAction())
             rootNode.currentGoStmt().addGotoAction(gotoCmd);
@@ -2583,6 +2583,17 @@ public class TExec extends TSqlBaseVisitor<Object> {
         func.setRightExpr(popStatement());
         pushStatement(func);
         return func;
+    }
+
+
+    @Override
+    public TreeNode visitLen_function(TSqlParser.Len_functionContext ctx) {
+        LenFunction function = new LenFunction(new FuncName(null, "LEN", null));
+        visit(ctx.expression());
+        function.setExpr(popStatement());
+        pushStatement(function);
+        return function;
+
     }
 
     @Override
