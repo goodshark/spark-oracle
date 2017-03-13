@@ -2444,9 +2444,17 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitColumn_alias(TSqlParser.Column_aliasContext ctx) {
         //如果列名中含有空格和单引号，sparksql不支持，如 select name AS 'Time Range' from tb
+        //需要转化为`Time Range`
         String columnAliasName = ctx.getText().trim();
-        if (columnAliasName.contains("'") || columnAliasName.contains(" ")) {
-            addException("column alias has  single quotes", locate(ctx));
+        StringBuffer stringBuffer = new StringBuffer();
+        if (columnAliasName.indexOf("'")!=-1 || columnAliasName.lastIndexOf("'")!=-1 ) {
+            stringBuffer.append("`").append(columnAliasName.substring(1,columnAliasName.length()-1));
+            stringBuffer.append("`");
+            return stringBuffer.toString();
+        }else if(columnAliasName.indexOf("\"")!=-1&&columnAliasName.lastIndexOf("\"")!=-1){
+            stringBuffer.append("`").append(columnAliasName.substring(1,columnAliasName.length()-1));
+            stringBuffer.append("`");
+            return stringBuffer.toString();
         }
         return columnAliasName;
     }
