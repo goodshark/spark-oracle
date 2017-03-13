@@ -37,7 +37,7 @@ public class CursorStatusCalculator extends BaseCalculator {
             }
             cursor = getExecSession().getVariableContainer().findCursor(cursorName);
         } else {
-            throw new IllegalArgumentException("Function [CURSOR_STATUS] first argument must be local/global");
+            throw new IllegalArgumentException("Function [CURSOR_STATUS] first argument must be local/global/viriable");
         }
 
         if (null == cursor) {

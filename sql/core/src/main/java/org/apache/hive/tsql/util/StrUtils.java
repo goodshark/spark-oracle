@@ -1,5 +1,7 @@
 package org.apache.hive.tsql.util;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.List;
 
 /**
@@ -41,5 +43,21 @@ public class StrUtils {
         }
 
 
+    }
+
+
+    public static String trimRight(String str) {
+        if (StringUtils.isBlank(str)) {
+            return "";
+        }
+        int index = 0;
+        for (int i = str.length() - 1; i >= 0; i--) {
+            char c = str.charAt(i);
+            if (c != ' ') {
+                index = i;
+                break;
+            }
+        }
+        return str.substring(0, index + 1);
     }
 }
