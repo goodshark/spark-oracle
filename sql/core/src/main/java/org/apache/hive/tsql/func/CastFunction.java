@@ -34,7 +34,7 @@ public class CastFunction extends BaseFunction {
         expr.setExecSession(getExecSession());
         expr.execute();
 
-        Var result = (Var)expr.getRs().getObject(0);
+        Var result = ((Var)expr.getRs().getObject(0)).clone();
         result.setDataType(dataType);
         List<Var> results = new ArrayList<>();
         results.add(result);

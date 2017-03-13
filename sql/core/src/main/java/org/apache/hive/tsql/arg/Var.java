@@ -293,8 +293,9 @@ public class Var implements Serializable {
         return dataType;
     }
 
-    public void setDataType(DataType dataType) {
+    public Var setDataType(DataType dataType) {
         this.dataType = dataType;
+        return this;
     }
 
     public String getAliasName() {

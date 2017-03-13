@@ -16,9 +16,10 @@ public class DateDiffCalculator extends BaseCalculator {
     @Override
     public Var compute() throws Exception {
         String datePart = getArguments(0).getString(); //只支持天为单位
-        Date left = getArguments(1).getDate();
-        Date right = getArguments(2).getDate();
 
-        return new Var((right.getTime()-left.getTime())/(24*60*60*1000), Var.DataType.INT);
+        Date left = getArguments(1).setDataType(Var.DataType.DATE).getDate();
+        Date right = getArguments(2).setDataType(Var.DataType.DATE).getDate();
+
+        return new Var((right.getTime()-left.getTime())/(24*60*60*1000L), Var.DataType.INT);
     }
 }

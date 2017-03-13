@@ -41,8 +41,8 @@ public class DatediffFunction extends BaseFunction {
         rightExpr.execute();
         Var right = (Var) rightExpr.getRs().getObject(0);
         results.add(new Var(datePart, Var.DataType.STRING));
-        results.add(left);
-        results.add(right);
+        results.add(left.clone());
+        results.add(right.clone());
         System.out.println("Excuting function # " + this.getSql());
         doCall(results);
         return 0;
