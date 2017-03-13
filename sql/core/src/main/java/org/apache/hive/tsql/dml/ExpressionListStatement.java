@@ -40,13 +40,16 @@ public class ExpressionListStatement extends SqlStatement {
             return 1;
         }
         SparkResultSet rs = new SparkResultSet();
-        List<Var> exprsResults = new ArrayList<>();
+        Var exprsResults = new Var();
+        exprsResults.setDataType(Var.DataType.LIST);
         try {
+            List<Var> listVar=new ArrayList<>();
             for (TreeNode node : exprs) {
                 node.setExecSession(getExecSession());
                 node.execute();
-                exprsResults.add(node.getExpressionValue());
+                listVar.add(node.getExpressionValue());
             }
+            exprsResults.setVarValue(listVar);
             Row row = new Row(1);
             row.setValues(new Object[]{exprsResults});
             rs.addRow(row);
