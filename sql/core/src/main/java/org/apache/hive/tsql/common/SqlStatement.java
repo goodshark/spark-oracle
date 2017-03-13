@@ -2,7 +2,6 @@ package org.apache.hive.tsql.common;
 
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.spark.sql.catalyst.plans.logical.Except;
 
 import java.io.Serializable;
 
@@ -49,7 +48,7 @@ public class SqlStatement extends BaseStatement implements Serializable {
         if (tableName.indexOf("@") != -1) {
             realTableName = findTableVarAlias(tableName);
         } else if (tableNameUtils.checkIsGlobalTmpTable(tableName)) {
-            realTableName = tableNameUtils.createTableName(tableName);
+            realTableName = tableNameUtils.getTableName(tableName);
         } else if(tableNameUtils.checkIsTmpTable(tableName)){
             realTableName=findTmpTaleAlias(tableName);
         } else{
