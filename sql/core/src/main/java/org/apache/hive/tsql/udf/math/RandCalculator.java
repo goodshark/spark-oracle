@@ -18,8 +18,13 @@ public class RandCalculator extends BaseCalculator {
     public Var compute() throws Exception {
         int size = getSize();
         Var var = 1 == size ? getArguments(0) : null;
-        var.setVarValue(null == var ? Math.random() : new Random(Long.valueOf(var.getVarValue().toString())).nextDouble());
+        if (null == var) {
+            return new Var(Math.random(), Var.DataType.DOUBLE);
+        }
+        var.setVarValue(new Random(Long.valueOf(var.getVarValue().toString())).nextDouble());
         var.setDataType(Var.DataType.DOUBLE);
         return var;
     }
+
+
 }

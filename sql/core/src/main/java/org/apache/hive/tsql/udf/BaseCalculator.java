@@ -18,7 +18,7 @@ public abstract class BaseCalculator implements Calculator {
     private String funcName;
     private int minSize = 0;
     private int maxSize = Integer.MAX_VALUE;
-    private int size = -1;
+    private int size = 0;
     private ExecSession execSession;
     private boolean checkNull = true;
 
@@ -43,7 +43,7 @@ public abstract class BaseCalculator implements Calculator {
         for(Var var : arguments) {
             this.arguments.add(var.clone());
         }
-        size = null == arguments ? 0 : arguments.size();
+        size = this.arguments.size();
         return this;
     }
 
