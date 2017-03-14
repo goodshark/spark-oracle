@@ -106,8 +106,9 @@ public class Executor {
             }
         } catch (Exception e) {
             // throw statement exception, if stmt in try-catch, handle it
+            e.printStackTrace();
             ThrowStatement throwStmt = new ThrowStatement(TreeNode.Type.THROW);
-            throwStmt.setMsg(e.getMessage());
+            throwStmt.setMsg(e.toString());
             // TODO make error number map error msg
             throwStmt.setStateNumStr("200");
             throwStmt.setErrorNumStr("60000");
