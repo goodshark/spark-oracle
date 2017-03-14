@@ -151,19 +151,10 @@ public class ObjectIdCalculator extends BaseCalculator {
         // transform table name into real table name
         boolean tempTblFlag = true;
         String tmpTbl = getExecSession().getSparkSession().getRealTable(objName);
+        LOG.info("ObjectId check obj in database, get real table: " + tmpTbl);
         if (tmpTbl.equalsIgnoreCase(objName))
             tempTblFlag = false;
         objName = tmpTbl;
-        /*TmpTableNameUtils tableNameCheck = new TmpTableNameUtils();
-        if (tableNameCheck.checkIsTmpTable(objName)) {
-            String tmpTbl = getExecSession().getSparkSession().getRealTable(objName);
-            if (tmpTbl != null)
-                objName = tmpTbl;
-        } else if (tableNameCheck.checkIsGlobalTmpTable(objName)) {
-            objName = objName.substring(2);
-        } else {
-            tempTblFlag = false;
-        }*/
 
         // generate sql
         String sqlStr = genSql(type);
