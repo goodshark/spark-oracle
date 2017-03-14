@@ -124,7 +124,7 @@ public class PredicateNode extends LogicNode {
         BaseStatement expr = (BaseStatement) exprList.get(0);
 
         if (!exec) {
-            predicateStr = "EXISTS" + expr.getSql();
+            predicateStr = "EXISTS (" + expr.getSql() + " ) ";
             return true;
         }
 
@@ -452,7 +452,7 @@ public class PredicateNode extends LogicNode {
         TreeNode expr = exprList.get(0);
         if (!exec) {
             String not = notComp ? " NOT" : "";
-            predicateStr = expr.getSql() + " IS" + not + " NULL";
+            predicateStr = expr.getSql() + " IS" + not + " NULL ";
             return true;
         }
 
