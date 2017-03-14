@@ -1786,8 +1786,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         UpdateStatement updateStatement = new UpdateStatement(Common.UPDATE);
         StringBuffer sql = new StringBuffer();
         cleanTableVariable();
+        withFlag = true;
         if (null != ctx.with_expression()) {
-           visitWith_expression(ctx.with_expression());
+            visitWith_expression(ctx.with_expression());
         }
         sql.append(ctx.UPDATE().getText()).append(Common.SPACE);
         if (null != ctx.TOP()) {
@@ -1908,6 +1909,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public SqlStatement visitDelete_statement(TSqlParser.Delete_statementContext ctx) {
         DeleteStatement deleteStatement = new DeleteStatement(Common.DELETE);
         cleanTableVariable();
+        withFlag = true;
         StringBuffer sql = new StringBuffer();
         if (null != ctx.with_expression()) {
             visitWith_expression(ctx.with_expression());
@@ -2272,7 +2274,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         stringBuffer.append(visitId(ctx.id())).append(Common.SPACE);
         stringBuffer.append("as (").append(Common.SPACE);
-        String sql=visitSelect_statement(ctx.select_statement())
+        String sql = visitSelect_statement(ctx.select_statement())
                 .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE);
         stringBuffer.append(sql);
         withExpressionSqlMap.put(visitId(ctx.id()), sql);
@@ -3510,6 +3512,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return "";
     }
 
+    private boolean withFlag = false;
+
+    /**
+     * 只有在update,del時才替換
+     *
+     * @param ctx
+     * @return
+     */
+
     @Override
     public String visitTable_name_with_hint(TSqlParser.Table_name_with_hintContext ctx) {
         StringBuffer rs = new StringBuffer();
@@ -3517,7 +3528,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         /**
          * 如果写了with表达式，将替换为子查询，如果没有则直接写表名
          */
-        if (withExpressionSqlMap.containsKey(tableName)) {
+        if (withExpressionSqlMap.containsKey(tableName) && withFlag) {
             rs.append("( ");
             rs.append(withExpressionSqlMap.get(tableName));
             rs.append(") " + tableName);

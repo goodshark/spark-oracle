@@ -4,6 +4,7 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.util.StrUtils;
 
+import java.io.Serializable;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.List;
@@ -12,8 +13,10 @@ import java.util.List;
 /**
  * Created by wangsm9 on 2016/12/7.
  */
-public class ExpressionStatement extends SqlStatement {
+public class ExpressionStatement extends SqlStatement implements Serializable {
 
+
+    private static final long serialVersionUID = -7592904882343118467L;
 
     public ExpressionStatement(ExpressionBean expressionBean) {
         this.expressionBean = expressionBean;
