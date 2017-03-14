@@ -153,6 +153,7 @@ public class ObjectIdCalculator extends BaseCalculator {
         String tmpTbl = getExecSession().getSparkSession().getRealTable(objName);
         if (tmpTbl.equalsIgnoreCase(objName))
             tempTblFlag = false;
+        objName = tmpTbl;
         /*TmpTableNameUtils tableNameCheck = new TmpTableNameUtils();
         if (tableNameCheck.checkIsTmpTable(objName)) {
             String tmpTbl = getExecSession().getSparkSession().getRealTable(objName);
