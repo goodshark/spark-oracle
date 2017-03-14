@@ -2806,6 +2806,32 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     @Override
+    public Object visitLeft_function(TSqlParser.Left_functionContext ctx) {
+        LeftFunction function = new LeftFunction(new FuncName(null, "left", null));
+        List<TreeNode> exprList = new ArrayList<TreeNode>();
+        visit(ctx.expression().get(0));
+        exprList.add(popStatement());
+        visit(ctx.expression().get(1));
+        exprList.add(popStatement());
+        function.setExprList(exprList);
+        pushStatement(function);
+        return function;
+    }
+
+    @Override
+    public Object visitRight_function(TSqlParser.Right_functionContext ctx) {
+        RightFunction function = new RightFunction(new FuncName(null, "right", null));
+        List<TreeNode> exprList = new ArrayList<TreeNode>();
+        visit(ctx.expression().get(0));
+        exprList.add(popStatement());
+        visit(ctx.expression().get(1));
+        exprList.add(popStatement());
+        function.setExprList(exprList);
+        pushStatement(function);
+        return visitChildren(ctx);
+    }
+
+    @Override
     public Object visitIsnull_function(TSqlParser.Isnull_functionContext ctx) {
         IsNullFunction func = new IsNullFunction(new FuncName(null, "ISNULL", null));
         List<TSqlParser.ExpressionContext> list = ctx.expression();
