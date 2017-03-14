@@ -44,15 +44,10 @@ public class SqlStatement extends BaseStatement implements Serializable {
 
     public String getRealTableName(String tableName)throws Exception{
         String realTableName = "";
-        TmpTableNameUtils tableNameUtils = new TmpTableNameUtils();
         if (tableName.indexOf("@") != -1) {
             realTableName = findTableVarAlias(tableName);
-        } else if (tableNameUtils.checkIsGlobalTmpTable(tableName)) {
-            realTableName = tableNameUtils.getTableName(tableName);
-        } else if(tableNameUtils.checkIsTmpTable(tableName)){
-            realTableName=findTmpTaleAlias(tableName);
-        } else{
-            realTableName = tableName;
+        } else {
+            realTableName=getExecSession().getSparkSession().getRealTable(tableName);
         }
         if(StringUtils.isBlank(realTableName)){
             throw new Exception("Table "+ tableName +" is not  exist ");

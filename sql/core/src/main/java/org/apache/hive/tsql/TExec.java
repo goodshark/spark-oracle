@@ -1538,7 +1538,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SqlStatement rs = new SqlStatement();
         StringBuffer sql = new StringBuffer();
         sql.append(ctx.DROP().getText()).append(Common.SPACE);
-        sql.append(ctx.PROCEDURE().getText()).append(Common.SPACE);
+        sql.append("proc").append(Common.SPACE);
         if (null != ctx.IF()) {
             sql.append(ctx.IF().getText()).append(Common.SPACE);
         }

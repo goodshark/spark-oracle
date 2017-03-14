@@ -106,7 +106,7 @@ class SparkSession private(
   }
 
   def getRealTable(tableAliaName: String): String = {
-    var tbName: String = ""
+    var tbName: String = tableAliaName
     val iterator = sqlServerTable.keySet().iterator()
     while (iterator.hasNext) {
       val m = sqlServerTable.get(iterator.next())

@@ -25,8 +25,7 @@ public class TmpTableNameUtils {
             sb.append("tmp.");
             int index = tableName.indexOf(TMP2);
             sb.append("global_");
-            sb.append(tableName.substring(index + 2, tableName.length())).append("_");
-            sb.append(productTableName());
+            sb.append(tableName.substring(index + 2, tableName.length()));
             return sb.toString();
         } else if (checkIsTmpTable(tableName)) {
             sb.append("tmp.");
