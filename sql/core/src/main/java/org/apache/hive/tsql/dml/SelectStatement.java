@@ -125,7 +125,8 @@ public class SelectStatement extends SqlStatement {
                     throw new Exception("variable:" + s + " not defined");
                 }
 //                String value = v.getVarValue().toString();
-                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? StrUtils.addQuot(""): StrUtils.addQuot(v.getVarValue().toString()));
+//                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? StrUtils.addQuot(""): StrUtils.addQuot(v.getVarValue().toString()));
+                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? "null": StrUtils.addQuot(v.getVarValue().toString()));
             }
         }
     }
