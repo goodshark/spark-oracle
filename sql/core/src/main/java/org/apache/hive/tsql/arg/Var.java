@@ -19,8 +19,9 @@ public class Var implements Serializable {
 
     private static final long serialVersionUID = -1631515791432293303L;
 
+
     public enum DataType {
-        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, DATETIME, DATETIME2, TIME, LIST,TIMESTAMP,BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION, BYTE, DECIMAL
+        STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, DATETIME, DATETIME2, TIME, LIST, TIMESTAMP, BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION, BYTE, DECIMAL
     }
 
     public enum ValueType {
@@ -284,6 +285,34 @@ public class Var implements Serializable {
         return varValue;
     }
 
+
+    public String getExecString() {
+        if (null == varValue) {
+            return null;
+        }
+        String val = varValue.toString();
+        switch (dataType) {
+            case INT:
+            case INTEGER:
+            case FLOAT:
+            case DOUBLE:
+            case LONG:
+                return StrUtils.trimQuot(val.toString());
+            case STRING:
+            case VARCHAR:
+                val = StrUtils.addQuot(val);
+                break;
+            case DATE:
+                if (varValue instanceof String) {
+                    varValue = StrUtils.addQuot(val);
+                }
+                break;
+            default:
+                break;
+        }
+        return val;
+    }
+
     public void setVarValue(Object varValue) {
         this.varValue = varValue;
 
@@ -394,7 +423,7 @@ public class Var implements Serializable {
                     return getDateStr();
                 case LIST:
                     String res = "";
-                    for (Object obj: (List<Object>)getVarValue()) {
+                    for (Object obj : (List<Object>) getVarValue()) {
                         res += obj.toString();
                     }
                     return res;

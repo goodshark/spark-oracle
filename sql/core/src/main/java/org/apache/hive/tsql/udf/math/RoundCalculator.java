@@ -3,9 +3,6 @@ package org.apache.hive.tsql.udf.math;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.udf.BaseCalculator;
 
-import java.math.RoundingMode;
-import java.text.NumberFormat;
-
 /**
  * Created by zhongdg1 on 2017/1/19.
  */
@@ -25,12 +22,19 @@ public class RoundCalculator extends BaseCalculator {
     }
 
     private double round(Double source, int length) {
-        if (length < 0) {
-            return 0;
-        }
-        NumberFormat nf = NumberFormat.getNumberInstance();
-        nf.setMaximumFractionDigits(length);
-        nf.setRoundingMode(RoundingMode.DOWN);
-        return Double.valueOf(nf.format(source));
+//        if (length < 0) {
+//            return 0;
+//        }
+
+//        NumberFormat nf = NumberFormat.getNumberInstance();
+//        nf.setMaximumFractionDigits(length);
+//        nf.setRoundingMode(RoundingMode.UP);
+//        return Double.valueOf(nf.format(source));
+        double temp = Math.pow(10, length);
+        return Math.round(source * temp) / temp;
+
+
     }
+
+
 }
