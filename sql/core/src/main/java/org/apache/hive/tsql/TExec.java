@@ -3055,7 +3055,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             rs.append(ctx.PARTITION().getText()).append(Common.SPACE);
             rs.append(ctx.BY().getText()).append(Common.SPACE);
             popStatement();
-            rs.append(visitExpression_list(ctx.expression_list()));
+            rs.append(visitExpression_list(ctx.expression_list()).getSql());
         }
         if (null != ctx.order_by_clause()) {
             rs.append(visitOrder_by_clause(ctx.order_by_clause()));
