@@ -2,6 +2,7 @@ package org.apache.hive.tsql.func;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.util.StrUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,7 @@ public class RightFunction extends BaseFunction {
         String leftStr = str.substring(0, str.length() - len);
         String rightStr = str.substring(str.length() - len);
         String targetStr = rightStr + leftStr;
-        argSB.append(targetStr).append(",");
+        argSB.append(StrUtils.addQuot(targetStr)).append(",");
         Var newStrVar = new Var("new str", targetStr, Var.DataType.STRING);
         argList.clear();
         argList.add(newStrVar);
