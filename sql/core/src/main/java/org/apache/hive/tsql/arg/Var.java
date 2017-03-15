@@ -303,11 +303,14 @@ public class Var implements Serializable {
                 val = StrUtils.addQuot(val);
                 break;
             case DATE:
+            case DATETIME:
+            case DATETIME2:
                 if (varValue instanceof String) {
-                    varValue = StrUtils.addQuot(val);
+                    val = StrUtils.addQuot(val);
                 }
                 break;
             default:
+                val = StrUtils.addQuot(val);
                 break;
         }
         return val;
