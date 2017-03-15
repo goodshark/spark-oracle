@@ -47,6 +47,13 @@ public class DateNameFunction extends BaseFunction {
         StringBuffer sb = new StringBuffer(getFunctionAliasName());
         Var v = new Var(expr.getSql(), Var.DataType.DATETIME);
         try {
+            if(null == v.getVarValue()) {
+                return sb.toString();
+            }
+            if(v.getVarValue().toString().charAt(0) == '@') {
+                return sb.append(expr.getSql()).append(")").toString();
+            }
+
             sb.append("(").append(StrUtils.addQuot(v.getDateStr())).append(")");
         } catch (ParseException e) {
             e.printStackTrace();

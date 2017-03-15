@@ -67,8 +67,10 @@ public class TSubstringFunction extends BaseFunction {
         StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
         try {
-            List<Var> vars = getExprsValues();
-            sb.append("(").append(StrUtils.addQuot(vars.get(0).getVarValue().toString())).append(", ").append(vars.get(1).getVarValue()).append(", ").append(vars.get(2).getVarValue()).append(")");
+//            List<Var> vars = getExprsValues();
+//            sb.append("(").append(StrUtils.addQuot(vars.get(0).getVarValue().toString())).append(", ").append(vars.get(1).getVarValue()).append(", ").append(vars.get(2).getVarValue()).append(")");
+            sb.append("(").append(leftExpr.getSql()).append(", ").append(midExpr.getSql()).append(", ").append(rightExpr.getSql()).append(")");
+
         } catch (Exception e) {
             e.printStackTrace();
         }

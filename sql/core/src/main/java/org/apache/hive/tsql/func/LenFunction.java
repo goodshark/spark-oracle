@@ -41,11 +41,13 @@ public class LenFunction extends BaseFunction {
         StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
         try {
-            expr.setExecSession(getExecSession());
-            expr.setAddResult(false);
-            expr.execute();
-            Var val = new Var(((Var) expr.getRs().getObject(0)).getVarValue(), Var.DataType.STRING);
-            sb.append("(").append(StrUtils.addQuot(StrUtils.trimRight(val.getVarValue().toString()))).append(")");
+//            expr.setExecSession(getExecSession());
+//            expr.setAddResult(false);
+//            expr.execute();
+//            Var val = new Var(((Var) expr.getRs().getObject(0)).getVarValue(), Var.DataType.STRING);
+//            sb.append("(").append(StrUtils.addQuot(StrUtils.trimRight(val.getVarValue().toString()))).append(")");
+            sb.append("(").append(expr.getSql()).append(")");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
