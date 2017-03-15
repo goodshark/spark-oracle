@@ -1,9 +1,11 @@
 package org.apache.hive.tsql;
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.VariableContainer;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.RootNode;
+import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
@@ -109,5 +111,24 @@ public class ExecSession {
 
     public String getErrorStr() {
         return errorStr;
+    }
+
+
+    public String getRealTableName(String tableName)throws Exception{
+        TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
+        String realTableName = "";
+        if (tableName.indexOf("@") != -1) {
+            realTableName = getVariableContainer().findTableVarAlias(tableName);
+        } else if(tmpTableNameUtils.checkIsTmpTable(tableName)){
+            realTableName=sparkSession.getRealTable(tableName);
+        }else if(tmpTableNameUtils.checkIsGlobalTmpTable(tableName)){
+            realTableName=tmpTableNameUtils.getGlobalTbName(tableName);
+        }else{
+            realTableName=tableName;
+        }
+        if(StringUtils.isBlank(realTableName)){
+            throw new Exception("Table "+ tableName +" is not  exist ");
+        }
+        return  realTableName;
     }
 }

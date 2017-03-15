@@ -150,7 +150,7 @@ public class ObjectIdCalculator extends BaseCalculator {
         LOG.info("ObjectId check obj in database, type: " + type);
         // transform table name into real table name
         boolean tempTblFlag = true;
-        String tmpTbl = getExecSession().getSparkSession().getRealTable(objName);
+        String tmpTbl = getExecSession().getRealTableName(objName);
         LOG.info("ObjectId check obj in database, get real table: " + tmpTbl);
         if (tmpTbl.equalsIgnoreCase(objName))
             tempTblFlag = false;
