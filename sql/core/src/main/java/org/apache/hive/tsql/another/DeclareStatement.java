@@ -32,7 +32,7 @@ public class DeclareStatement extends BaseStatement {
             switch (var.getValueType()) {
                 case TABLE:
                     TmpTableNameUtils tableNameUtils =new  TmpTableNameUtils();
-                    String aliasName = tableNameUtils.getTableName(var.getVarName());
+                    String aliasName = tableNameUtils.createTableName(var.getVarName());
                     StringBuffer sb = new StringBuffer();
                     sb.append("CREATE TABLE ").append(aliasName).append("(").
                             append(var.getVarValue().toString()).append(")");

@@ -5,8 +5,6 @@ import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.common.TmpTableNameUtils;
 import java.util.HashMap;
 
-import java.util.HashSet;
-
 /**
  * Created by wangsm9 on 2017/1/4.
  */
@@ -22,7 +20,7 @@ public class CreateTableStatement extends SqlStatement {
         StringBuffer sb = new StringBuffer();
         sb.append("CREATE TABLE ");
         TmpTableNameUtils tableNameUtils = new TmpTableNameUtils();
-        String tableAliasName = tableNameUtils.getTableName(tableName);
+        String tableAliasName = tableNameUtils.createTableName(tableName);
         sb.append(tableAliasName)
                 .append(" (")
                 .append(columnDefs)

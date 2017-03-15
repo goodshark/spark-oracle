@@ -18,15 +18,11 @@ public class TmpTableNameUtils {
     private static final String STR = "@";
 
 
-    public String getTableName(String tableName) {
+    public String createTableName(String tableName) {
         StringBuffer sb = new StringBuffer();
         //TODO GET FROM HADOOP CONF
         if (checkIsGlobalTmpTable(tableName)) {
-            sb.append("tmp.");
-            int index = tableName.indexOf(TMP2);
-            sb.append("global_");
-            sb.append(tableName.substring(index + 2, tableName.length()));
-            return sb.toString();
+            return getGlobalTbName(tableName);
         } else if (checkIsTmpTable(tableName)) {
             sb.append("tmp.");
             int index = tableName.lastIndexOf(TMP);
@@ -44,6 +40,15 @@ public class TmpTableNameUtils {
         } else {
             return tableName;
         }
+    }
+
+    public String getGlobalTbName(String tableName) {
+        StringBuffer sb = new StringBuffer();
+        sb.append("tmp.");
+        int index = tableName.indexOf(TMP2);
+        sb.append("global_");
+        sb.append(tableName.substring(index + 2, tableName.length()));
+        return sb.toString();
     }
 
     public boolean checkIsTmpTable(String tbName) {
@@ -65,6 +70,8 @@ public class TmpTableNameUtils {
         sb.append(System.currentTimeMillis()).append("_").append(new Random().nextInt(1000));
         return sb.toString();
     }
+
+
 
 
 }

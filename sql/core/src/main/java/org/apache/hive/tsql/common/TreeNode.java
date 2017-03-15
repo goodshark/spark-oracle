@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.arg.Var;
@@ -252,5 +253,23 @@ public abstract class TreeNode implements Serializable {
 
     public GoStatement currentGoStmt() {
         return goStmt;
+    }
+
+    public String getRealTableName(String tableName)throws Exception{
+        TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
+        String realTableName = "";
+        if (tableName.indexOf("@") != -1) {
+            realTableName = findTableVarAlias(tableName);
+        } else if(tmpTableNameUtils.checkIsTmpTable(tableName)){
+            realTableName=getExecSession().getSparkSession().getRealTable(tableName);
+        }else if(tmpTableNameUtils.checkIsGlobalTmpTable(tableName)){
+            realTableName=tmpTableNameUtils.getGlobalTbName(tableName);
+        }else{
+            realTableName=tableName;
+        }
+        if(StringUtils.isBlank(realTableName)){
+            throw new Exception("Table "+ tableName +" is not  exist ");
+        }
+        return  realTableName;
     }
 }

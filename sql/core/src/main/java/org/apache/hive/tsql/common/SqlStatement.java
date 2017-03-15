@@ -41,18 +41,4 @@ public class SqlStatement extends BaseStatement implements Serializable {
         return sql.replaceAll(tableName, realTableName);
     }
 
-
-    public String getRealTableName(String tableName)throws Exception{
-        String realTableName = "";
-        if (tableName.indexOf("@") != -1) {
-            realTableName = findTableVarAlias(tableName);
-        } else {
-            realTableName=getExecSession().getSparkSession().getRealTable(tableName);
-        }
-        if(StringUtils.isBlank(realTableName)){
-            throw new Exception("Table "+ tableName +" is not  exist ");
-        }
-        return  realTableName;
-    }
-
 }
