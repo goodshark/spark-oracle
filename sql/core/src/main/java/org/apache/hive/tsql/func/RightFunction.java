@@ -33,16 +33,26 @@ public class RightFunction extends BaseFunction {
         Var strVar = argList.get(0);
         String str = strVar.getVarValue().toString();
         Var lenVar = argList.get(1);
+        argList.clear();
         if (lenVar == null || lenVar.getVarValue() == null || lenVar.getDataType() == Var.DataType.NULL)
             throw new Exception("right 2 arg is not number");
         int len = Integer.parseInt(lenVar.getVarValue().toString());
-        String leftStr = str.substring(0, str.length() - len);
-        String rightStr = str.substring(str.length() - len);
-        String targetStr = rightStr + leftStr;
-        argSB.append(StrUtils.addQuot(targetStr)).append(",");
-        Var newStrVar = new Var("new str", targetStr, Var.DataType.STRING);
-        argList.clear();
-        argList.add(newStrVar);
+        if (len < 0) {
+            throw new Exception("right function second arg is illegal: " + len);
+        } else if (len == 0) {
+            argSB.append(StrUtils.addQuot("")).append(",");
+            Var newStrVar = new Var("new str", "", Var.DataType.STRING);
+            argList.add(newStrVar);
+        } else {
+            if (len >= str.length())
+                len = str.length();
+            String leftStr = str.substring(0, str.length() - len);
+            String rightStr = str.substring(str.length() - len);
+            String targetStr = rightStr + leftStr;
+            argSB.append(StrUtils.addQuot(targetStr)).append(",");
+            Var newStrVar = new Var("new str", targetStr, Var.DataType.STRING);
+            argList.add(newStrVar);
+        }
         Var startIndex = new Var("startIndex", 0, Var.DataType.INT);
         argSB.append("0, ");
         argList.add(startIndex);
