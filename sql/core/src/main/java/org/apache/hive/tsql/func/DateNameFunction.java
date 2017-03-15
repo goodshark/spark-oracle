@@ -2,7 +2,9 @@ package org.apache.hive.tsql.func;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.util.StrUtils;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +45,12 @@ public class DateNameFunction extends BaseFunction {
     public String getSql() {
 
         StringBuffer sb = new StringBuffer(getFunctionAliasName());
-        sb.append("(").append(expr.getSql()).append(")");
+        Var v = new Var(expr.getSql(), Var.DataType.DATETIME);
+        try {
+            sb.append("(").append(StrUtils.addQuot(v.getDateStr())).append(")");
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
         return sb.toString();
     }
 

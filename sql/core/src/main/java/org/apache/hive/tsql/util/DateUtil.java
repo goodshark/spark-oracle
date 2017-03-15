@@ -72,7 +72,7 @@ public class DateUtil {
         strDate = StrUtils.trimQuot(strDate);
         StringBuffer sb = new StringBuffer();
         if(strDate.indexOf("-") == -1) {
-            sb.append("1970-01-01 ");
+            sb.append("1900-01-01 ");
         }
         sb.append(strDate);
         int indexFirst = strDate.indexOf(":");
