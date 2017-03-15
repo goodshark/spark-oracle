@@ -37,7 +37,7 @@ public class SqlStatement extends BaseStatement implements Serializable {
      * @param sql
      */
     public String replaceTableName(String tableName, String sql) throws Exception {
-        String realTableName = getRealTableName(tableName);
+        String realTableName =getExecSession().getRealTableName(tableName);
         return sql.replaceAll(tableName, realTableName);
     }
 
