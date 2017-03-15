@@ -953,6 +953,10 @@ derived_table
     | '(' subquery ')'
     ;
 
+//cast_and_add
+//    : function_call '+' DECIMAL (DAYS|HOURS|YEARS|MINUTES)
+//    ;
+
 function_call
     : ranking_windowed_function             #ranking_win_function
     | aggregate_windowed_function           #aggregate_win_function
@@ -964,6 +968,7 @@ function_call
     // https://msdn.microsoft.com/zh-cn/library/hh231076.aspx
     // https://msdn.microsoft.com/zh-cn/library/ms187928.aspx
     | CAST '(' expression AS data_type ')'      #cast_function
+    | function_call '+' DECIMAL (DAYS|HOURS|YEARS|MINUTES)              #cast_and_add
     | CONVERT '(' data_type ',' expression (',' style=expression)? ')'      #convert_function
     // https://msdn.microsoft.com/zh-cn/library/ms189788.aspx
     | CHECKSUM '(' '*' ')'          #checksum_function
@@ -997,6 +1002,8 @@ function_call
     | TRIM '(' (expression FROM)? expression ')'    #trim_function
     | LEN '(' expression ')'                       #len_function
     ;
+
+
 
 switch_section
     : WHEN expression THEN expression
