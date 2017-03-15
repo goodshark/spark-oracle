@@ -2679,6 +2679,37 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     @Override
+    public BaseFunction visitCast_and_add(TSqlParser.Cast_and_addContext ctx) {
+        visit(ctx.function_call());
+        TreeNode expr = popStatement();
+        int incr = Integer.parseInt(ctx.DECIMAL().getText());
+        String unitStr = null;
+        if (null != ctx.DAYS()) {
+            unitStr = ctx.DAYS().getText();
+        }
+        if (null != ctx.YEARS()) {
+            unitStr = ctx.YEARS().getText();
+        }
+        if (null != ctx.MINUTES()) {
+            unitStr = ctx.MINUTES().getText();
+        }
+        if (null != ctx.HOURS()) {
+            unitStr = ctx.HOURS().getText();
+        }
+        TimeUnit unit = TimeUnit.valueOf(unitStr.toUpperCase());
+        if (unit != TimeUnit.DAYS) {
+            addException("Only support DAYS", locate(ctx));
+        }
+
+        CastAndAddFunction function = new CastAndAddFunction(new FuncName(null, "CastAndAdd", null));
+        function.setExpr(expr);
+        function.setIncr(incr);
+        function.setTimeUnit(unit);
+        pushStatement(function);
+        return function;
+    }
+
+    @Override
     public BaseFunction visitConvert_function(TSqlParser.Convert_functionContext ctx) {
         ConvertFunction function = new ConvertFunction(new FuncName(null, "CONVERT", null));
         visit(ctx.expression().get(0));

@@ -29,6 +29,10 @@ public class CastFunction extends BaseFunction {
         this.dataType = dataType;
     }
 
+    public TreeNode getExpr() {
+        return expr;
+    }
+
     @Override
     public int execute() throws Exception {
         expr.setExecSession(getExecSession());

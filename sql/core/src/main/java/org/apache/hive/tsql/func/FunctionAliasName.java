@@ -12,6 +12,7 @@ public class FunctionAliasName {
     private FunctionAliasName() {
         functionAliasNames.put("getdate".toUpperCase(), "now".toUpperCase());
         functionAliasNames.put("DATEADD".toUpperCase(), "date_add".toUpperCase());
+        functionAliasNames.put("CastAndAdd".toUpperCase(), "date_add".toUpperCase());
         functionAliasNames.put("SYSDATETIMEOFFSET".toUpperCase(), "now".toUpperCase());
         functionAliasNames.put("CHARINDEX".toUpperCase(), "locate".toUpperCase());
         functionAliasNames.put("STRING_SPLIT".toUpperCase(), "split".toUpperCase());
