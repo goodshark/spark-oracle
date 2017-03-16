@@ -18,23 +18,23 @@
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
-    <groupId>org.apache.spark</groupId>
-    <artifactId>spark-parent_2.11</artifactId>
-    <version>2.1.0</version>
-    <relativePath>../../pom.xml</relativePath>
-  </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-parent_2.11</artifactId>
+        <version>2.1.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
 
-  <artifactId>sqlserver-analytic-engine_2.11</artifactId>
-  <packaging>jar</packaging>
-  <name>Spark Project SQL</name>
-  <url>http://spark.apache.org/</url>
-  <properties>
-    <sbt.project.name>sql</sbt.project.name>
-  </properties>
-  <dependencies>
-    <dependency>
+    <artifactId>sqlserver-analytic-engine_2.11</artifactId>
+    <packaging>jar</packaging>
+    <name>Spark Project Sqlserver-analytic-engine</name>
+    <url>http://spark.apache.org/</url>
+    <properties>
+        <sbt.project.name>sql</sbt.project.name>
+    </properties>
+    <dependencies>
+        <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
@@ -49,11 +49,11 @@
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
         </dependency>
- </dependencies>
-  <build>
-    <outputDirectory>target/scala-${scala.binary.version}/classes</outputDirectory>
-    <testOutputDirectory>target/scala-${scala.binary.version}/test-classes</testOutputDirectory>
-      <plugins>
+    </dependencies>
+    <build>
+        <outputDirectory>target/scala-${scala.binary.version}/classes</outputDirectory>
+        <testOutputDirectory>target/scala-${scala.binary.version}/test-classes</testOutputDirectory>
+        <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -77,6 +77,7 @@
                 <configuration>
 
                     <obfuscate>true</obfuscate>
+
                     <options>
                         <!-- JDK目标版本1.7-->
                         <option>-target 1.7</option>
@@ -95,17 +96,21 @@
                         <option>-keeppackagenames</option>
                         <!-- 不混淆所有特殊的类-->
                         <option>-keepattributes
-                            Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,LocalVariable*Table,*Annotation*,Synthetic,EnclosingMethod
+                            Var,Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,LocalVariable*Table,*Annotation*,Synthetic,EnclosingMethod
                         </option>
                         <!-- 不混淆所有的set/get方法，毕竟项目中使用的部分第三方框架（例如Shiro）会用到大量的set/get映射-->
                         <option>-keepclassmembers public class * {void set*(***);*** get*();}</option>
 
                         <!-- 不混淆包下的所有类名，且类中的方法也不混淆-->
                         <option>-keep class org.apache.hive.tsql.ProcedureCli { *; }</option>
-                        <option>-keepnames class org.apache.hive.tsql.arg.Var {*;}</option>
-                        <option>-keepnames class org.apache.hive.tsql.ExecSession {*;} </option>
-                        <option>-keepnames class org.apache.hive.tsql.common.SparkResultSet {*;}</option>
-                        <option>-keepnames class  org.apache.hive.tsql.common.ColumnDataType {*;}</option>
+                        <option>-keep class org.apache.hive.tsql.ExecSession {*;}</option>
+                        <option>-keep class org.apache.hive.tsql.common.SparkResultSet {*;}</option>
+                        <option>-keep class org.apache.hive.tsql.common.ColumnDataType {*;}</option>
+                        <option>-keep class org.apache.hive.tsql.func.** {*;}</option>
+                        <option>-keep class org.apache.hive.tsql.udf.**{*;}</option>
+                        <option>-keep class org.apache.hive.tsql.arg.**{*;}</option>
+                       <!-- <option>-keepnames enum org.apache.hive.tsql.arg.Var {*;}</option>-->
+                        <!-- <option>-keepnames class org.apache.hive.tsql.var.*{*;}</option>-->
                         <!--<option>-keepnames class * implements java.io.Serializable</option>
                         <option>-keepclassmembers class * implements java.io.Serializable {
                             static final long serialVersionUID;
@@ -116,20 +121,14 @@
                             java.lang.Object readResolve();&ndash;&gt;
                             }
                         </option>-->
-                        <option>
-                            -keepclassmembers enum * {
-                            *;
-                            public static **[] values();
-                            public static ** valueOf(java.lang.String);
-                            }
-                        </option>
+                        <option>-keepclassmembers enum * {*;}</option>
 
                     </options>
                     <!-- 添加依赖，这里你可以按你的需要修改 -->
                     <libs>
                         <lib>${java.home}/lib/rt.jar</lib>
                     </libs>
-                   <!-- <injar>classes</injar>-->
+                    <!-- <injar>classes</injar>-->
                     <addMavenDescriptor>false</addMavenDescriptor>
                     <outjar>${project.build.finalName}.jar</outjar>
                     <outputDirectory>${project.build.directory}</outputDirectory>
@@ -144,6 +143,6 @@
                     </dependency>
                 </dependencies>
             </plugin>
-    </plugins>
-  </build>
+        </plugins>
+    </build>
 </project>
