@@ -17,11 +17,20 @@ public class SubStringCalculator extends BaseCalculator {
         String source = getArguments(0).getString();
         int beginIndex = getArguments(1).getInt();
         int length = getArguments(2).getInt();
-        if (length < 0) {
-            throw new IllegalArgumentException("Substring function argument length cannot less zero.");
-        }
-        if (beginIndex < 0 || length == 0) {
+        if (length <= 0) {
+//            throw new IllegalArgumentException("Substring function argument length cannot less zero.");
             return new Var("", Var.DataType.STRING);
+        }
+
+//        if (beginIndex < 0 || length == 0) {
+//            return new Var("", Var.DataType.STRING);
+//        }
+        if (beginIndex == 1) {
+            beginIndex = 0;
+        }
+
+        if (beginIndex < 0) {
+            beginIndex += source.length();
         }
 
         int endIndex = beginIndex + length;
