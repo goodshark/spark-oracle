@@ -105,6 +105,7 @@
     <module>sql/core</module>
     <module>sql/hive</module>
     <module>sql/hive-thriftserver</module>
+    <module>sql/sqlserver-analytic-engine</module>
     <module>assembly</module>
     <module>external/flume</module>
     <module>external/flume-sink</module>
