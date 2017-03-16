@@ -129,7 +129,7 @@
                     <libs>
                         <lib>${java.home}/lib/rt.jar</lib>
                     </libs>
-                    <injar>classes</injar>
+                   <!-- <injar>classes</injar>-->
                     <addMavenDescriptor>false</addMavenDescriptor>
                     <outjar>${project.build.finalName}-pg.jar</outjar>
                     <outputDirectory>${project.build.directory}</outputDirectory>
