@@ -131,7 +131,7 @@
                     </libs>
                    <!-- <injar>classes</injar>-->
                     <addMavenDescriptor>false</addMavenDescriptor>
-                    <outjar>${project.build.finalName}-pg.jar</outjar>
+                    <outjar>${project.build.finalName}.jar</outjar>
                     <outputDirectory>${project.build.directory}</outputDirectory>
                 </configuration>
                 <dependencies>
