@@ -25,6 +25,8 @@ public class StrUtils {
     }
 
     public static String trimQuot(String str) {
+        if (StringUtils.isBlank(str))
+            return str;
         if (str.trim().startsWith("'") && str.trim().endsWith("'"))
             str = str.trim();
         else

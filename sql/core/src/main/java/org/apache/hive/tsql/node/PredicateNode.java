@@ -7,6 +7,7 @@ import org.apache.hive.tsql.common.SparkResultSet;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.exception.CompareException;
 import org.apache.hive.tsql.exception.WrongArgNumberException;
+import org.apache.hive.tsql.util.StrUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -510,8 +511,8 @@ public class PredicateNode extends LogicNode {
             String patternStr = (String) patternVar.getVarValue();
 
             String realPattern = "";
-            patternStr = cutString(patternStr);
-            escapeStr = cutString(escapeStr);
+            patternStr = StrUtils.trimQuot(patternStr);
+            escapeStr = StrUtils.trimQuot(escapeStr);
             if (escapeStr == null)
                 realPattern = transformPattern(patternStr, null);
             else {
