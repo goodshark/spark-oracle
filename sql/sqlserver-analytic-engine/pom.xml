@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~    http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.apache.spark</groupId>
+    <artifactId>spark-parent_2.11</artifactId>
+    <version>2.1.0</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>sqlserver-analytic-engine_2.11</artifactId>
+  <packaging>jar</packaging>
+  <name>Spark Project SQL</name>
+  <url>http://spark.apache.org/</url>
+  <properties>
+    <sbt.project.name>sql</sbt.project.name>
+  </properties>
+  <dependencies>
+    <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-catalyst_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+ </dependencies>
+  <build>
+    <outputDirectory>target/scala-${scala.binary.version}/classes</outputDirectory>
+    <testOutputDirectory>target/scala-${scala.binary.version}/test-classes</testOutputDirectory>
+      <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.pyx4me</groupId>
+                <artifactId>proguard-maven-plugin</artifactId>
+                <version>2.0.4</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>proguard</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+
+                    <obfuscate>true</obfuscate>
+                    <options>
+                        <!-- JDK目标版本1.7-->
+                        <option>-target 1.7</option>
+                        <!-- 不做收缩（删除注释、未被引用代码）-->
+                        <option>-dontshrink</option>
+                        <!-- 不做优化（变更代码实现逻辑）-->
+                        <option>-dontoptimize</option>
+                        <!-- 不路过非公用类文件及成员-->
+                        <option>-dontskipnonpubliclibraryclasses</option>
+                        <option>-dontskipnonpubliclibraryclassmembers</option>
+                        <!-- 优化时允许访问并修改有修饰符的类和类的成员 -->
+                        <option>-allowaccessmodification</option>
+                        <!-- 确定统一的混淆类的成员名称来增加混淆,防止冲突-->
+                        <option>-useuniqueclassmembernames</option>
+                        <!-- 不混淆所有包名，Spring配置中有大量固定写法的包名-->
+                        <option>-keeppackagenames</option>
+                        <!-- 不混淆所有特殊的类-->
+                        <option>-keepattributes
+                            Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,LocalVariable*Table,*Annotation*,Synthetic,EnclosingMethod
+                        </option>
+                        <!-- 不混淆所有的set/get方法，毕竟项目中使用的部分第三方框架（例如Shiro）会用到大量的set/get映射-->
+                        <option>-keepclassmembers public class * {void set*(***);*** get*();}</option>
+
+                        <!-- 不混淆包下的所有类名，且类中的方法也不混淆-->
+                        <option>-keep class org.apache.hive.tsql.ProcedureCli { *; }</option>
+                        <option>-keepnames class org.apache.hive.tsql.arg.Var {*;}</option>
+                        <option>-keepnames class org.apache.hive.tsql.ExecSession {*;} </option>
+                        <option>-keepnames class org.apache.hive.tsql.common.SparkResultSet {*;}</option>
+                        <option>-keepnames class  org.apache.hive.tsql.common.ColumnDataType {*;}</option>
+                        <!--<option>-keepnames class * implements java.io.Serializable</option>
+                        <option>-keepclassmembers class * implements java.io.Serializable {
+                            static final long serialVersionUID;
+                          &lt;!&ndash;  private static final java.io.ObjectStreamField[] serialPersistentFields;
+                            private void writeObject(java.io.ObjectOutputStream);
+                            private void readObject(java.io.ObjectInputStream);
+                            java.lang.Object writeReplace();
+                            java.lang.Object readResolve();&ndash;&gt;
+                            }
+                        </option>-->
+                        <option>
+                            -keepclassmembers enum * {
+                            *;
+                            public static **[] values();
+                            public static ** valueOf(java.lang.String);
+                            }
+                        </option>
+
+                    </options>
+                    <!-- 添加依赖，这里你可以按你的需要修改 -->
+                    <libs>
+                        <lib>${java.home}/lib/rt.jar</lib>
+                    </libs>
+                    <injar>classes</injar>
+                    <addMavenDescriptor>false</addMavenDescriptor>
+                    <outjar>${project.build.finalName}-pg.jar</outjar>
+                    <outputDirectory>${project.build.directory}</outputDirectory>
+                </configuration>
+                <dependencies>
+                    <!-- 使用4.11版本来混淆 -->
+                    <dependency>
+                        <groupId>net.sf.proguard</groupId>
+                        <artifactId>proguard</artifactId>
+                        <version>4.11</version>
+                        <scope>runtime</scope>
+                    </dependency>
+                </dependencies>
+            </plugin>
+    </plugins>
+  </build>
+</project>
