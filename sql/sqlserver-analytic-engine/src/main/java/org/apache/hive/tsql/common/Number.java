@@ -10,7 +10,7 @@ import java.util.Set;
  */
 public class Number {
     public enum NumberType {
-        STRING(0), INT(1), LONG(2), FLOAT(3), DOUBLE(4);
+        STRING(0), INT(1),INTEGER(2), LONG(3), FLOAT(4), DOUBLE(5);
 
         private int priorty=1;
         NumberType(int i) {
@@ -50,6 +50,7 @@ public class Number {
         rs.setNumberType(rsNumberType);
         switch (rsNumberType){
             case INT:
+            case INTEGER:
                 rs.setValue(Integer.toString(rsValue.intValue()));
                 break;
             case FLOAT:
