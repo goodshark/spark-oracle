@@ -164,9 +164,10 @@ public class PredicateNode extends LogicNode {
             Var leftVal = (Var) leftRes.getObject(0);
             Var rightVal = (Var) rightRes.getObject(0);
             // TODO test only
-//            System.out.println(leftVal);
-//            System.out.println(rightVal);
+            //System.out.println("leftVal====>"+leftVal+",leftVal type is "+leftVal.getDataType().toString());
+           // System.out.println("rightVal====>"+rightVal+",right type is "+rightVal.getDataType().toString());
             int compRes = leftVal.compareTo(rightVal);
+            //System.out.println("compRes====>"+compRes);
             return getCompareResult(compRes);
         } catch (Exception e) {
             System.out.println("error");
