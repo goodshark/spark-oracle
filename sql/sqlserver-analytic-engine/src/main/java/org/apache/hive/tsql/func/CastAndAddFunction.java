@@ -11,9 +11,11 @@ import java.util.List;
  */
 public class CastAndAddFunction extends BaseFunction {
 
+
     private TreeNode expr;
     private int incr;
     private TimeUnit timeUnit = TimeUnit.DAYS;
+    private OPR operate;
 
     public CastAndAddFunction(FuncName name) {
         super(name);
@@ -29,6 +31,10 @@ public class CastAndAddFunction extends BaseFunction {
 
     public void setTimeUnit(TimeUnit timeUnit) {
         this.timeUnit = timeUnit;
+    }
+
+    public void setOperate(String operate) {
+        this.operate = OPR.createAop(operate);
     }
 
     @Override
@@ -47,7 +53,11 @@ public class CastAndAddFunction extends BaseFunction {
     public String getSql() {
         StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
-        sb.append("(").append(getExecSql(expr)).append(", ").append(incr).append(")");
+        sb.append("(").append(getExecSql(expr)).append(", ");
+        if (OPR.SUB == this.operate) {
+            sb.append("-");
+        }
+        sb.append(incr).append(")");
         return sb.toString();
     }
 
@@ -55,3 +65,5 @@ public class CastAndAddFunction extends BaseFunction {
         return expr instanceof CastFunction ? ((CastFunction) expr).getExpr().getSql() : expr.getSql();
     }
 }
+
+

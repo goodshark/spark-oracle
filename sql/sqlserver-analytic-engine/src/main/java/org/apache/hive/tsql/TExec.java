@@ -2701,10 +2701,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException("Only support DAYS", locate(ctx));
         }
 
+
+
         CastAndAddFunction function = new CastAndAddFunction(new FuncName(null, "CastAndAdd", null));
         function.setExpr(expr);
         function.setIncr(incr);
         function.setTimeUnit(unit);
+        function.setOperate(ctx.sign().getText().trim());
         pushStatement(function);
         return function;
     }
