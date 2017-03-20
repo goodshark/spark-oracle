@@ -3451,14 +3451,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitWindow_frame_extent(TSqlParser.Window_frame_extentContext ctx) {
         StringBuffer rs = new StringBuffer();
         if (null != ctx.window_frame_preceding()) {
-            rs.append(visitWindow_frame_preceding(ctx.window_frame_preceding()));
+            rs.append(visitWindow_frame_preceding(ctx.window_frame_preceding()).getSql());
         }
         if (null != ctx.BETWEEN()) {
             rs.append(ctx.BETWEEN().getText()).append(Common.SPACE);
         }
-        rs.append(visitWindow_frame_bound(ctx.window_frame_bound(0)));
+        rs.append(visitWindow_frame_bound(ctx.window_frame_bound(0)).getSql());
         rs.append(Common.SPACE).append(ctx.AND().getText()).append(Common.SPACE);
-        rs.append(visitWindow_frame_bound(ctx.window_frame_bound(1)));
+        rs.append(visitWindow_frame_bound(ctx.window_frame_bound(1)).getSql());
         return rs.toString();
     }
 
@@ -3523,9 +3523,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitDerived_table(TSqlParser.Derived_tableContext ctx) {
         StringBuffer rs = new StringBuffer();
-        //rs.append("( ");
+        rs.append("( ");
         rs.append(visitSubquery(ctx.subquery()).getSql());
-        //rs.append(" )");
+        rs.append(" )");
         popStatement();
         return rs.toString();
     }
