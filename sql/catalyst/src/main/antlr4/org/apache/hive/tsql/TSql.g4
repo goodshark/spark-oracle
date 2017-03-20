@@ -182,7 +182,7 @@ insert_statement_value
 
 // https://msdn.microsoft.com/zh-cn/library/ms189499.aspx
 select_statement
-    : with_expression? query_expression order_by_clause? for_clause? option_clause? ';'?
+    : with_expression? query_expression order_by_clause? for_clause? option_clause? LIMIT DECIMAL ';'?
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms177523.aspx
@@ -968,7 +968,7 @@ function_call
     // https://msdn.microsoft.com/zh-cn/library/hh231076.aspx
     // https://msdn.microsoft.com/zh-cn/library/ms187928.aspx
     | CAST '(' expression AS data_type ')'      #cast_function
-    | function_call '+' DECIMAL (DAYS|HOURS|YEARS|MINUTES)              #cast_and_add
+    | function_call sign DECIMAL (DAYS|HOURS|YEARS|MINUTES)              #cast_and_add
     | CONVERT '(' data_type ',' expression (',' style=expression)? ')'      #convert_function
     // https://msdn.microsoft.com/zh-cn/library/ms189788.aspx
     | CHECKSUM '(' '*' ')'          #checksum_function
@@ -1671,6 +1671,7 @@ DB_CHAINING:                           D B '_' C H A I N I N G;
 DEFAULT_FULLTEXT_LANGUAGE:             D E F A U L T '_' F U L L T E X T '_' L A N G U A G E;
 DEFAULT_LANGUAGE:                      D E F A U L T '_' L A N G U A G E;
 DELAY:                                 D E L A Y;
+LIMIT:                                 L I M I T;
 DELAYED_DURABILITY:                    D E L A Y E D '_' D U R A B I L I T Y;
 DELETED:                               D E L E T E D;
 DENSE_RANK:                            D E N S E '_' R A N K;
