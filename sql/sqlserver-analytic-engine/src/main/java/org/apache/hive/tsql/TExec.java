@@ -2152,7 +2152,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     private void clearVariable() {
         intoTableSql = "";
         limitSql = "";
-        localIdVariable.clear();
+        //localIdVariable.clear();
         //resultSetVariable.clear();
         //tableNameList.clear();
 

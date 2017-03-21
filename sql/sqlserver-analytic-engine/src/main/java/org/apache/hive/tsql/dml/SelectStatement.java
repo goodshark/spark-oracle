@@ -122,12 +122,14 @@ public class SelectStatement extends SqlStatement {
             for (String s : localIdVariable) {
                 Var v = s.startsWith("@@") ? findSystemVar(s) : findVar(s);
                 if(v==null){
-                    throw new Exception("variable:" + s + " not defined");
+                    LOG.error("variable:" + s + " not defined");
+                }else{
+                    execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? "null": v.getExecString());
+
                 }
 //                String value = v.getVarValue().toString();
 //                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? StrUtils.addQuot(""): StrUtils.addQuot(v.getVarValue().toString()));
-                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? "null": v.getExecString());
-            }
+                 }
         }
     }
 
