@@ -476,9 +476,9 @@ public class PredicateNode extends LogicNode {
     private boolean compareLike(boolean exec) throws Exception {
         if (exprList.size() < 2)
             return false;
-        BaseStatement strExpr = (BaseStatement) exprList.get(0);
-        BaseStatement patternStrExpr = (BaseStatement) exprList.get(1);
-        BaseStatement escapeStrExpr = exprList.size() == 3 ? (BaseStatement) exprList.get(2) : null;
+        TreeNode strExpr =  exprList.get(0);
+        TreeNode patternStrExpr =  exprList.get(1);
+        TreeNode escapeStrExpr = exprList.size() == 3 ?  exprList.get(2) : null;
 
         if (!exec) {
             String not = notComp ? " NOT" : "";
