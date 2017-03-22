@@ -103,36 +103,18 @@ public class SelectStatement extends SqlStatement {
     }
 
     public void init() throws Exception {
-        replaceVariable();
+        execSQL = getSql();
+        execSQL = replaceVariable(execSQL, localIdVariableName);
         replaceTableNames();
     }
 
-    private void replaceTableNames() throws Exception{
+    private void replaceTableNames() throws Exception {
         if (!tableNames.isEmpty()) {
             for (String tableName : tableNames) {
                 execSQL = replaceTableName(tableName, execSQL);
             }
         }
     }
-
-    private void replaceVariable() throws Exception {
-        Set<String> localIdVariable = getLocalIdVariable();
-        execSQL = getSql();
-        if (!localIdVariable.isEmpty()) {
-            for (String s : localIdVariable) {
-                Var v = s.startsWith("@@") ? findSystemVar(s) : findVar(s);
-                if(v==null){
-                    LOG.error("variable:" + s + " not defined");
-                }else{
-                    execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? "null": v.getExecString());
-
-                }
-//                String value = v.getVarValue().toString();
-//                execSQL = execSQL.replaceAll(s, null == v.getVarValue() ? StrUtils.addQuot(""): StrUtils.addQuot(v.getVarValue().toString()));
-                 }
-        }
-    }
-
 
     public void addVariables(Set<String> variables) {
         localIdVariableName.addAll(variables);

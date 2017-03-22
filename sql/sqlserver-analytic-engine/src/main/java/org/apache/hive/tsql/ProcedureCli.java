@@ -129,12 +129,12 @@ public class ProcedureCli {
                 }
                 allAlias.put(name, alias);
             }
-//            HashMap<String, String> table = sparkSession.getSqlServerTable().get(1);
-//            if (null != table) {
-//                sparkSession.getSqlServerTable().get(1).putAll(allAlias);
-//            } else {
-//                sparkSession.getSqlServerTable().put(1, allAlias);
-//            }
+            HashMap<String, String> table = sparkSession.getSqlServerTable().get(1);
+            if (null != table) {
+                sparkSession.getSqlServerTable().get(1).putAll(allAlias);
+            } else {
+                sparkSession.getSqlServerTable().put(1, allAlias);
+            }
 
             /* for (String name : session.getVariableContainer().getAllTmpTableNames()) {
                 String alias = session.getVariableContainer().findTmpTaleAlias(name);
@@ -173,8 +173,8 @@ public class ProcedureCli {
     public void parse(String sql) throws ParserException {
         InputStream inputStream = null;
         try {
-            inputStream = new FileInputStream(sql);
-//            inputStream = new ByteArrayInputStream(sql.getBytes("UTF-8"));
+//            inputStream = new FileInputStream(sql);
+            inputStream = new ByteArrayInputStream(sql.getBytes("UTF-8"));
             ANTLRInputStream input = new ANTLRInputStream(inputStream);
 
             TSqlLexer lexer = new TSqlLexer(input);

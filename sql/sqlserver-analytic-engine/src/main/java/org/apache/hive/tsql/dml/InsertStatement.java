@@ -61,7 +61,7 @@ public class InsertStatement extends SqlStatement {
             case TABLE_VALUE:
             case DERIVED_TABLE:
                 SqlStatement sqlStatement = (SqlStatement) treeNode;
-                resultSql = replaceVariable(sqlStatement.getSql().toString());
+                resultSql = replaceVariable(sqlStatement.getSql().toString(),localIdVariableName);
                 break;
             case TABEL_DEFAULT_VALUES:
                 treeNode.execute();
@@ -116,21 +116,6 @@ public class InsertStatement extends SqlStatement {
         localIdVariableName.addAll(variables);
     }
 
-    private String replaceVariable(String sql) throws Exception {
-        if (!localIdVariableName.isEmpty()) {
-            for (String s : localIdVariableName) {
-                Var v = s.startsWith("@@") ? findSystemVar(s) : findVar(s);
-                if (v == null) {
-                    LOG.error("variable:" + s + " not defined");
-                } else {
-                    sql = sql.replaceAll(s, null == v.getVarValue() ? "" : "'" + v.getVarValue().toString() + "'");
-
-                }
-//                String value = v.getVarValue().toString();
-            }
-        }
-        return sql;
-    }
 
     public void addInsertValuesNode(TreeNode node) {
         insertValuesNodes.add(node);
