@@ -10,7 +10,6 @@ import org.apache.hive.tsql.exception.WrongArgNumberException;
 import org.apache.hive.tsql.util.StrUtils;
 
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -20,7 +19,9 @@ import java.util.regex.Pattern;
  * Created by dengrb1 on 12/5 0005.
  */
 public class PredicateNode extends LogicNode {
-    public enum CompType {EXISTS, COMP, COMPALL, COMPSOME, COMPANY, BETWEEN, IN, LIKE, IS};
+    public enum CompType {EXISTS, COMP, COMPALL, COMPSOME, COMPANY, BETWEEN, IN, LIKE, IS}
+
+    ;
 
     // private ArrayList<BaseStatement> exprList = new ArrayList<BaseStatement>();
     private List<TreeNode> exprList = new ArrayList<TreeNode>();
@@ -157,7 +158,7 @@ public class PredicateNode extends LogicNode {
 //        BaseStatement rightExpr = (BaseStatement) exprList.get(1);
 
         TreeNode leftExpr = exprList.get(0);
-        TreeNode rightExpr =  exprList.get(1);
+        TreeNode rightExpr = exprList.get(1);
         if (!exec) {
             predicateStr = leftExpr.getSql() + " " + origialOp + " " + rightExpr.getSql();
             return true;
@@ -173,7 +174,7 @@ public class PredicateNode extends LogicNode {
                 return false;
             // TODO test only
             //System.out.println("leftVal====>"+leftVal+",leftVal type is "+leftVal.getDataType().toString());
-           // System.out.println("rightVal====>"+rightVal+",right type is "+rightVal.getDataType().toString());
+            // System.out.println("rightVal====>"+rightVal+",right type is "+rightVal.getDataType().toString());
             int compRes = leftVal.compareTo(rightVal);
             //System.out.println("compRes====>"+compRes);
             return getCompareResult(compRes);
@@ -327,7 +328,7 @@ public class PredicateNode extends LogicNode {
         if (exprList.size() != 3)
             return false;
         TreeNode expr = exprList.get(0);
-        TreeNode exprStart =  exprList.get(1);
+        TreeNode exprStart = exprList.get(1);
         TreeNode exprEnd = exprList.get(2);
 
         if (!exec) {
@@ -502,9 +503,9 @@ public class PredicateNode extends LogicNode {
     private boolean compareLike(boolean exec) throws Exception {
         if (exprList.size() < 2)
             return false;
-        TreeNode strExpr =  exprList.get(0);
-        TreeNode patternStrExpr =  exprList.get(1);
-        TreeNode escapeStrExpr = exprList.size() == 3 ?  exprList.get(2) : null;
+        TreeNode strExpr = exprList.get(0);
+        TreeNode patternStrExpr = exprList.get(1);
+        TreeNode escapeStrExpr = exprList.size() == 3 ? exprList.get(2) : null;
 
         if (!exec) {
             String not = notComp ? " NOT" : "";
@@ -532,7 +533,8 @@ public class PredicateNode extends LogicNode {
                 if (escapeVar.getDataType() == Var.DataType.STRING)
                     escapeStr = (String) escapeVar.getVarValue();
             }
-            if (strVar.getDataType() != Var.DataType.STRING || patternVar.getDataType() != Var.DataType.STRING)
+            if (strVar == null || patternVar == null || null == strVar.getVarValue() || null == patternVar.getVarValue()
+                    || strVar.getDataType() != Var.DataType.STRING || patternVar.getDataType() != Var.DataType.STRING)
                 return false;
             String str = (String) strVar.getVarValue();
             String patternStr = (String) patternVar.getVarValue();
