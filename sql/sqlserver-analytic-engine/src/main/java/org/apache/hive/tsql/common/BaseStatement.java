@@ -1,9 +1,6 @@
 package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.arg.Var;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 
 import java.sql.ResultSet;
 import java.util.Map;
@@ -38,27 +35,27 @@ public abstract class BaseStatement extends TreeNode {
     public ResultSet commitStatement(String exeSql) {
         System.out.println("SparkServer Executing SQL: [" + exeSql + "]");
 //        //For testing
-    /*    SparkResultSet sparkResultSet = new SparkResultSet();
+        SparkResultSet sparkResultSet = new SparkResultSet();
         sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
         sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
         sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
         for (int i = 0; i < 10; i++) {
-            sparkResultSet.addRow(new Object[]{i*3, "TEST_"+i, i*11});
+            sparkResultSet.addRow(new Object[]{i * 3, "TEST_" + i, i * 11});
         }
-        if(isAddResult()) {
-            getExecSession().addRs(sparkResultSet);
-        }
-        return sparkResultSet;*/
-        //For testing end
-        SparkSession sparkSession = getExecSession().getSparkSession();
-        LogicalPlan plan = sparkSession.sqlContext().sessionState().sqlParser().parsePlan(exeSql);
-        getExecSession().addLogicalPlans(plan);
-        Dataset dataset = sparkSession.sql(exeSql);
-        SparkResultSet sparkResultSet = new SparkResultSet(dataset);
-        if(isAddResult()) {
+        if (isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
         return sparkResultSet;
+        //For testing end
+//        SparkSession sparkSession = getExecSession().getSparkSession();
+//        LogicalPlan plan = sparkSession.sqlContext().sessionState().sqlParser().parsePlan(exeSql);
+//        getExecSession().addLogicalPlans(plan);
+//        Dataset dataset = sparkSession.sql(exeSql);
+//        SparkResultSet sparkResultSet = new SparkResultSet(dataset);
+//        if(isAddResult()) {
+//            getExecSession().addRs(sparkResultSet);
+//        }
+//        return sparkResultSet;
     }
 
     /**
