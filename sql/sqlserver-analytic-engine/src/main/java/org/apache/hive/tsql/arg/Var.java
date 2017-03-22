@@ -259,10 +259,8 @@ public class Var implements Serializable {
         }
         switch (dataType) {
             case INT:
-                varValue = Float.valueOf(varValue.toString()).intValue();
-                break;
             case INTEGER:
-                varValue = Float.valueOf(varValue.toString()).intValue();
+                varValue = Double.valueOf(varValue.toString()).intValue();
                 break;
             case FLOAT:
                 varValue = Float.valueOf(varValue.toString());

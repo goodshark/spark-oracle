@@ -56,7 +56,7 @@ public class VariableContainer {
     }
 
     public Var findSystemVar(String sysName) {
-        return systemVariables.get(sysName);
+        return systemVariables.get(sysName.toUpperCase());
     }
 
     //按指定容器查找
