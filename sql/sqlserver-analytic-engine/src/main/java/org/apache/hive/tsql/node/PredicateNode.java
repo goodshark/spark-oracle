@@ -214,11 +214,12 @@ public class PredicateNode extends LogicNode {
                 // TODO test only
                 System.out.println(colVar);
                 boolean boolRes = false;
-                int compRes = expression.compareTo(colVar);
                 if (checkVarNull(expression) || checkVarNull(colVar))
                     boolRes = false;
-                else
+                else {
+                    int compRes = expression.compareTo(colVar);
                     boolRes = getCompareResult(compRes);
+                }
                 switch (comp) {
                     case "ALL":
                         if (!boolRes) return false;
@@ -396,6 +397,10 @@ public class PredicateNode extends LogicNode {
                     ColumnDataType colT = typeList.get(0);
                     Var colVar = new Var(colObj, transformColType(colT));
                     Var leftVal = (Var) leftRes.getObject(0);
+                    if (checkVarNull(leftVal))
+                        return false;
+                    if (checkVarNull(colVar))
+                        continue;
                     if (leftVal.compareTo(colVar) == 0)
                         if (notComp) {
                             matched = true;
@@ -413,6 +418,8 @@ public class PredicateNode extends LogicNode {
             ResultSet rightRes = rightExpr.getRs();
             try {
                 Var leftVal = (Var) leftRes.getObject(0);
+                if (checkVarNull(leftVal))
+                    return false;
 //                List<Var> rightValList = (List<Var>) rightRes.getObject(0);
                 Var rightResVar = (Var) rightRes.getObject(0);
                 List<Var> rightValList = (List<Var>) rightResVar.getVarValue();
@@ -431,6 +438,8 @@ public class PredicateNode extends LogicNode {
                     if (rightVal.getDataType() == Var.DataType.LIST) {
                         List<Var> realVarList = (List<Var>) rightVal.getVarValue();
                         for (Var realVar : realVarList) {
+                            if (checkVarNull(realVar))
+                                continue;
                             int res = leftVal.compareTo(realVar);
                             if (res == 0) {
                                 if (notComp) {
@@ -442,6 +451,8 @@ public class PredicateNode extends LogicNode {
                             }
                         }
                     } else {
+                        if (checkVarNull(rightVal))
+                            return false;
                         int res = leftVal.compareTo(rightVal);
                         if (res == 0) {
                             if (notComp) {
