@@ -17,7 +17,7 @@ import java.util.Set;
 public class InsertStatement extends SqlStatement {
     private static final Logger LOG = LoggerFactory.getLogger(InsertStatement.class);
 
-    private List<String> tableVariables=new ArrayList<>();
+    private List<String> tableVariables = new ArrayList<>();
 
     private List<TreeNode> insertValuesNodes = new ArrayList<>();
 
@@ -44,8 +44,8 @@ public class InsertStatement extends SqlStatement {
                 .append(Common.SPACE).append(limit).toString();
 
         //TODO 替换sql中的表变量
-        if(!tableVariables.isEmpty()){
-            for (String tableName:tableVariables) {
+        if (!tableVariables.isEmpty()) {
+            for (String tableName : tableVariables) {
                 execSql = replaceTableName(tableName, execSql);
             }
         }
@@ -75,8 +75,8 @@ public class InsertStatement extends SqlStatement {
                 treeNode.setExecSession(getExecSession());
                 treeNode.execute();
                 SparkResultSet sparkResultSet = (SparkResultSet) treeNode.getRs();
-                if(null==sparkResultSet){
-                    throw new Exception( "it has not resultSet to insert ");
+                if (null == sparkResultSet) {
+                    throw new Exception("it has not resultSet to insert ");
                 }
                 StringBuffer sql = new StringBuffer();
                 sql.append(" values");
@@ -106,8 +106,6 @@ public class InsertStatement extends SqlStatement {
     }
 
 
-
-
     /**
      * 保存sql中的变量名字
      * 如 insert into test_person values(@a,20+9,55.5,'1945-3-5','');
@@ -123,10 +121,12 @@ public class InsertStatement extends SqlStatement {
             for (String s : localIdVariableName) {
                 Var v = s.startsWith("@@") ? findSystemVar(s) : findVar(s);
                 if (v == null) {
-                    throw new Exception("variable:" + s + " not defined");
+                    LOG.error("variable:" + s + " not defined");
+                } else {
+                    sql = sql.replaceAll(s, null == v.getVarValue() ? "" : "'" + v.getVarValue().toString() + "'");
+
                 }
 //                String value = v.getVarValue().toString();
-                sql = sql.replaceAll(s, null == v.getVarValue() ? "" : "'" + v.getVarValue().toString() + "'");
             }
         }
         return sql;
@@ -136,7 +136,7 @@ public class InsertStatement extends SqlStatement {
         insertValuesNodes.add(node);
     }
 
-    public void addTableNames(Set<String> tableNames){
+    public void addTableNames(Set<String> tableNames) {
         tableVariables.addAll(tableNames);
     }
 
