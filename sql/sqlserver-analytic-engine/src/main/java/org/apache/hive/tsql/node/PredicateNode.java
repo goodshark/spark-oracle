@@ -119,6 +119,12 @@ public class PredicateNode extends LogicNode {
         return 0;
     }
 
+    private boolean checkVarNull(Var var) throws Exception {
+        if (var == null || var.getVarValue() == null || var.getDataType() == Var.DataType.NULL)
+            return true;
+        return false;
+    }
+
     private boolean compareExists(boolean exec) throws Exception {
         if (exprList.size() != 1)
             return false;
@@ -163,6 +169,8 @@ public class PredicateNode extends LogicNode {
         try {
             Var leftVal = (Var) leftRes.getObject(0);
             Var rightVal = (Var) rightRes.getObject(0);
+            if (checkVarNull(leftVal) || checkVarNull(rightVal))
+                return false;
             // TODO test only
             //System.out.println("leftVal====>"+leftVal+",leftVal type is "+leftVal.getDataType().toString());
            // System.out.println("rightVal====>"+rightVal+",right type is "+rightVal.getDataType().toString());
@@ -205,8 +213,12 @@ public class PredicateNode extends LogicNode {
                 Var colVar = new Var(valObj, transformColType(colType));
                 // TODO test only
                 System.out.println(colVar);
+                boolean boolRes = false;
                 int compRes = expression.compareTo(colVar);
-                boolean boolRes = getCompareResult(compRes);
+                if (checkVarNull(expression) || checkVarNull(colVar))
+                    boolRes = false;
+                else
+                    boolRes = getCompareResult(compRes);
                 switch (comp) {
                     case "ALL":
                         if (!boolRes) return false;
@@ -333,6 +345,9 @@ public class PredicateNode extends LogicNode {
             Var exprVar = (Var) exprRes.getObject(0);
             Var exprStartVar = (Var) exprStartRes.getObject(0);
             Var exprEndVar = (Var) exprEndRes.getObject(0);
+            // if any expr itself is null, return false, even exists NOT
+            if (checkVarNull(exprVar) || checkVarNull(exprStartVar) || checkVarNull(exprEndVar))
+                return false;
             int cmp = exprStartVar.compareTo(exprEndVar);
             if (cmp > 0) {
                 return notComp ? true : false;
