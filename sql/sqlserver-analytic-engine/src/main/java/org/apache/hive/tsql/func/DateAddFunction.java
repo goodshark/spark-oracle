@@ -39,7 +39,7 @@ public class DateAddFunction extends BaseFunction {
         date.setExecSession(getExecSession());
         date.execute();
         Var oldDate = (Var) date.getRs().getObject(0);
-
+        oldDate.setDataType(Var.DataType.DATETIME);
         results.add(new Var(datePart, Var.DataType.STRING));
         results.add(num);
         results.add(oldDate);
