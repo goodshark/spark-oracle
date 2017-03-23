@@ -142,7 +142,7 @@ public class ExecuteStatement extends BaseStatement {
             addVar(returnVar);
         }
         int newRsCount = getExecSession().getResultSets().size();
-        if (newRsCount > rsCount) {
+        if (!isCollectRs() && newRsCount > rsCount) {
             this.setRs(getExecSession().getResultSets().remove(newRsCount - 1));
         }
         return 0;

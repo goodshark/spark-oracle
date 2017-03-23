@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.dml;
 
+import org.apache.hive.tsql.another.ExecuteStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.util.StrUtils;
@@ -73,6 +74,12 @@ public class InsertStatement extends SqlStatement {
                 //values(1,'b1-1',11),(2,'b1-2',12),(3,'b1-3',13)
 
                 treeNode.setExecSession(getExecSession());
+//                treeNode.setCollectRs(false);
+                for(TreeNode node : treeNode.getChildrenNodes()) {
+                    if(node instanceof ExecuteStatement) {
+                        node.setCollectRs(false);
+                    }
+                }
                 treeNode.execute();
                 SparkResultSet sparkResultSet = (SparkResultSet) treeNode.getRs();
                 if (null == sparkResultSet) {

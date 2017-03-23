@@ -1,6 +1,5 @@
 package org.apache.hive.tsql.common;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.arg.Var;
@@ -31,11 +30,20 @@ public abstract class TreeNode implements Serializable {
     private String sql;
     private boolean addResult = false;
     private GoStatement goStmt = null;
+    private boolean isCollectRs = true;
 
     public enum Type {
         IF, AND, OR, NOT, PREDICATE, WHILE, BREAK, CONTINUE, RETURN, GOTO, PRINT,
         RAISE, THROW, TRY, WAIT, BEGINEND, WHEN, THEN, ELSE, SWICH, CASE_INPUT, GO, TABLE_VALUE, DERIVED_TABLE,
         TABEL_DEFAULT_VALUES, EXECUTE_STATEMENT, LIMIT_NUMBER, LIMIT_PERCENT, CURSOR, DEFAULT
+    }
+
+    public boolean isCollectRs() {
+        return isCollectRs;
+    }
+
+    public void setCollectRs(boolean collectRs) {
+        isCollectRs = collectRs;
     }
 
     public boolean isAtomic() {
