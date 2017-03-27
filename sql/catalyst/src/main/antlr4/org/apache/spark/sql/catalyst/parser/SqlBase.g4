@@ -324,11 +324,11 @@ deleteStatement
     ;
 
 updateStatement
-    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* fromClause? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
 
 assignExpression
-    : identifier EQ expression
+    : (qualifiedName) EQ expression
     ;
 
 queryOrganization

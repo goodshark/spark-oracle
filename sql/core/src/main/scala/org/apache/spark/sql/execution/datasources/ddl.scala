@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.execution.datasources
 
+import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTree
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
@@ -34,9 +35,9 @@ import org.apache.spark.sql.types._
 import scala.collection.mutable
 
 case class CreateTable(
-    tableDesc: CatalogTable,
-    mode: SaveMode,
-    query: Option[LogicalPlan]) extends Command {
+                        tableDesc: CatalogTable,
+                        mode: SaveMode,
+                        query: Option[LogicalPlan]) extends Command {
   assert(tableDesc.provider.isDefined, "The table to be created must have a provider.")
 
   if (query.isEmpty) {
@@ -49,15 +50,15 @@ case class CreateTable(
 }
 
 /**
- * Create or replace a local/global temporary view with given data source.
- */
+  * Create or replace a local/global temporary view with given data source.
+  */
 case class CreateTempViewUsing(
-    tableIdent: TableIdentifier,
-    userSpecifiedSchema: Option[StructType],
-    replace: Boolean,
-    global: Boolean,
-    provider: String,
-    options: Map[String, String]) extends RunnableCommand {
+                                tableIdent: TableIdentifier,
+                                userSpecifiedSchema: Option[StructType],
+                                replace: Boolean,
+                                global: Boolean,
+                                provider: String,
+                                options: Map[String, String]) extends RunnableCommand {
 
   if (tableIdent.database.isDefined) {
     throw new AnalysisException(
@@ -105,26 +106,26 @@ case class RefreshTable(tableIdent: TableIdentifier)
 }
 
 
-case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
+case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
   extends RunnableCommand {
 
   val OPTION_TYPE: String = "OPTION_TYPE"
   val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
   val vid: String = "vid_crud__column_name"
 
-/*  def extractWhereStr(node: ParseTree, sb: StringBuilder): Unit = {
-    if (node.getChildCount == 3) {
-      sb.append(" ")
-      sb.append(node.getChild(2).getText)
-      sb.append(" ")
-      sb.append(node.getChild(1).getText)
-      sb.append(" ")
-      extractWhereStr(node.getChild(0), sb)
-    } else if (node.getChildCount == 1) {
-      sb.append(" ")
-      sb.append(node.getChild(0).getText)
-    }
-  } */
+  /*  def extractWhereStr(node: ParseTree, sb: StringBuilder): Unit = {
+      if (node.getChildCount == 3) {
+        sb.append(" ")
+        sb.append(node.getChild(2).getText)
+        sb.append(" ")
+        sb.append(node.getChild(1).getText)
+        sb.append(" ")
+        extractWhereStr(node.getChild(0), sb)
+      } else if (node.getChildCount == 1) {
+        sb.append(" ")
+        sb.append(node.getChild(0).getText)
+      }
+    } */
   def extractWhereStr(node: ParseTree, sb: StringBuilder): Unit = {
     /* if (node.getChildCount == 3) {
       extractWhereStr(node.getChild(0), sb)
@@ -149,8 +150,8 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
       sb.append(" ")
       sb.append(node.getChild(0).getText)
       sb.append(" ")
-    } else if (node.getChildCount==0) {
-      sb.append( node.getText)
+    } else if (node.getChildCount == 0) {
+      sb.append(node.getText)
     } else {
       extractWhereStr(node.getChild(0), sb)
     }
@@ -184,7 +185,7 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
 
     val tb: String = sessionState.catalog.getTableName(identifier)
     val db: String = sessionState.catalog.getDbName(identifier)
-    if ( !sessionState.catalog.checkAcidTable(tableMetadata) ) {
+    if (!sessionState.catalog.checkAcidTable(tableMetadata)) {
       throw new Exception(s" $tableName is not transaction table")
     }
     val sb: StringBuilder = new StringBuilder()
@@ -195,14 +196,14 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
     sb.append(".")
     sb.append(tb)
 
-    if (tableMetadata.partitionColumnNames.nonEmpty ) {
-      if (null==statement.where||statement.where.getChildCount <= 0) {
+    if (tableMetadata.partitionColumnNames.nonEmpty) {
+      if (null == statement.where || statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
       }
       // extract where leaf node
       val partitionColumnMap: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
       extractWhereMap(statement.where, partitionColumnMap)
-      partitionSet = tableMetadata.partitionColumnNames.map( cata => cata.toLowerCase).toSet
+      partitionSet = tableMetadata.partitionColumnNames.map(cata => cata.toLowerCase).toSet
       val verifyPartition = partitionSet.subsetOf(
         partitionColumnMap.map(ele => ele._1).toSet
       )
@@ -212,56 +213,76 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
       sb.append(" partition ")
       sb.append("( ")
       var partitionColAssign = List[String]()
-      tableMetadata.partitionColumnNames.foreach( p => {
+      tableMetadata.partitionColumnNames.foreach(p => {
         partitionColAssign = partitionColAssign :+ p + "=" + partitionColumnMap.get(p).get
       })
       sb.append(partitionColAssign.mkString(","))
       sb.append(" )")
     }
 
-    sb.append( " select ")
+    sb.append(" select ")
     var columnMap: Map[String, String] = Map()
-    for (i <- 0 until  statement.assignlist.size()) {
+    for (i <- 0 until statement.assignlist.size()) {
       val array = statement.assignExpression(i).getText.split("=")
-       columnMap += (array(0).toLowerCase -> array(1))
+      if (array(0).contains(".")) {
+        columnMap += (array(0).split("\\.")(1).toLowerCase -> array(1))
+      } else {
+        columnMap += (array(0).toLowerCase -> array(1))
+      }
     }
-    tableMetadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.foreach( bucketColumnName => {
+    tableMetadata.bucketSpec
+      .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.foreach(bucketColumnName => {
       if (columnMap.contains(bucketColumnName)) {
         throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
       }
     })
 
-    tableMetadata.partitionColumnNames.foreach( p => {
+    tableMetadata.partitionColumnNames.foreach(p => {
       if (columnMap.contains(p)) {
         throw new Exception(s" Cannot update partitionColumnName: ${p}")
       }
     })
 
-     tableMetadata.schema.foreach(column => {
-      if ( columnMap.contains( column.name ) ) {
-        colString.append( columnMap.get(column.name).get )
+    tableMetadata.schema.foreach(column => {
+      if (columnMap.contains(column.name)) {
+        colString.append(columnMap.get(column.name).get)
         colString.append(",")
       } else {
         if (!partitionSet.contains(column.name)) {
+          colString.append(tb)
+          colString.append(".")
           colString.append(column.name)
           colString.append(",")
         }
       }
     })
-    sb.append(colString.substring(0, colString.length-1))
-    sb.append(" ," + vid +
-      "  from ")
-    sb.append(db)
-    sb.append(".")
-    sb.append(tb)
-    if (null!=statement.where && statement.where.getChildCount > 0) {
-      sb.append("  where ")
-      extractWhereStr(statement.where, sb)
+    sb.append(colString.substring(0, colString.length - 1))
+    sb.append(" ," + tb + "." + vid + " ")
+
+    if (null != statement.fromClause()) {
+      val fromClause = statement.fromClause()
+      sb.append(fromClause.start.getInputStream().getText(
+        new Interval(fromClause.start.getStartIndex(), fromClause.stop.getStopIndex())))
+    } else {
+      sb.append(" from ")
+      sb.append(db)
+      sb.append(".")
+      sb.append(tb)
+    }
+    if (null != statement.where && statement.where.getChildCount > 0) {
+      /* sb.append("  where ")
+      extractWhereStr(statement.where, sb) */
+      sb.append(" where ")
+      val where = statement.where
+      sb.append(where.start.getInputStream().getText(
+        new Interval(where.start.getStartIndex(), where.stop.getStopIndex())))
+
+
     }
 
-    if (ctx.updateStatement().LIMIT()!= null) {
+    if (ctx.updateStatement().LIMIT() != null) {
       sb.append(" limit ")
-      sb.append( ctx.updateStatement().expression().getText)
+      sb.append(ctx.updateStatement().expression().getText)
     }
 
     sessionState.conf.setConfString(OPTION_TYPE, "1")
@@ -278,7 +299,7 @@ case class AcidUpdateCommand(ctx : UpdateContext, tableIdent: TableIdentifier)
 }
 
 case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
-  extends  RunnableCommand {
+  extends RunnableCommand {
 
 
   def parseAcidSql(sessionState: SessionState): String = {
@@ -292,7 +313,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       sessionState.catalog.getTableMetadata(identifier)
     val tb: String = sessionState.catalog.getTableName(identifier)
     val db: String = sessionState.catalog.getDbName(identifier)
-    if ( !sessionState.catalog.checkAcidTable(tableMetadata) ) {
+    if (!sessionState.catalog.checkAcidTable(tableMetadata)) {
       throw new Exception(s" $tableName is not transaction table")
     }
     val sb: StringBuilder = new StringBuilder()
@@ -303,14 +324,14 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
     sb.append(tb)
 
     var partitionSet: Set[String] = Set()
-    if (tableMetadata.partitionColumnNames.nonEmpty ) {
-      if (null==statement.where||statement.where.getChildCount <= 0) {
+    if (tableMetadata.partitionColumnNames.nonEmpty) {
+      if (null == statement.where || statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
       }
       // extract where leaf node
       val partitionColumnMap: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
       AcidUpdateCommand(null, identifier).extractWhereMap(statement.where, partitionColumnMap)
-      partitionSet = tableMetadata.partitionColumnNames.map( cata => cata.toLowerCase).toSet
+      partitionSet = tableMetadata.partitionColumnNames.map(cata => cata.toLowerCase).toSet
       val verifyPartition = partitionSet.subsetOf(
         partitionColumnMap.map(ele => ele._1).toSet
       )
@@ -320,14 +341,14 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       sb.append(" partition ")
       sb.append("( ")
       var partitionColAssign = List[String]()
-      tableMetadata.partitionColumnNames.foreach( p => {
+      tableMetadata.partitionColumnNames.foreach(p => {
         partitionColAssign = partitionColAssign :+ p + "=" + partitionColumnMap.get(p).get
       })
       sb.append(partitionColAssign.mkString(","))
       sb.append(" )")
     }
 
-    sb.append( " select ")
+    sb.append(" select ")
     tableMetadata.schema.foreach(c => {
       if (!partitionSet.contains(c.name)) {
         colString.append("1")
@@ -341,14 +362,14 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
     sb.append(db)
     sb.append(".")
     sb.append(tb)
-    if (null!=statement.where && statement.where.getChildCount > 0) {
+    if (null != statement.where && statement.where.getChildCount > 0) {
       sb.append("  where ")
       AcidUpdateCommand(null, identifier).extractWhereStr(statement.where, sb)
     }
 
-    if (ctx.deleteStatement().LIMIT()!= null) {
+    if (ctx.deleteStatement().LIMIT() != null) {
       sb.append(" limit ")
-      sb.append( ctx.deleteStatement().expression().getText)
+      sb.append(ctx.deleteStatement().expression().getText)
     }
     sessionState.conf.setConfString(AcidUpdateCommand(null, identifier).OPTION_TYPE, "2")
     sessionState.conf.setConfString(AcidUpdateCommand(null, identifier).SPARK_TRANSACTION_ACID,
@@ -373,8 +394,8 @@ case class RefreshResource(path: String)
 }
 
 /**
- * Builds a map in which keys are case insensitive
- */
+  * Builds a map in which keys are case insensitive
+  */
 class CaseInsensitiveMap(map: Map[String, String]) extends Map[String, String]
   with Serializable {
 
@@ -382,7 +403,7 @@ class CaseInsensitiveMap(map: Map[String, String]) extends Map[String, String]
 
   override def get(k: String): Option[String] = baseMap.get(k.toLowerCase)
 
-  override def + [B1 >: String](kv: (String, B1)): Map[String, B1] =
+  override def +[B1 >: String](kv: (String, B1)): Map[String, B1] =
     baseMap + kv.copy(_1 = kv._1.toLowerCase)
 
   override def iterator: Iterator[(String, String)] = baseMap.iterator
