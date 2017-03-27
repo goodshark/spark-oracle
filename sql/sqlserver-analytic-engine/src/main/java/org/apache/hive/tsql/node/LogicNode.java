@@ -109,7 +109,7 @@ public class LogicNode extends TreeNode {
         if (list.size() != 1)
             return -1;
         LogicNode node = (LogicNode) list.get(0);
-        String notStr = node.getNot() ? "NOT " : "";
+        String notStr = getNot() ? "NOT " : "";
 
         if (!exec) {
             logicStr = notStr + node.toString();
