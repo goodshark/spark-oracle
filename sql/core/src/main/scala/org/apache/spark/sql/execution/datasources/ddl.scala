@@ -113,19 +113,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
   val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
   val vid: String = "vid_crud__column_name"
 
-  /*  def extractWhereStr(node: ParseTree, sb: StringBuilder): Unit = {
-      if (node.getChildCount == 3) {
-        sb.append(" ")
-        sb.append(node.getChild(2).getText)
-        sb.append(" ")
-        sb.append(node.getChild(1).getText)
-        sb.append(" ")
-        extractWhereStr(node.getChild(0), sb)
-      } else if (node.getChildCount == 1) {
-        sb.append(" ")
-        sb.append(node.getChild(0).getText)
-      }
-    } */
+
   def extractWhereStr(node: ParseTree, sb: StringBuilder): Unit = {
     /* if (node.getChildCount == 3) {
       extractWhereStr(node.getChild(0), sb)
@@ -276,8 +264,6 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
       val where = statement.where
       sb.append(where.start.getInputStream().getText(
         new Interval(where.start.getStartIndex(), where.stop.getStopIndex())))
-
-
     }
 
     if (ctx.updateStatement().LIMIT() != null) {
@@ -357,15 +343,40 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
     })
     sb.append(colString.toString())
     sb.append(" ")
-    sb.append(AcidUpdateCommand(null, identifier).vid)
-    sb.append("   from ")
-    sb.append(db)
-    sb.append(".")
-    sb.append(tb)
-    if (null != statement.where && statement.where.getChildCount > 0) {
-      sb.append("  where ")
-      AcidUpdateCommand(null, identifier).extractWhereStr(statement.where, sb)
+    sb.append(tb + "." + AcidUpdateCommand(null, identifier).vid).append(" ")
+
+
+    if (null == statement.joinRelation()) {
+      if (null != statement.fromTable()) {
+        val fromTable = statement.fromTable
+        sb.append(fromTable.start.getInputStream().getText(
+          new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex())))
+        sb.append(", ")
+        sb.append(db)
+        sb.append(".")
+        sb.append(tb)
+        sb.append(" ")
+      }
+
+    } else {
+      if (null != statement.fromTable()) {
+        val fromTable = statement.fromTable
+        sb.append(fromTable.start.getInputStream().getText(
+          new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex())))
+        .append(" ")
+      }
+      val joinRelation = statement.joinRelation()
+      sb.append(joinRelation.start.getInputStream().getText(
+        new Interval(joinRelation.start.getStartIndex(), joinRelation.stop.getStopIndex())))
+
     }
+    if (null != statement.where && statement.where.getChildCount > 0) {
+      sb.append(" where ")
+      val where = statement.where
+      sb.append(where.start.getInputStream().getText(
+        new Interval(where.start.getStartIndex(), where.stop.getStopIndex())))
+    }
+
 
     if (ctx.deleteStatement().LIMIT() != null) {
       sb.append(" limit ")

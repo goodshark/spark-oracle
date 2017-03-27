@@ -320,7 +320,10 @@ queryNoWith
     ;
 
 deleteStatement
-    : DELETE FROM tableIdentifier (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : DELETE FROM? tableIdentifier  fromTable?  joinRelation? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    ;
+ fromTable
+    :FROM tableIdentifier
     ;
 
 updateStatement
