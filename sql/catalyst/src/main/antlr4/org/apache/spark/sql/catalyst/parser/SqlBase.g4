@@ -93,6 +93,10 @@ statement
         SET SERDE STRING (WITH SERDEPROPERTIES tablePropertyList)?     #setTableSerDe
     | ALTER TABLE tableIdentifier (partitionSpec)?
         SET SERDEPROPERTIES tablePropertyList                          #setTableSerDe
+    | ALTER TABLE tableIdentifier ADD COLUMNS
+        ('(' columns=colTypeList ')')?                                 #addColumns
+    | ALTER TABLE tableIdentifier DROP COLUMN identifier               #dropColumn
+    | ALTER TABLE tableIdentifier CHANGE identifier colType            #changeColumn
     | ALTER TABLE tableIdentifier ADD (IF NOT EXISTS)?
         partitionSpecLocation+                                         #addTablePartition
     | ALTER VIEW tableIdentifier ADD (IF NOT EXISTS)?
@@ -191,7 +195,7 @@ unsupportedHiveNativeCommands
     | kw1=ALTER kw2=TABLE tableIdentifier partitionSpec? kw3=COMPACT
     | kw1=ALTER kw2=TABLE tableIdentifier partitionSpec? kw3=CONCATENATE
     | kw1=ALTER kw2=TABLE tableIdentifier partitionSpec? kw3=SET kw4=FILEFORMAT
-    | kw1=ALTER kw2=TABLE tableIdentifier partitionSpec? kw3=ADD kw4=COLUMNS
+    /*| kw1=ALTER kw2=TABLE tableIdentifier partitionSpec? kw3=ADD kw4=COLUMNS*/
     | kw1=ALTER kw2=TABLE tableIdentifier partitionSpec? kw3=CHANGE kw4=COLUMN?
     | kw1=ALTER kw2=TABLE tableIdentifier partitionSpec? kw3=REPLACE kw4=COLUMNS
     | kw1=START kw2=TRANSACTION
@@ -320,10 +324,10 @@ queryNoWith
     ;
 
 deleteStatement
-    : DELETE FROM? tableIdentifier  fromTable?  joinRelation? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : DELETE FROM? tableIdentifier  fromTable?  joinRelation? (')')? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
  fromTable
-    :FROM tableIdentifier
+    :FROM ('(')? tableIdentifier
     ;
 
 updateStatement

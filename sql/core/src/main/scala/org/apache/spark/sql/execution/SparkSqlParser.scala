@@ -19,10 +19,8 @@ package org.apache.spark.sql.execution
 
 import scala.collection.JavaConverters._
 import scala.util.Try
-
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 import org.antlr.v4.runtime.tree.TerminalNode
-
 import org.apache.spark.sql.{AnalysisException, SaveMode}
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.catalog._
@@ -32,8 +30,7 @@ import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, OneRowRelation,
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.{CreateTable, _}
 import org.apache.spark.sql.internal.{HiveSerDe, SQLConf, VariableSubstitution}
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.types.{DataType, StructField, StructType}
 
 /**
  * Concrete parser for Spark SQL statements.
@@ -809,6 +806,24 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
       ctx.EXISTS != null)
   }
 
+  override def visitAddColumns(ctx: AddColumnsContext): LogicalPlan = withOrigin(ctx) {
+    val tableName = visitTableIdentifier(ctx.tableIdentifier())
+    val dataCols = Option(ctx.columns).map(visitColTypeList).getOrElse(Nil)
+    AlterTableAddColumnsCommand(tableName, dataCols)
+  }
+
+  override def visitDropColumn(ctx: DropColumnContext): LogicalPlan = withOrigin(ctx) {
+    val tableName = visitTableIdentifier(ctx.tableIdentifier())
+    val dropColName = ctx.identifier().getText
+    AlterTableDropColumnsCommand(tableName, dropColName)
+  }
+  override def visitChangeColumn(ctx: ChangeColumnContext): LogicalPlan = withOrigin(ctx) {
+    val tableName = visitTableIdentifier(ctx.tableIdentifier())
+    var changNewCol = Seq[StructField]()
+    changNewCol = changNewCol :+ visitColType(ctx.colType())
+    val oldColName = ctx.identifier().getText
+    AlterTableChangeColumnsCommand(tableName, oldColName, changNewCol)
+  }
   /**
    * Create an [[AlterTableRenamePartitionCommand]] command
    *

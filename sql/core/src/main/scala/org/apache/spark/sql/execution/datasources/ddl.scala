@@ -350,8 +350,15 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       if (null != statement.fromTable()) {
         val fromTable = statement.fromTable
         sb.append(fromTable.start.getInputStream().getText(
-          new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex())))
+          new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex()))
+        .replaceAll("(", "")  )
         sb.append(", ")
+        sb.append(db)
+        sb.append(".")
+        sb.append(tb)
+        sb.append(" ")
+      } else {
+        sb.append("  from ")
         sb.append(db)
         sb.append(".")
         sb.append(tb)
@@ -362,7 +369,8 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       if (null != statement.fromTable()) {
         val fromTable = statement.fromTable
         sb.append(fromTable.start.getInputStream().getText(
-          new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex())))
+          new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex()))
+          .replaceAll("(", ""))
         .append(" ")
       }
       val joinRelation = statement.joinRelation()

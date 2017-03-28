@@ -42,23 +42,23 @@ import org.apache.spark.sql.types._
 import org.apache.spark.util.Utils
 
 /**
- * A command to create a MANAGED table with the same definition of the given existing table.
- * In the target table definition, the table comment is always empty but the column comments
- * are identical to the ones defined in the source table.
- *
- * The CatalogTable attributes copied from the source table are storage(inputFormat, outputFormat,
- * serde, compressed, properties), schema, provider, partitionColumnNames, bucketSpec.
- *
- * The syntax of using this command in SQL is:
- * {{{
- *   CREATE TABLE [IF NOT EXISTS] [db_name.]table_name
- *   LIKE [other_db_name.]existing_table_name
- * }}}
- */
+  * A command to create a MANAGED table with the same definition of the given existing table.
+  * In the target table definition, the table comment is always empty but the column comments
+  * are identical to the ones defined in the source table.
+  *
+  * The CatalogTable attributes copied from the source table are storage(inputFormat, outputFormat,
+  * serde, compressed, properties), schema, provider, partitionColumnNames, bucketSpec.
+  *
+  * The syntax of using this command in SQL is:
+  * {{{
+  *   CREATE TABLE [IF NOT EXISTS] [db_name.]table_name
+  *   LIKE [other_db_name.]existing_table_name
+  * }}}
+  */
 case class CreateTableLikeCommand(
-    targetTable: TableIdentifier,
-    sourceTable: TableIdentifier,
-    ifNotExists: Boolean) extends RunnableCommand {
+                                   targetTable: TableIdentifier,
+                                   sourceTable: TableIdentifier,
+                                   ifNotExists: Boolean) extends RunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
@@ -86,31 +86,86 @@ case class CreateTableLikeCommand(
   }
 }
 
+// add addcolumn
+case class AlterTableAddColumnsCommand(tableName: TableIdentifier, newColumns: Seq[StructField])
+  extends RunnableCommand {
+  override def run(sparkSession: SparkSession): Seq[Row] = {
+    val catalog = sparkSession.sessionState.catalog
+    val table = catalog.getTableMetadata(tableName)
+    DDLUtils.verifyAlterTableType(catalog, table, isView = false)
+    val newSchema = StructType(table.schema.fields ++ newColumns)
+    val newTable = table.copy(schema = newSchema)
+    catalog.alterTable(newTable)
+    Seq.empty[Row]
+  }
+}
+// add dropColumn
+case class AlterTableDropColumnsCommand(tableName: TableIdentifier, dropColName: String)
+  extends RunnableCommand {
+  override def run(sparkSession: SparkSession): Seq[Row] = {
+    val catalog = sparkSession.sessionState.catalog
+    val table = catalog.getTableMetadata(tableName)
+    DDLUtils.verifyAlterTableType(catalog, table, isView = false)
+    val newSchema = StructType(table.schema.fields.filter(
+      p => !p.name.equalsIgnoreCase(dropColName)))
+    if (newSchema.fields.length != table.schema.fields.length -1) {
+      throw new AnalysisException(
+        s" $dropColName is not exist")
+    }
+    val newTable = table.copy(schema = newSchema)
+    catalog.alterTable(newTable)
+    Seq.empty[Row]
+  }
+}
+// add addcolumn
+case class AlterTableChangeColumnsCommand(tableName: TableIdentifier,
+                                          oldColName: String, changNewCol: Seq[StructField])
+  extends RunnableCommand {
+  override def run(sparkSession: SparkSession): Seq[Row] = {
+    val catalog = sparkSession.sessionState.catalog
+    val table = catalog.getTableMetadata(tableName)
+    DDLUtils.verifyAlterTableType(catalog, table, isView = false)
+    val fields = table.schema.fields.filter(
+      p => !p.name.equalsIgnoreCase(oldColName))
+    if (fields.length != table.schema.fields.length -1) {
+      throw new AnalysisException(
+        s" $oldColName is not exist")
+    }
+    val newSchema = StructType(fields ++ changNewCol)
+    val newTable = table.copy(schema = newSchema)
+    catalog.alterTable(newTable)
+    Seq.empty[Row]
+  }
+}
+
+
+
+
 
 // TODO: move the rest of the table commands from ddl.scala to this file
 
 /**
- * A command to create a table.
- *
- * Note: This is currently used only for creating Hive tables.
- * This is not intended for temporary tables.
- *
- * The syntax of using this command in SQL is:
- * {{{
- *   CREATE [EXTERNAL] TABLE [IF NOT EXISTS] [db_name.]table_name
- *   [(col1 data_type [COMMENT col_comment], ...)]
- *   [COMMENT table_comment]
- *   [PARTITIONED BY (col3 data_type [COMMENT col_comment], ...)]
- *   [CLUSTERED BY (col1, ...) [SORTED BY (col1 [ASC|DESC], ...)] INTO num_buckets BUCKETS]
- *   [SKEWED BY (col1, col2, ...) ON ((col_value, col_value, ...), ...)
- *   [STORED AS DIRECTORIES]
- *   [ROW FORMAT row_format]
- *   [STORED AS file_format | STORED BY storage_handler_class [WITH SERDEPROPERTIES (...)]]
- *   [LOCATION path]
- *   [TBLPROPERTIES (property_name=property_value, ...)]
- *   [AS select_statement];
- * }}}
- */
+  * A command to create a table.
+  *
+  * Note: This is currently used only for creating Hive tables.
+  * This is not intended for temporary tables.
+  *
+  * The syntax of using this command in SQL is:
+  * {{{
+  *   CREATE [EXTERNAL] TABLE [IF NOT EXISTS] [db_name.]table_name
+  *   [(col1 data_type [COMMENT col_comment], ...)]
+  *   [COMMENT table_comment]
+  *   [PARTITIONED BY (col3 data_type [COMMENT col_comment], ...)]
+  *   [CLUSTERED BY (col1, ...) [SORTED BY (col1 [ASC|DESC], ...)] INTO num_buckets BUCKETS]
+  *   [SKEWED BY (col1, col2, ...) ON ((col_value, col_value, ...), ...)
+  *   [STORED AS DIRECTORIES]
+  *   [ROW FORMAT row_format]
+  *   [STORED AS file_format | STORED BY storage_handler_class [WITH SERDEPROPERTIES (...)]]
+  *   [LOCATION path]
+  *   [TBLPROPERTIES (property_name=property_value, ...)]
+  *   [AS select_statement];
+  * }}}
+  */
 case class CreateTableCommand(table: CatalogTable, ifNotExists: Boolean) extends RunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
@@ -121,18 +176,18 @@ case class CreateTableCommand(table: CatalogTable, ifNotExists: Boolean) extends
 
 
 /**
- * A command that renames a table/view.
- *
- * The syntax of this command is:
- * {{{
- *    ALTER TABLE table1 RENAME TO table2;
- *    ALTER VIEW view1 RENAME TO view2;
- * }}}
- */
+  * A command that renames a table/view.
+  *
+  * The syntax of this command is:
+  * {{{
+  *    ALTER TABLE table1 RENAME TO table2;
+  *    ALTER VIEW view1 RENAME TO view2;
+  * }}}
+  */
 case class AlterTableRenameCommand(
-    oldName: TableIdentifier,
-    newName: TableIdentifier,
-    isView: Boolean)
+                                    oldName: TableIdentifier,
+                                    newName: TableIdentifier,
+                                    isView: Boolean)
   extends RunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
@@ -168,20 +223,20 @@ case class AlterTableRenameCommand(
 }
 
 /**
- * A command that loads data into a Hive table.
- *
- * The syntax of this command is:
- * {{{
- *  LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename
- *  [PARTITION (partcol1=val1, partcol2=val2 ...)]
- * }}}
- */
+  * A command that loads data into a Hive table.
+  *
+  * The syntax of this command is:
+  * {{{
+  *  LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename
+  *  [PARTITION (partcol1=val1, partcol2=val2 ...)]
+  * }}}
+  */
 case class LoadDataCommand(
-    table: TableIdentifier,
-    path: String,
-    isLocal: Boolean,
-    isOverwrite: Boolean,
-    partition: Option[TablePartitionSpec]) extends RunnableCommand {
+                            table: TableIdentifier,
+                            path: String,
+                            isLocal: Boolean,
+                            isOverwrite: Boolean,
+                            partition: Option[TablePartitionSpec]) extends RunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
@@ -311,16 +366,16 @@ case class LoadDataCommand(
 }
 
 /**
- * A command to truncate table.
- *
- * The syntax of this command is:
- * {{{
- *   TRUNCATE TABLE tablename [PARTITION (partcol1=val1, partcol2=val2 ...)]
- * }}}
- */
+  * A command to truncate table.
+  *
+  * The syntax of this command is:
+  * {{{
+  *   TRUNCATE TABLE tablename [PARTITION (partcol1=val1, partcol2=val2 ...)]
+  * }}}
+  */
 case class TruncateTableCommand(
-    tableName: TableIdentifier,
-    partitionSpec: Option[TablePartitionSpec]) extends RunnableCommand {
+                                 tableName: TableIdentifier,
+                                 partitionSpec: Option[TablePartitionSpec]) extends RunnableCommand {
 
   override def run(spark: SparkSession): Seq[Row] = {
     val catalog = spark.sessionState.catalog
@@ -338,7 +393,7 @@ case class TruncateTableCommand(
     if (table.partitionColumnNames.isEmpty && partitionSpec.isDefined) {
       throw new AnalysisException(
         s"Operation not allowed: TRUNCATE TABLE ... PARTITION is not supported " +
-        s"for tables that are not partitioned: $tableIdentWithDB")
+          s"for tables that are not partitioned: $tableIdentWithDB")
     }
     if (partitionSpec.isDefined) {
       DDLUtils.verifyPartitionProviderIsHive(spark, table, "TRUNCATE TABLE ... PARTITION")
@@ -398,16 +453,16 @@ case class TruncateTableCommand(
 }
 
 /**
- * Command that looks like
- * {{{
- *   DESCRIBE [EXTENDED|FORMATTED] table_name partitionSpec?;
- * }}}
- */
+  * Command that looks like
+  * {{{
+  *   DESCRIBE [EXTENDED|FORMATTED] table_name partitionSpec?;
+  * }}}
+  */
 case class DescribeTableCommand(
-    table: TableIdentifier,
-    partitionSpec: TablePartitionSpec,
-    isExtended: Boolean,
-    isFormatted: Boolean)
+                                 table: TableIdentifier,
+                                 partitionSpec: TablePartitionSpec,
+                                 isExtended: Boolean,
+                                 isFormatted: Boolean)
   extends RunnableCommand {
 
   override val output: Seq[Attribute] = Seq(
@@ -529,10 +584,10 @@ case class DescribeTableCommand(
   }
 
   private def describeDetailedPartitionInfo(
-      spark: SparkSession,
-      catalog: SessionCatalog,
-      metadata: CatalogTable,
-      result: ArrayBuffer[Row]): Unit = {
+                                             spark: SparkSession,
+                                             catalog: SessionCatalog,
+                                             metadata: CatalogTable,
+                                             result: ArrayBuffer[Row]): Unit = {
     if (metadata.tableType == CatalogTableType.VIEW) {
       throw new AnalysisException(
         s"DESC PARTITION is not allowed on a view: ${table.identifier}")
@@ -548,19 +603,19 @@ case class DescribeTableCommand(
   }
 
   private def describeExtendedDetailedPartitionInfo(
-      tableIdentifier: TableIdentifier,
-      table: CatalogTable,
-      partition: CatalogTablePartition,
-      buffer: ArrayBuffer[Row]): Unit = {
+                                                     tableIdentifier: TableIdentifier,
+                                                     table: CatalogTable,
+                                                     partition: CatalogTablePartition,
+                                                     buffer: ArrayBuffer[Row]): Unit = {
     append(buffer, "", "", "")
     append(buffer, "Detailed Partition Information " + partition.toString, "", "")
   }
 
   private def describeFormattedDetailedPartitionInfo(
-      tableIdentifier: TableIdentifier,
-      table: CatalogTable,
-      partition: CatalogTablePartition,
-      buffer: ArrayBuffer[Row]): Unit = {
+                                                      tableIdentifier: TableIdentifier,
+                                                      table: CatalogTable,
+                                                      partition: CatalogTablePartition,
+                                                      buffer: ArrayBuffer[Row]): Unit = {
     append(buffer, "", "", "")
     append(buffer, "# Detailed Partition Information", "", "")
     append(buffer, "Partition Value:", s"[${partition.spec.values.mkString(", ")}]", "")
@@ -580,23 +635,23 @@ case class DescribeTableCommand(
   }
 
   private def append(
-      buffer: ArrayBuffer[Row], column: String, dataType: String, comment: String): Unit = {
+                      buffer: ArrayBuffer[Row], column: String, dataType: String, comment: String): Unit = {
     buffer += Row(column, dataType, comment)
   }
 }
 
 
 /**
- * A command for users to get tables in the given database.
- * If a databaseName is not given, the current database will be used.
- * The syntax of using this command in SQL is:
- * {{{
- *   SHOW TABLES [(IN|FROM) database_name] [[LIKE] 'identifier_with_wildcards'];
- * }}}
- */
+  * A command for users to get tables in the given database.
+  * If a databaseName is not given, the current database will be used.
+  * The syntax of using this command in SQL is:
+  * {{{
+  *   SHOW TABLES [(IN|FROM) database_name] [[LIKE] 'identifier_with_wildcards'];
+  * }}}
+  */
 case class ShowTablesCommand(
-    databaseName: Option[String],
-    tableIdentifierPattern: Option[String]) extends RunnableCommand {
+                              databaseName: Option[String],
+                              tableIdentifierPattern: Option[String]) extends RunnableCommand {
 
   // The result of SHOW TABLES has three columns: database, tableName and isTemporary.
   override val output: Seq[Attribute] = {
@@ -621,14 +676,14 @@ case class ShowTablesCommand(
 
 
 /**
- * A command for users to list the properties for a table. If propertyKey is specified, the value
- * for the propertyKey is returned. If propertyKey is not specified, all the keys and their
- * corresponding values are returned.
- * The syntax of using this command in SQL is:
- * {{{
- *   SHOW TBLPROPERTIES table_name[('propertyKey')];
- * }}}
- */
+  * A command for users to list the properties for a table. If propertyKey is specified, the value
+  * for the propertyKey is returned. If propertyKey is not specified, all the keys and their
+  * corresponding values are returned.
+  * The syntax of using this command in SQL is:
+  * {{{
+  *   SHOW TBLPROPERTIES table_name[('propertyKey')];
+  * }}}
+  */
 case class ShowTablePropertiesCommand(table: TableIdentifier, propertyKey: Option[String])
   extends RunnableCommand {
 
@@ -662,17 +717,17 @@ case class ShowTablePropertiesCommand(table: TableIdentifier, propertyKey: Optio
 }
 
 /**
- * A command to list the column names for a table. This function creates a
- * [[ShowColumnsCommand]] logical plan.
- *
- * The syntax of using this command in SQL is:
- * {{{
- *   SHOW COLUMNS (FROM | IN) table_identifier [(FROM | IN) database];
- * }}}
- */
+  * A command to list the column names for a table. This function creates a
+  * [[ShowColumnsCommand]] logical plan.
+  *
+  * The syntax of using this command in SQL is:
+  * {{{
+  *   SHOW COLUMNS (FROM | IN) table_identifier [(FROM | IN) database];
+  * }}}
+  */
 case class ShowColumnsCommand(
-    databaseName: Option[String],
-    tableName: TableIdentifier) extends RunnableCommand {
+                               databaseName: Option[String],
+                               tableName: TableIdentifier) extends RunnableCommand {
   override val output: Seq[Attribute] = {
     AttributeReference("col_name", StringType, nullable = false)() :: Nil
   }
@@ -695,23 +750,23 @@ case class ShowColumnsCommand(
 }
 
 /**
- * A command to list the partition names of a table. If the partition spec is specified,
- * partitions that match the spec are returned. [[AnalysisException]] exception is thrown under
- * the following conditions:
- *
- * 1. If the command is called for a non partitioned table.
- * 2. If the partition spec refers to the columns that are not defined as partitioning columns.
- *
- * This function creates a [[ShowPartitionsCommand]] logical plan
- *
- * The syntax of using this command in SQL is:
- * {{{
- *   SHOW PARTITIONS [db_name.]table_name [PARTITION(partition_spec)]
- * }}}
- */
+  * A command to list the partition names of a table. If the partition spec is specified,
+  * partitions that match the spec are returned. [[AnalysisException]] exception is thrown under
+  * the following conditions:
+  *
+  * 1. If the command is called for a non partitioned table.
+  * 2. If the partition spec refers to the columns that are not defined as partitioning columns.
+  *
+  * This function creates a [[ShowPartitionsCommand]] logical plan
+  *
+  * The syntax of using this command in SQL is:
+  * {{{
+  *   SHOW PARTITIONS [db_name.]table_name [PARTITION(partition_spec)]
+  * }}}
+  */
 case class ShowPartitionsCommand(
-    tableName: TableIdentifier,
-    spec: Option[TablePartitionSpec]) extends RunnableCommand {
+                                  tableName: TableIdentifier,
+                                  spec: Option[TablePartitionSpec]) extends RunnableCommand {
   override val output: Seq[Attribute] = {
     AttributeReference("partition", StringType, nullable = false)() :: Nil
   }
@@ -722,11 +777,11 @@ case class ShowPartitionsCommand(
     val tableIdentWithDB = table.identifier.quotedString
 
     /**
-     * Validate and throws an [[AnalysisException]] exception under the following conditions:
-     * 1. If the table is not partitioned.
-     * 2. If it is a datasource table.
-     * 3. If it is a view.
-     */
+      * Validate and throws an [[AnalysisException]] exception under the following conditions:
+      * 1. If the table is not partitioned.
+      * 2. If it is a datasource table.
+      * 3. If it is a view.
+      */
     if (table.tableType == VIEW) {
       throw new AnalysisException(s"SHOW PARTITIONS is not allowed on a view: $tableIdentWithDB")
     }
@@ -739,10 +794,10 @@ case class ShowPartitionsCommand(
     DDLUtils.verifyPartitionProviderIsHive(sparkSession, table, "SHOW PARTITIONS")
 
     /**
-     * Validate the partitioning spec by making sure all the referenced columns are
-     * defined as partitioning columns in table definition. An AnalysisException exception is
-     * thrown if the partitioning spec is invalid.
-     */
+      * Validate the partitioning spec by making sure all the referenced columns are
+      * defined as partitioning columns in table definition. An AnalysisException exception is
+      * thrown if the partitioning spec is invalid.
+      */
     if (spec.isDefined) {
       val badColumns = spec.get.keySet.filterNot(table.partitionColumnNames.contains)
       if (badColumns.nonEmpty) {
@@ -841,13 +896,13 @@ case class ShowCreateTableCommand(table: TableIdentifier) extends RunnableComman
     }
 
     if (metadata.bucketSpec.isDefined) {
-      val bucketNum = metadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets
+      val bucketNum = metadata.bucketSpec.getOrElse(new BucketSpec(-1, Seq(), Seq())).numBuckets
       /* throw new UnsupportedOperationException(
          "Creating Hive table with bucket spec is not supported yet.") */
-      val bucketCols = metadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames
+      val bucketCols = metadata.bucketSpec.getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames
       builder ++= bucketCols.mkString("CLUSTERED BY (", ", ", ")\n")
       builder.append("  INTO  ")
-      builder.append( bucketNum )
+      builder.append(bucketNum)
       builder.append(" BUCKETS ")
     }
   }
@@ -907,7 +962,7 @@ case class ShowCreateTableCommand(table: TableIdentifier) extends RunnableComman
   }
 
   private def showDataSourceTableDataColumns(
-      metadata: CatalogTable, builder: StringBuilder): Unit = {
+                                              metadata: CatalogTable, builder: StringBuilder): Unit = {
     val columns = metadata.schema.fields.map(f => s"${quoteIdentifier(f.name)} ${f.dataType.sql}")
     builder ++= columns.mkString("(", ", ", ")\n")
   }
@@ -935,7 +990,7 @@ case class ShowCreateTableCommand(table: TableIdentifier) extends RunnableComman
   }
 
   private def showDataSourceTableNonDataColumns(
-      metadata: CatalogTable, builder: StringBuilder): Unit = {
+                                                 metadata: CatalogTable, builder: StringBuilder): Unit = {
     val partCols = metadata.partitionColumnNames
     if (partCols.nonEmpty) {
       builder ++= s"PARTITIONED BY ${partCols.mkString("(", ", ", ")")}\n"
