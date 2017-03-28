@@ -176,7 +176,8 @@ class HadoopTableReader(
 
   def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
     var flag = true
-    if ( tableMetadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.isEmpty ||
+    if ( tableMetadata.bucketSpec
+      .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.isEmpty ||
       !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||
       !tableMetadata.storage.outputFormat.
         get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")
@@ -311,12 +312,12 @@ class HadoopTableReader(
         if (checkAcidTableFlag ) {
           tableDesc.getProperties.setProperty("columns",
             tableDesc.getProperties.get("columns")
-              .toString + ","+ tableDesc.getProperties.get("partition_columns")
-              .toString.replaceAll("/",",") +"," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+              .toString + "," + tableDesc.getProperties.get("partition_columns")
+              .toString.replaceAll("/", ",") +"," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
           tableDesc.getProperties.setProperty("columns.types",
             tableDesc.getProperties.get("columns.types").toString
-              +":"+tableDesc.getProperties.get("partition_columns.types")
-              .toString +":string")
+              +":" + tableDesc.getProperties.get("partition_columns.types")
+              .toString + ":string")
         }
         tableSerDe.initialize(hconf, tableDesc.getProperties)
 
@@ -522,7 +523,11 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
           || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
           val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
           val vid = soi.getStructFieldData(raw, vidField).toString
-           mutableRow.update(vidIndex, UTF8String.fromString(vid))
+          if ( vidIndex != -1) {
+            mutableRow.update(vidIndex, UTF8String.fromString(vid))
+          } else {
+            logError(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME + " not find in table ")
+          }
         }
       }
       mutableRow: InternalRow

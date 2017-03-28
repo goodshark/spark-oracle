@@ -1939,7 +1939,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
 
         if (null != ctx.table_sources()) {
-            addException(" multi table deletion", locate(ctx));
+            // addException(" multi table deletion", locate(ctx));
+            sql.append(Common.SPACE);
+            sql.append(" from ");
+            sql.append(visitTable_sources(ctx.table_sources()));
         }
         if (null != ctx.WHERE()) {
             sql.append(Common.SPACE).append(ctx.WHERE().getText()).append(Common.SPACE);

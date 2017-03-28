@@ -320,15 +320,18 @@ queryNoWith
     ;
 
 deleteStatement
-    : DELETE FROM tableIdentifier (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : DELETE FROM? tableIdentifier  fromTable?  joinRelation? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    ;
+ fromTable
+    :FROM tableIdentifier
     ;
 
 updateStatement
-    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* fromClause? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
 
 assignExpression
-    : identifier EQ expression
+    : (qualifiedName) EQ expression
     ;
 
 queryOrganization
