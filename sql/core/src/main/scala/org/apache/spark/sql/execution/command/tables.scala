@@ -110,7 +110,7 @@ case class AlterTableDropColumnsCommand(tableName: TableIdentifier, dropColName:
       p => !p.name.equalsIgnoreCase(dropColName)))
     if (newSchema.fields.length != table.schema.fields.length -1) {
       throw new AnalysisException(
-        s" $dropColName is not exist")
+        s"Column: $dropColName is not exist")
     }
     val newTable = table.copy(schema = newSchema)
     catalog.alterTable(newTable)
@@ -129,7 +129,7 @@ case class AlterTableChangeColumnsCommand(tableName: TableIdentifier,
       p => !p.name.equalsIgnoreCase(oldColName))
     if (fields.length != table.schema.fields.length -1) {
       throw new AnalysisException(
-        s" $oldColName is not exist")
+        s"Column: $oldColName is not exist")
     }
     val newSchema = StructType(fields ++ changNewCol)
     val newTable = table.copy(schema = newSchema)
