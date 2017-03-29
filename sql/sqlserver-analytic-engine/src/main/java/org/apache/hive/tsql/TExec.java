@@ -1457,14 +1457,32 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.CHECK()) {
             addException("CHECK CONSTRAINT", locate(ctx));
         }
+        /*/
+        | DROP CONSTRAINT ( IF EXISTS )?  constraint=id
+                             | DROP  COLUMN  ( IF EXISTS )?  id (',' id)*
+                             | ALTER COLUMN column_def_table_constraint
+        */
+
+        if(null!=ctx.DROP() && null!=ctx.id() && ctx.id().size()>=0){
+            if(ctx.id().size()>1){
+                addException("Just supported delete a column ", locate(ctx));
+            }else{
+                sql.append(Common.SPACE).append("DROP")
+                        .append(" COLUMN " );
+                sql.append(ctx.id(0).getText());
+            }
+        }
+
         if (null != ctx.ADD() && null != ctx.column_def_table_constraint()) {
             sql.append(Common.SPACE).append(ctx.ADD().getText()).append(Common.SPACE);
             sql.append(" COLUMNS ");
+            sql.append("(");
             sql.append(visitColumn_def_table_constraint(ctx.column_def_table_constraint()));
+            sql.append(")");
         }
         if (ctx.ALTER().size() >= 2 && null != ctx.column_def_table_constraint()) {
-            sql.append(Common.SPACE).append(ctx.ALTER(1).getText()).append(Common.SPACE);
-            sql.append(Common.SPACE).append(ctx.COLUMN().getText()).append(Common.SPACE);
+            sql.append(Common.SPACE).append(" CHANGE ").append(Common.SPACE);
+            sql.append( ctx.column_def_table_constraint().column_definition().id(0).getText()).append(Common.SPACE);
             sql.append(visitColumn_def_table_constraint(ctx.column_def_table_constraint()));
         }
         rs.setSql(sql.toString());

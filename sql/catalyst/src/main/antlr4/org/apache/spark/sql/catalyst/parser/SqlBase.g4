@@ -95,8 +95,7 @@ statement
         SET SERDEPROPERTIES tablePropertyList                          #setTableSerDe
     | ALTER TABLE tableIdentifier ADD COLUMNS
         ('(' columns=colTypeList ')')?                                 #addColumns
-    | ALTER TABLE tableIdentifier DROP COLUMN identifier               #dropColumn
-    | ALTER TABLE tableIdentifier CHANGE identifier colType            #changeColumn
+    | ALTER TABLE tableIdentifier CHANGE (COLUMN)? identifier colType  #changeColumn
     | ALTER TABLE tableIdentifier ADD (IF NOT EXISTS)?
         partitionSpecLocation+                                         #addTablePartition
     | ALTER VIEW tableIdentifier ADD (IF NOT EXISTS)?

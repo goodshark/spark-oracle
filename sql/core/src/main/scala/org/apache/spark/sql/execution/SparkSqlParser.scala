@@ -812,15 +812,14 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
     AlterTableAddColumnsCommand(tableName, dataCols)
   }
 
-  override def visitDropColumn(ctx: DropColumnContext): LogicalPlan = withOrigin(ctx) {
+/* override def visitDropColumn(ctx: DropColumnContext): LogicalPlan = withOrigin(ctx) {
     val tableName = visitTableIdentifier(ctx.tableIdentifier())
     val dropColName = ctx.identifier().getText
     AlterTableDropColumnsCommand(tableName, dropColName)
-  }
+  } */
   override def visitChangeColumn(ctx: ChangeColumnContext): LogicalPlan = withOrigin(ctx) {
     val tableName = visitTableIdentifier(ctx.tableIdentifier())
-    var changNewCol = Seq[StructField]()
-    changNewCol = changNewCol :+ visitColType(ctx.colType())
+    val changNewCol = visitColType(ctx.colType())
     val oldColName = ctx.identifier().getText
     AlterTableChangeColumnsCommand(tableName, oldColName, changNewCol)
   }

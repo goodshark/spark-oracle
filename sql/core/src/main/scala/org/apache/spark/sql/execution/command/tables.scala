@@ -119,19 +119,25 @@ case class AlterTableDropColumnsCommand(tableName: TableIdentifier, dropColName:
 }
 // add addcolumn
 case class AlterTableChangeColumnsCommand(tableName: TableIdentifier,
-                                          oldColName: String, changNewCol: Seq[StructField])
+                                          oldColName: String, changNewCol: StructField)
   extends RunnableCommand {
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
     val table = catalog.getTableMetadata(tableName)
     DDLUtils.verifyAlterTableType(catalog, table, isView = false)
-    val fields = table.schema.fields.filter(
-      p => !p.name.equalsIgnoreCase(oldColName))
-    if (fields.length != table.schema.fields.length -1) {
+    val new_fields: ArrayBuffer[StructField] = new ArrayBuffer[StructField]()
+    table.schema.fields.foreach( f => {
+        if (!f.name.equalsIgnoreCase(oldColName)) {
+          new_fields += f
+        } else {
+          new_fields += changNewCol
+        }
+    })
+    if (new_fields.length != table.schema.fields.length) {
       throw new AnalysisException(
         s"Column: $oldColName is not exist")
     }
-    val newSchema = StructType(fields ++ changNewCol)
+    val newSchema = StructType(new_fields)
     val newTable = table.copy(schema = newSchema)
     catalog.alterTable(newTable)
     Seq.empty[Row]
