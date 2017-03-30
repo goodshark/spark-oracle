@@ -43,7 +43,6 @@ unit_statement
     | create_function_body
     | create_procedure_body
     | create_package
-
     | create_table
     | create_view
 
