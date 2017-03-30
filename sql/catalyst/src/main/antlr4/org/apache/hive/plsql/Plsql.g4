@@ -38,14 +38,15 @@ unit_statement
     | alter_sequence
     | alter_trigger
     | alter_type
+    | alter_table
 
     | create_function_body
     | create_procedure_body
     | create_package
 
 //  | create_index //TODO
-//  | create_table //TODO
-//  | create_view //TODO
+    | create_table
+    | create_view
 //  | create_directory //TODO
 //  | create_materialized_view //TODO
 
@@ -59,6 +60,9 @@ unit_statement
     | drop_sequence
     | drop_trigger
     | drop_type
+    | drop_table
+    | drop_view
+    | truncate_table
     | data_manipulation_language_statements
     ;
 
@@ -160,6 +164,41 @@ package_obj_body
     ;
 
 // $<Procedure DDLs
+
+alter_table
+    : ALTER TABLE tableview_name (ADD column_name type_spec column_constraint?
+                                  | MODIFY column_name type_spec column_constraint?
+                                  | DROP column_name type_spec column_constraint?) ';'
+    ;
+
+create_table
+    : CREATE TABLE tableview_name '(' column_name type_spec column_constraint? (',' column_name type_spec column_constraint?)* ')' ';' comments*
+    ;
+
+comments
+    : COMMENT ON TABLE tableview_name IS quoted_string ';'
+    | COMMENT ON COLUMN tableview_name ('.' column_name)? IS quoted_string ';'
+    ;
+
+drop_table
+    : DROP TABLE tableview_name ';'
+    ;
+
+create_view
+    : CREATE (OR REPLACE)? VIEW tableview_name AS data_manipulation_language_statements';'
+    ;
+
+drop_view
+    : DROP VIEW tableview_name ';'
+    ;
+
+truncate_table
+    : TRUNCATE TABLE tableview_name ';'
+    ;
+
+column_constraint
+    : (DEFAULT expression)? (NOT? NULL)?
+    ;
 
 drop_procedure
     : DROP PROCEDURE procedure_name ';'
@@ -644,10 +683,10 @@ label_declaration
     ;
 
 statement
-    : CREATE swallow_to_semi
-    | ALTER swallow_to_semi
-    | GRANT ALL? swallow_to_semi
-    | TRUNCATE swallow_to_semi
+    // CREATE swallow_to_semi
+    // ALTER swallow_to_semi
+    // TRUNCATE swallow_to_semi
+    : GRANT ALL? swallow_to_semi
     | body
     | block
     | assignment_statement
@@ -2131,6 +2170,7 @@ regular_id
     | CLUSTER
     | COLLECT
     | COLUMNS
+    | COLUMN
     | COMMENT
     | COMMIT
     | COMMITTED
@@ -2609,6 +2649,7 @@ CLOSE:                        C L O S E;
 CLUSTER:                      C L U S T E R;
 COLLECT:                      C O L L E C T;
 COLUMNS:                      C O L U M N S;
+COLUMN:                       C O L U M N;
 COMMENT:                      C O M M E N T;
 COMMIT:                       C O M M I T;
 COMMITTED:                    C O M M I T T E D;
@@ -2975,6 +3016,7 @@ VARRAY:                       V A R R A Y;
 VARYING:                      V A R Y I N G;
 VERSION:                      V E R S I O N;
 VERSIONS:                     V E R S I O N S;
+VIEW:                         V I E W;
 WAIT:                         W A I T;
 WARNING:                      W A R N I N G;
 WELLFORMED:                   W E L L F O R M E D;
