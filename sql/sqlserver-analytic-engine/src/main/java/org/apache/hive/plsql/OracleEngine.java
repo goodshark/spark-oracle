@@ -69,7 +69,7 @@ public class OracleEngine implements Engine {
 
     @Override
     public void visitTree() throws Throwable {
-        PLsqlVisitorImpl pLsqlVisitor = new PLsqlVisitorImpl(session.getRootNode());
+        PlsqlVisitorImpl pLsqlVisitor = new PlsqlVisitorImpl(session.getRootNode());
         session.setVisitor(pLsqlVisitor);
         pLsqlVisitor.visit(tree);
         LOG.info("Visit " + _name + " Tree completed, waiting for executing....");

@@ -1,6 +1,5 @@
 package org.apache.hive.tsql;
 
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.basesql.Engine;
 import org.apache.hive.basesql.EngineManager;
@@ -8,7 +7,6 @@ import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.exception.ParserErrorListener;
 import org.apache.hive.tsql.execute.Executor;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -11,3 +11,5 @@ target/*
 *.xml
 
 sql/core/src/test/java/test/org/apache/spark/sql/
+
+sql/sqlserver-analytic-engine/src/test/
