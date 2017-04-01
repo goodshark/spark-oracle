@@ -5,6 +5,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.basesql.TreeBuilder;
 import org.apache.hive.tsql.another.*;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
@@ -27,28 +28,14 @@ import java.util.*;
  * Created by zhongdg1 on 2016/11/23.
  */
 public class TExec extends TSqlBaseVisitor<Object> {
-    private LinkedList<TreeNode> curNodeStack = new LinkedList<TreeNode>();
-
-    private TreeNode rootNode; //解析编译过程的目标就是构造这个treenode
-
-    private List<Exception> exceptions;
+    private TreeBuilder treeBuilder = null;
 
     public TExec(TreeNode rootNode) {
-//        this.rootNode = ExecSession.getSession().getRootNode();
-        this.rootNode = rootNode;
-        exceptions = new ArrayList<>();
-    }
-
-    private void addException(String msg, Position position) {
-        exceptions.add(new UnsupportedException(msg, position));
-    }
-
-    private void addException(Exception exception) {
-        exceptions.add(exception);
+        treeBuilder = new TreeBuilder(rootNode);
     }
 
     public List<Exception> getExceptions() {
-        return exceptions;
+        return treeBuilder.getExceptions();
     }
 
     @Override
@@ -71,17 +58,17 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 try {
                     int count = Integer.parseInt(goCtx.count.getText());
                     if (count <= 0)
-                        addException("GO repeat number is illegal", locate(ctx));
+                        treeBuilder.addException("GO repeat number is illegal", locate(ctx));
                     goStatement.setRepeat(count);
                 } catch (Exception e) {
-                    addException("GO repeat number is illegal", locate(ctx));
+                    treeBuilder.addException("GO repeat number is illegal", locate(ctx));
                 }
             }
         }
-        rootNode.setCurrentGoStmt(goStatement);
+        treeBuilder.getRootNode().setCurrentGoStmt(goStatement);
         visitSql_clauses(ctx.sql_clauses());
-        addNode(goStatement);
-        this.rootNode.addNode(goStatement);
+        treeBuilder.addNode(goStatement);
+        treeBuilder.getRootNode().addNode(goStatement);
         declares.clear(); //only a var in one go statement
         return 0;
     }
@@ -97,9 +84,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SqlClausesStatement sqlClausesStatement = new SqlClausesStatement();
         for (TSqlParser.Sql_clauseContext clause : ctx.sql_clause()) {
             visit(clause);
-            addNode(sqlClausesStatement);
+            treeBuilder.addNode(sqlClausesStatement);
         }
-        this.pushStatement(sqlClausesStatement);
+        this.treeBuilder.pushStatement(sqlClausesStatement);
         return sqlClausesStatement;
     }
 
@@ -116,7 +103,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (StringUtils.isNotBlank(dbName)) {
             statement.setDbName(dbName.trim());
         }
-        this.pushStatement(statement);
+        this.treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -132,11 +119,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
 
             if (isWithName && var.getVarName() == null) {
-                addException("NonKV arguments follows KV arguments.", locate(ctx));
+                treeBuilder.addException("NonKV arguments follows KV arguments.", locate(ctx));
             }
 //            if (null != var.getVarName()) {
 //                if (var.getVarType() == Var.VarType.OUTPUT) {
-//                    addException(var.getVarName() + " cannot output", locate(ctx));
+//                    treeBuilder.addException(var.getVarName() + " cannot output", locate(ctx));
 //                } else {
 //                    statement.setWithName(true);
 //                }
@@ -145,7 +132,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.return_status) {
             statement.setReturnVarName(ctx.return_status.getText());
         }
-        this.addNodeAndPush(statement);
+        treeBuilder.addNodeAndPush(statement);
         return statement;
     }
 
@@ -164,7 +151,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         statement.addLocalVars(vars);
         statement.setSql(sb.toString());
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -258,11 +245,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //        }
 //        func.setLeastArguments(inputSize);
         visitSql_clauses(ctx.sql_clauses());
-        func.setSqlClauses(this.popStatement());
+        func.setSqlClauses(this.treeBuilder.popStatement());
         CreateProcedureStatement.Action action = null != ctx.CREATE() ? CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
         CreateProcedureStatement statement = new CreateProcedureStatement(func, action);
-        pushStatement(statement);
-        rootNode.currentGoStmt().addCreateProcStmt(statement);
+        treeBuilder.pushStatement(statement);
+        treeBuilder.getRootNode().currentGoStmt().addCreateProcStmt(statement);
         return statement;
     }
 
@@ -279,7 +266,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 var.setVarValue(visitDefault_value(ctx.default_value()).getVarValue());
                 var.setDefault(true);
             } catch (ParseException e) {
-                this.addException("Parse Error ", locate(ctx));
+                treeBuilder.addException("Parse Error ", locate(ctx));
             }
         }
         if (null != ctx.OUT() || null != ctx.OUTPUT()) {
@@ -302,7 +289,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         var.setVarValue(visitColumn_def_table_constraints(ctx.table_type_definition().column_def_table_constraints()));
         DeclareStatement declareStatement = new DeclareStatement();
         declareStatement.addDeclareVar(var);
-        this.pushStatement(declareStatement);
+        this.treeBuilder.pushStatement(declareStatement);
         return declareStatement;
     }
 
@@ -317,7 +304,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             declareStatement.addDeclareVar(var);
 
         }
-        this.pushStatement(declareStatement);
+        this.treeBuilder.pushStatement(declareStatement);
         return declareStatement;
     }
 
@@ -330,13 +317,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String varName = ctx.LOCAL_ID().getText();
         Var var = new Var(varName, null, dataType);
         if (null != declares.get(varName.toUpperCase())) {
-            addException(new AlreadyDeclaredException(varName, locate(ctx)));
+            treeBuilder.addException(new AlreadyDeclaredException(varName, locate(ctx)));
         }
         declares.put(varName.toUpperCase(), varName.toUpperCase());
 
         if (null != ctx.expression()) {
             visit(ctx.expression());
-            var.setExpr(this.popStatement());
+            var.setExpr(this.treeBuilder.popStatement());
             var.setValueType(Var.ValueType.EXPRESSION);
         }
         return var;
@@ -369,7 +356,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 || null != ctx.GEOGRAPHY()
                 || null != ctx.GEOMETRY()
                 || null != ctx.HIERARCHYID()) {
-            addException(dataType, locate(ctx));
+            treeBuilder.addException(dataType, locate(ctx));
             return Var.DataType.NULL;
         } else if (null != ctx.MONEY()
                 || null != ctx.DECIMAL()
@@ -403,7 +390,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 || dataType.contains("GEOGRAPHY")
                 || dataType.contains("GEOMETRY")
                 || dataType.contains("HIERARCHYID")) {
-            addException(dataType, locate(ctx));
+            treeBuilder.addException(dataType, locate(ctx));
             return Var.DataType.NULL;
         } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
                 || dataType.contains("NUMERIC")) {
@@ -444,11 +431,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String varName = ctx.LOCAL_ID().getText();
         visit(ctx.expression());
 
-        Var var = new Var(varName, this.popStatement());
+        Var var = new Var(varName, this.treeBuilder.popStatement());
         var.setValueType(Var.ValueType.EXPRESSION);
         SetStatement statement = new SetStatement();
         statement.setVar(var);
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -458,12 +445,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String varName = ctx.LOCAL_ID().getText().trim();
         AssignmentOp aop = visitAssignment_operator(ctx.assignment_operator());
         visit(ctx.expression());
-        Var var = new Var(varName, this.popStatement());
+        Var var = new Var(varName, this.treeBuilder.popStatement());
         var.setValueType(Var.ValueType.EXPRESSION);
         SetStatement statement = new SetStatement();
         statement.setVar(var);
         statement.setAop(aop);
-        this.pushStatement(statement);
+        this.treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -487,7 +474,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         var.setValueType(Var.ValueType.CURSOR);
         SetStatement statement = new SetStatement();
         statement.setVar(var);
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -499,21 +486,21 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public BaseStatement visitClose_cursor(TSqlParser.Close_cursorContext ctx) {
         BaseStatement statement = new CloseCursorStatement(visitCursor_name(ctx.cursor_name()), null != ctx.GLOBAL());
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
     @Override
     public BaseStatement visitDeallocate_cursor(TSqlParser.Deallocate_cursorContext ctx) {
         BaseStatement statement = new DeallocateCursorStatement(visitCursor_name(ctx.cursor_name()), null != ctx.GLOBAL());
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
     @Override
     public BaseStatement visitOpen_cursor(TSqlParser.Open_cursorContext ctx) {
         BaseStatement statement = new OpenCursorStatement(visitCursor_name(ctx.cursor_name()), null != ctx.GLOBAL());
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -526,7 +513,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         cursor.setGlobal(true); //declare cursor default true
         if (ctx.getChildCount() == 2) { //只有名字定义
             statement.setCursor(cursor);
-            pushStatement(statement);
+            treeBuilder.pushStatement(statement);
             return statement;
         }
 
@@ -540,7 +527,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 visitSelect_statement(ctx.select_statement());
             }
 
-            cursor.setTreeNode(popStatement());
+            cursor.setTreeNode(treeBuilder.popStatement());
         }
         if (ctx.column_name_list() != null) {
             //TODO 是否需要判断只有为update时才有columnlist
@@ -549,7 +536,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         cursor.setUpdatable(ctx.UPDATE() != null);
 
         statement.setCursor(cursor);
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -576,14 +563,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if (ctx.expression() != null) {
             visit(ctx.expression());
-            statement.setExpr(popStatement());
+            statement.setExpr(treeBuilder.popStatement());
         }
         statement.setGlobal(null != ctx.GLOBAL());
         statement.setCursorName(visitCursor_name(ctx.cursor_name()));
         for (TerminalNode str : ctx.LOCAL_ID()) {
             statement.addIntoVarName(str.getText());
         }
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
         return statement;
     }
 
@@ -606,7 +593,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if (ctx.FAST_FORWARD().size() > 0 || ctx.FORWARD_ONLY().size() > 0) {
             if (cursor.isScoll()) {
-                addException("Both SCROLL And FAST_FORWARD", locate(ctx));
+                treeBuilder.addException("Both SCROLL And FAST_FORWARD", locate(ctx));
             }
             cursor.setDataMode(Cursor.DataMode.FAST_FORWARD);
         }
@@ -621,7 +608,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         cursor.setTypeWarning(ctx.TYPE_WARNING() != null);
         visitSelect_statement(ctx.select_statement());
-        cursor.setTreeNode(popStatement());//获取select statement
+        cursor.setTreeNode(treeBuilder.popStatement());//获取select statement
         return cursor;
     }
 
@@ -644,13 +631,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public Object visitBlock_statement(TSqlParser.Block_statementContext ctx) {
         BeginEndStatement beginEndCmd = new BeginEndStatement(TreeNode.Type.BEGINEND);
         if (ctx.sql_clauses() == null) {
-            addException("empty begin end block", locate(ctx));
-            pushStatement(beginEndCmd);
+            treeBuilder.addException("empty begin end block", locate(ctx));
+            treeBuilder.pushStatement(beginEndCmd);
             return beginEndCmd;
         }
         visit(ctx.sql_clauses());
-        addNode(beginEndCmd);
-        pushStatement(beginEndCmd);
+        treeBuilder.addNode(beginEndCmd);
+        treeBuilder.pushStatement(beginEndCmd);
         return beginEndCmd;
     }
 
@@ -659,50 +646,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public Object visitIf_statement(TSqlParser.If_statementContext ctx) {
         IfStatement ifCmd = new IfStatement(TreeNode.Type.IF);
         visit(ctx.search_condition());
-        LogicNode condition = (LogicNode) popStatement();
+        LogicNode condition = (LogicNode) treeBuilder.popStatement();
         ifCmd.setCondtion(condition);
         for (int i = 0; i < ctx.sql_clause().size(); i++) {
             visit(ctx.sql_clause(i));
-            addNode(ifCmd);
+            treeBuilder.addNode(ifCmd);
         }
-        pushStatement(ifCmd);
+        treeBuilder.pushStatement(ifCmd);
         return ifCmd;
-    }
-
-    private TreeNode pushStatement(TreeNode treeNode) {
-        return this.curNodeStack.offerLast(treeNode) ? treeNode : null;
-    }
-
-    private TreeNode popStatement() {
-        if (this.curNodeStack.isEmpty()) {
-            return null;
-        }
-        return this.curNodeStack.pollFirst();
-    }
-
-    private List<TreeNode> popAll() {
-        List<TreeNode> children = new ArrayList<TreeNode>();
-        Iterator<TreeNode> iter = curNodeStack.iterator();
-        while (iter.hasNext()) {
-            children.add(popStatement());
-        }
-        return children;
-    }
-
-    private void addNode(TreeNode pNode) {
-        Iterator<TreeNode> iter = curNodeStack.iterator();
-        while (iter.hasNext()) {
-            TreeNode node = this.popStatement();
-            if (null == node) {
-                continue;
-            }
-            pNode.addNode(node);
-        }
-    }
-
-    private void addNodeAndPush(TreeNode pNode) {
-        addNode(pNode);
-        pushStatement(pNode);
     }
 
     @Override
@@ -711,11 +662,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         LogicNode orNode = new LogicNode(TreeNode.Type.OR);
         if (orList.size() == 1) {
             // LogicNode node = (LogicNode) visit(orList.get(0));
-            // pushStatement(node);
+            // treeBuilder.pushStatement(node);
             // return (LogicNode) visit(orList.get(0));
             visit(orList.get(0));
-            LogicNode node = (LogicNode) popStatement();
-            pushStatement(node);
+            LogicNode node = (LogicNode) treeBuilder.popStatement();
+            treeBuilder.pushStatement(node);
             return node;
             // return null;
         } else {
@@ -724,9 +675,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             orNode.addNode(andNode1);
             orNode.addNode(andNode2);*/
             visit(orList.get(0));
-            addNode(orNode);
+            treeBuilder.addNode(orNode);
             visit(orList.get(1));
-            addNode(orNode);
+            treeBuilder.addNode(orNode);
             for (int i = 2; i < orList.size(); i++) {
                 /*LogicNode andNode = (LogicNode) visit(orList.get(i));
                 LogicNode subOrNode = orNode;
@@ -737,10 +688,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 LogicNode subOrNode = orNode;
                 orNode = new LogicNode(TreeNode.Type.OR);
                 orNode.addNode(subOrNode);
-                addNode(orNode);
+                treeBuilder.addNode(orNode);
             }
         }
-        pushStatement(orNode);
+        treeBuilder.pushStatement(orNode);
         return orNode;
         // return visitChildren(ctx);
     }
@@ -759,15 +710,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
             andNode.addNode(notNode1);
             andNode.addNode(notNode2);*/
             visit(andList.get(0));
-            addNode(andNode);
+            treeBuilder.addNode(andNode);
             visit(andList.get(1));
-            addNode(andNode);
+            treeBuilder.addNode(andNode);
             for (int i = 2; i < andList.size(); i++) {
                 visit(andList.get(i));
                 LogicNode subAndNode = andNode;
                 andNode = new LogicNode(TreeNode.Type.AND);
                 andNode.addNode(subAndNode);
-                addNode(andNode);
+                treeBuilder.addNode(andNode);
                 /*LogicNode notNode = (LogicNode) visit(andList.get(i));
                 LogicNode subAndNode = andNode;
                 andNode = new LogicNode(TreeNode.Type.AND);
@@ -775,7 +726,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 andNode.addNode(notNode);*/
             }
         }
-        pushStatement(andNode);
+        treeBuilder.pushStatement(andNode);
         return andNode;
         // return visitChildren(ctx);
     }
@@ -791,8 +742,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             notNode.setNot();
         }
         // notNode.addNode(preNode);
-        addNode(notNode);
-        pushStatement(notNode);
+        treeBuilder.addNode(notNode);
+        treeBuilder.pushStatement(notNode);
         return notNode;
         // return visitChildren(ctx);
     }
@@ -815,16 +766,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else if (ctx.search_condition() != null) {
             // LogicNode node = (LogicNode) visit(ctx.search_condition());
             visit(ctx.search_condition());
-            LogicNode node = (LogicNode) popStatement();
+            LogicNode node = (LogicNode) treeBuilder.popStatement();
             node.setPriority();
-            pushStatement(node);
+            treeBuilder.pushStatement(node);
             return node;
         } else {
             // TODO implement DECIMAL
-            addException("boolean expression DECIMAL", locate(ctx));
+            treeBuilder.addException("boolean expression DECIMAL", locate(ctx));
             return null;
         }
-        pushStatement(predicateNode);
+        treeBuilder.pushStatement(predicateNode);
         return predicateNode;
         // return visitChildren(ctx);
     }
@@ -834,7 +785,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         // BaseStatement expr = (BaseStatement) visit(ctx.subquery());
         // node.setExpr(expr);
         visit(ctx.subquery());
-        addNode(node);
+        treeBuilder.addNode(node);
     }
 
     private void predicateComp(TSqlParser.PredicateContext ctx, PredicateNode node) {
@@ -847,7 +798,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             // BaseStatement expr = (BaseStatement) visit(exprCtx);
             // node.setExpr(expr);
             visit(exprCtx);
-            addNode(node);
+            treeBuilder.addNode(node);
         }
         if (ctx.ALL() != null) {
             node.setEvalType(PredicateNode.CompType.COMPALL);
@@ -861,7 +812,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else {
             node.setEvalType(PredicateNode.CompType.COMP);
         }
-        addNode(node);
+        treeBuilder.addNode(node);
     }
 
     private void predicateBetween(TSqlParser.PredicateContext ctx, PredicateNode node) {
@@ -870,14 +821,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
             node.setNotComp();
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() != 3) {
-            addException("BETWEEN expression count not equal 3", locate(ctx));
+            treeBuilder.addException("BETWEEN expression count not equal 3", locate(ctx));
             return;
         }
         for (TSqlParser.ExpressionContext exprCtx : list) {
             // BaseStatement expr = (BaseStatement) visit(exprCtx);
             // node.setExpr(expr);
             visit(exprCtx);
-            addNode(node);
+            treeBuilder.addNode(node);
         }
     }
 
@@ -887,19 +838,19 @@ public class TExec extends TSqlBaseVisitor<Object> {
             node.setNotComp();
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() != 1) {
-            addException("IN expression count not equal 1", locate(ctx));
+            treeBuilder.addException("IN expression count not equal 1", locate(ctx));
             return;
         }
         visit(list.get(0));
-        addNode(node);
+        treeBuilder.addNode(node);
         if (ctx.subquery() != null) {
             node.setCompInQuery();
             visit(ctx.subquery());
-            addNode(node);
+            treeBuilder.addNode(node);
         }
         if (ctx.expression_list() != null) {
             visit(ctx.expression_list());
-            addNode(node);
+            treeBuilder.addNode(node);
         }
     }
 
@@ -909,12 +860,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
             node.setNotComp();
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() < 2) {
-            addException("LIKE expression count less than 2", locate(ctx));
+            treeBuilder.addException("LIKE expression count less than 2", locate(ctx));
             return;
         }
         for (TSqlParser.ExpressionContext exprCtx : list) {
             visit(exprCtx);
-            addNode(node);
+            treeBuilder.addNode(node);
         }
     }
 
@@ -925,36 +876,36 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() != 1) {
-            addException("IS expression count not equal 1", locate(ctx));
+            treeBuilder.addException("IS expression count not equal 1", locate(ctx));
             return;
         }
         visit(list.get(0));
-        addNode(node);
+        treeBuilder.addNode(node);
     }
 
     @Override
     public Object visitWhile_statement(TSqlParser.While_statementContext ctx) {
         WhileStatement whileCmd = new WhileStatement(TreeNode.Type.WHILE);
         visit(ctx.search_condition());
-        LogicNode condition = (LogicNode) popStatement();
+        LogicNode condition = (LogicNode) treeBuilder.popStatement();
         whileCmd.setCondtionNode(condition);
         visit(ctx.sql_clause());
-        addNode(whileCmd);
-        pushStatement(whileCmd);
+        treeBuilder.addNode(whileCmd);
+        treeBuilder.pushStatement(whileCmd);
         return whileCmd;
     }
 
     @Override
     public Object visitBreak_statement(TSqlParser.Break_statementContext ctx) {
         BreakStatement breakCmd = new BreakStatement(TreeNode.Type.BREAK);
-        pushStatement(breakCmd);
+        treeBuilder.pushStatement(breakCmd);
         return breakCmd;
     }
 
     @Override
     public Object visitContinue_statement(TSqlParser.Continue_statementContext ctx) {
         ContinueStatement continueCmd = new ContinueStatement(TreeNode.Type.CONTINUE);
-        pushStatement(continueCmd);
+        treeBuilder.pushStatement(continueCmd);
         return continueCmd;
     }
 
@@ -963,10 +914,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         ReturnStatement returnCmd = new ReturnStatement(TreeNode.Type.RETURN);
         if (ctx.expression() != null) {
             visit(ctx.expression());
-            TreeNode expr = popStatement();
+            TreeNode expr = treeBuilder.popStatement();
             returnCmd.setExpr(expr);
         }
-        pushStatement(returnCmd);
+        treeBuilder.pushStatement(returnCmd);
         return returnCmd;
     }
 
@@ -978,12 +929,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
             gotoCmd.setAction();
         }
         // goSeq + label allow same label occured in different GO block
-        gotoCmd.setLabel(rootNode.currentGoStmt().getGoSeq() + label);
-        pushStatement(gotoCmd);
+        gotoCmd.setLabel(treeBuilder.getRootNode().currentGoStmt().getGoSeq() + label);
+        treeBuilder.pushStatement(gotoCmd);
         if (gotoCmd.getAction())
-            rootNode.currentGoStmt().addGotoAction(gotoCmd);
+            treeBuilder.getRootNode().currentGoStmt().addGotoAction(gotoCmd);
         else
-            rootNode.currentGoStmt().addGotoLabel(gotoCmd);
+            treeBuilder.getRootNode().currentGoStmt().addGotoLabel(gotoCmd);
         return gotoCmd;
     }
 
@@ -991,9 +942,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public Object visitPrint_statement(TSqlParser.Print_statementContext ctx) {
         PrintStatement printCmd = new PrintStatement(TreeNode.Type.PRINT);
         visit(ctx.expression());
-        TreeNode expr = popStatement();
+        TreeNode expr = treeBuilder.popStatement();
         printCmd.addExpression(expr);
-        pushStatement(printCmd);
+        treeBuilder.pushStatement(printCmd);
         return printCmd;
     }
 
@@ -1003,16 +954,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
         // THROW stmt without any args can only exists in CATCH stmt
         if (ctx.message == null && ctx.error_number == null && ctx.state == null) {
             throwCmd.setEmptyArg();
-            pushStatement(throwCmd);
-            rootNode.currentGoStmt().addThrowStmt(throwCmd);
+            treeBuilder.pushStatement(throwCmd);
+            treeBuilder.getRootNode().currentGoStmt().addThrowStmt(throwCmd);
             return throwCmd;
         }
         if (ctx.message == null || ctx.error_number == null || ctx.state == null)
-            addException("throw stmt miss args", locate(ctx));
+            treeBuilder.addException("throw stmt miss args", locate(ctx));
         throwCmd.setMsg(ctx.message.getText());
         throwCmd.setErrorNumStr(ctx.error_number.getText());
         throwCmd.setStateNumStr(ctx.state.getText());
-        pushStatement(throwCmd);
+        treeBuilder.pushStatement(throwCmd);
         return throwCmd;
     }
 
@@ -1020,7 +971,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public Object visitRaiseerror_statement(TSqlParser.Raiseerror_statementContext ctx) {
         RaiseStatement raiseCmd = new RaiseStatement(TreeNode.Type.RAISE);
         if (ctx.msg == null || ctx.severity == null || ctx.state == null) {
-            addException("raise error stmt miss args", locate(ctx));
+            treeBuilder.addException("raise error stmt miss args", locate(ctx));
         }
         raiseCmd.setMsgStr(ctx.msg.getText());
         raiseCmd.setSeverityStr(ctx.severity.getText());
@@ -1037,7 +988,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 raiseCmd.appendArg(var);
             }
         }
-        pushStatement(raiseCmd);
+        treeBuilder.pushStatement(raiseCmd);
         return raiseCmd;
     }
 
@@ -1046,13 +997,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         TryCatchStatement tryCatchCmd = new TryCatchStatement(TreeNode.Type.TRY);
         if (ctx.sql_clauses(0) != null) {
             visit(ctx.sql_clauses(0));
-            addNode(tryCatchCmd);
+            treeBuilder.addNode(tryCatchCmd);
         }
         if (ctx.sql_clauses(1) != null) {
             visit(ctx.sql_clauses(1));
-            addNode(tryCatchCmd);
+            treeBuilder.addNode(tryCatchCmd);
         }
-        pushStatement(tryCatchCmd);
+        treeBuilder.pushStatement(tryCatchCmd);
         return tryCatchCmd;
     }
 
@@ -1064,10 +1015,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if (ctx.expression() != null) {
             visit(ctx.expression());
-            TreeNode expr = popStatement();
+            TreeNode expr = treeBuilder.popStatement();
             waitStmt.addExpr(expr);
         }
-        pushStatement(waitStmt);
+        treeBuilder.pushStatement(waitStmt);
         return waitStmt;
     }
 
@@ -1106,7 +1057,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public Object visitAlter_database(TSqlParser.Alter_databaseContext ctx) {
-        addException("ALTER DATABASE", locate(ctx));
+        treeBuilder.addException("ALTER DATABASE", locate(ctx));
         return null;
     }
 
@@ -1126,31 +1077,31 @@ public class TExec extends TSqlBaseVisitor<Object> {
         checkLength(databaseName, 128, "database name ");
         sql.append(databaseName);
         if (ctx.CONTAINMENT() != null) {
-            addException(ctx.CONTAINMENT().getText(), locate(ctx));
+            treeBuilder.addException(ctx.CONTAINMENT().getText(), locate(ctx));
         }
         if (ctx.ON(0) != null) {
-            addException(ctx.ON(0).getText(), locate(ctx));
+            treeBuilder.addException(ctx.ON(0).getText(), locate(ctx));
         }
         if (ctx.LOG() != null) {
-            addException(ctx.LOG().getText(), locate(ctx));
+            treeBuilder.addException(ctx.LOG().getText(), locate(ctx));
         }
         if (ctx.COLLATE() != null) {
-            addException(ctx.COLLATE().getText(), locate(ctx));
+            treeBuilder.addException(ctx.COLLATE().getText(), locate(ctx));
         }
         if (ctx.WITH() != null) {
-            addException(ctx.WITH().getText(), locate(ctx));
+            treeBuilder.addException(ctx.WITH().getText(), locate(ctx));
         }
         if (ctx.FOR() != null) {
-            addException(ctx.FOR().getText(), locate(ctx));
+            treeBuilder.addException(ctx.FOR().getText(), locate(ctx));
         }
         sqlStatement.setSql(sql.toString());
-        pushStatement(sqlStatement);
+        treeBuilder.pushStatement(sqlStatement);
         return sqlStatement;
     }
 
     @Override
     public SqlStatement visitCreate_index(TSqlParser.Create_indexContext ctx) {
-        addException("CREATE INDEX", locate(ctx));
+        treeBuilder.addException("CREATE INDEX", locate(ctx));
         return null;
     }
 
@@ -1247,7 +1198,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitCreate_statistics(TSqlParser.Create_statisticsContext ctx) {
-        addException("create statistics", locate(ctx));
+        treeBuilder.addException("create statistics", locate(ctx));
         return null;
     }
 
@@ -1262,9 +1213,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             createTableStatement.setCrudStr(visitCrud_table(ctx.crud_table()));
         }
         if (null != ctx.ON() || null != ctx.TEXTIMAGE_ON()) {
-            addException(" filegroup", locate(ctx));
+            treeBuilder.addException(" filegroup", locate(ctx));
         }
-        pushStatement(createTableStatement);
+        treeBuilder.pushStatement(createTableStatement);
         return createTableStatement;
     }
 
@@ -1299,13 +1250,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitColumn_definition(TSqlParser.Column_definitionContext ctx) {
         StringBuffer sb = new StringBuffer();
         if (null != ctx.COLLATE()) {
-            addException(ctx.COLLATE().getText(), locate(ctx));
+            treeBuilder.addException(ctx.COLLATE().getText(), locate(ctx));
         }
         if (null != ctx.CONSTRAINT()) {
-            addException(ctx.CONSTRAINT().getText(), locate(ctx));
+            treeBuilder.addException(ctx.CONSTRAINT().getText(), locate(ctx));
         }
         if (null != ctx.IDENTITY()) {
-            addException(ctx.IDENTITY().getText(), locate(ctx));
+            treeBuilder.addException(ctx.IDENTITY().getText(), locate(ctx));
         }
         sb.append(visitId(ctx.id(0)));
         sb.append(Common.SPACE);
@@ -1329,7 +1280,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 || dataType.contains("GEOMETRY")
                 || dataType.contains("HIERARCHYID")
                 || dataType.contains("SQL_VARIANT")) {
-            addException(dataType, locate(data_typeContext));
+            treeBuilder.addException(dataType, locate(data_typeContext));
             return "";
         } else if (dataType.contains("BIT")) {
             return "BOOLEAN";
@@ -1361,21 +1312,21 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitColumn_constraint(TSqlParser.Column_constraintContext ctx) {
         if (null != ctx.PRIMARY() || null != ctx.CHECK() || null != ctx.UNIQUE()) {
-            addException(" PRIMARY KEY,CHECK,UNIQUE", locate(ctx));
+            treeBuilder.addException(" PRIMARY KEY,CHECK,UNIQUE", locate(ctx));
         }
         return "";
     }
 
     @Override
     public String visitTable_constraint(TSqlParser.Table_constraintContext ctx) {
-        addException("PRIMARY KEY", locate(ctx));
+        treeBuilder.addException("PRIMARY KEY", locate(ctx));
         return "";
     }
 
     @Override
     public SqlStatement visitCreate_type(TSqlParser.Create_typeContext ctx) {
         SqlStatement rs = new SqlStatement();
-        addException("create type", locate(ctx));
+        treeBuilder.addException("create type", locate(ctx));
         return rs;
     }
 
@@ -1412,18 +1363,18 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(")");
         }
         if (!ctx.view_attribute().isEmpty()) {
-            addException(" ENCRYPTION | SCHEMABINDING | VIEW_METADATA ", locate(ctx));
+            treeBuilder.addException(" ENCRYPTION | SCHEMABINDING | VIEW_METADATA ", locate(ctx));
         }
         sql.append(Common.SPACE);
         sql.append(ctx.AS().getText());
         sql.append(Common.SPACE);
         sql.append(visitSelect_statement(ctx.select_statement()).getSql());
-        popStatement();
+        treeBuilder.popStatement();
         if (null != ctx.OPTION()) {
-            addException("WITH CHECK OPTION", locate(ctx));
+            treeBuilder.addException("WITH CHECK OPTION", locate(ctx));
         }
         rs.setSql(sql.toString());
-        pushStatement(rs);
+        treeBuilder.pushStatement(rs);
         return rs;
     }
 
@@ -1445,17 +1396,17 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(ctx.TABLE(0).getText()).append(Common.SPACE);
         sql.append(visitTable_name(ctx.table_name(0)).getFullFuncName());
         if (null != ctx.SET()) {
-            addException("SET   LOCK_ESCALATION ", locate(ctx));
+            treeBuilder.addException("SET   LOCK_ESCALATION ", locate(ctx));
         }
 
         if (null != ctx.DROP() && null != ctx.CONSTRAINT()) {
-            addException("DROP CONSTRAINT", locate(ctx));
+            treeBuilder.addException("DROP CONSTRAINT", locate(ctx));
         }
         if (null != ctx.WITH()) {
-            addException("WITH CHECK ADD CONSTRAINT", locate(ctx));
+            treeBuilder.addException("WITH CHECK ADD CONSTRAINT", locate(ctx));
         }
         if (null != ctx.CHECK()) {
-            addException("CHECK CONSTRAINT", locate(ctx));
+            treeBuilder.addException("CHECK CONSTRAINT", locate(ctx));
         }
         /*/
         | DROP CONSTRAINT ( IF EXISTS )?  constraint=id
@@ -1465,7 +1416,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
         if(null!=ctx.DROP() && null!=ctx.id() && ctx.id().size()>=0){
             if(ctx.id().size()>1){
-                addException("Just supported delete a column ", locate(ctx));
+                treeBuilder.addException("Just supported delete a column ", locate(ctx));
             }else{
                 sql.append(Common.SPACE).append("DROP")
                         .append(" COLUMN " );
@@ -1486,7 +1437,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(visitColumn_def_table_constraint(ctx.column_def_table_constraint()));
         }
         rs.setSql(sql.toString());
-        pushStatement(rs);
+        treeBuilder.pushStatement(rs);
         return rs;
     }
 
@@ -1498,7 +1449,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(ctx.TABLES().getText()).append(Common.SPACE);
         sqlStatement.setSql(sql.toString());
         sqlStatement.setAddResult(true);
-        pushStatement(sqlStatement);
+        treeBuilder.pushStatement(sqlStatement);
         return sqlStatement;
     }
 
@@ -1510,7 +1461,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(ctx.DATABASES().getText()).append(Common.SPACE);
         sqlStatement.setSql(sql.toString());
         sqlStatement.setAddResult(true);
-        pushStatement(sqlStatement);
+        treeBuilder.pushStatement(sqlStatement);
         return sqlStatement;
     }
 
@@ -1519,7 +1470,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
         TruncateTableStatement truncateTableStatement = new TruncateTableStatement(tableName);
         truncateTableStatement.setAddResult(false);
-        pushStatement(truncateTableStatement);
+        treeBuilder.pushStatement(truncateTableStatement);
         return truncateTableStatement;
     }
 
@@ -1539,13 +1490,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         rs.setAddResult(false);
         rs.setSql(sql.toString());
-        pushStatement(rs);
+        treeBuilder.pushStatement(rs);
         return rs;
     }
 
     @Override
     public SqlStatement visitDrop_index(TSqlParser.Drop_indexContext ctx) {
-        addException("drop index ", locate(ctx));
+        treeBuilder.addException("drop index ", locate(ctx));
         return null;
     }
 
@@ -1576,7 +1527,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         rs.setSql(sql.toString());
         DropProcedureStatement statement = new DropProcedureStatement(funcNames);
-        pushStatement(statement);
+        treeBuilder.pushStatement(statement);
 
         return statement;
     }
@@ -1585,14 +1536,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public Object visitDrop_statistics(TSqlParser.Drop_statisticsContext ctx) {
         //SqlStatement rs = new SqlStatement(Common.DROP_STATISTICS);
-        addException("drop statistics", locate(ctx));
-        // pushStatement(rs);
+        treeBuilder.addException("drop statistics", locate(ctx));
+        // treeBuilder.pushStatement(rs);
         return null;
     }
 
     @Override
     public Object visitDrop_type(TSqlParser.Drop_typeContext ctx) {
-        addException("drop type", locate(ctx));
+        treeBuilder.addException("drop type", locate(ctx));
         return null;
     }
 
@@ -1617,7 +1568,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         dropTableStatement.setSql(sql.toString());
         dropTableStatement.setTableName(tableNames);
-        pushStatement(dropTableStatement);
+        treeBuilder.pushStatement(dropTableStatement);
         return dropTableStatement;
     }
 
@@ -1644,7 +1595,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         rs.setTableName(tableNames);
         rs.setSql(sql.toString());
-        pushStatement(rs);
+        treeBuilder.pushStatement(rs);
         return rs;
     }
 
@@ -1685,12 +1636,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
             LimitStatement limitStatement = new LimitStatement();
             limitStatement.setNodeType(TreeNode.Type.LIMIT_NUMBER);
             visit(ctx.expression());
-            limitStatement.setLimitValueNode(popStatement());
+            limitStatement.setLimitValueNode(treeBuilder.popStatement());
             insertStatement.addInsertValuesNode(limitStatement);
             if (null != ctx.PERCENT()) {
                 limitStatement.setNodeType(TreeNode.Type.LIMIT_PERCENT);
                 //rs.sql.append(ctx.PERCENT().getText()).append(Common.SPACE);
-                addException("PERCENT", locate(ctx));
+                treeBuilder.addException("PERCENT", locate(ctx));
             }
         }
 
@@ -1724,7 +1675,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         insertStatement.addTableNames(tableNameList);
         insertStatement.addVariables(localIdVariable);
         insertStatement.addInsertValuesNode(insertValuesNode);
-        pushStatement(insertStatement);
+        treeBuilder.pushStatement(insertStatement);
         cleanTableVariable();
         return insertStatement;
 
@@ -1745,10 +1696,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.execute_statement()) {
             rs.setNodeType(TreeNode.Type.EXECUTE_STATEMENT);
             visit(ctx.execute_statement());
-            addNode(rs);
+            treeBuilder.addNode(rs);
         }
         if (null != ctx.DEFAULT()) {
-            addException(ctx.DEFAULT().getText(), locate(ctx));
+            treeBuilder.addException(ctx.DEFAULT().getText(), locate(ctx));
         }
         rs.setSql(sql.toString());
         return rs;
@@ -1792,7 +1743,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
             sb.append("(");
             sb.append(visitExpression_list(ctx.expression_list(i)).getSql());
-            popStatement();
+            treeBuilder.popStatement();
             sb.append(")");
         }
         return sb.toString();
@@ -1813,11 +1764,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             LimitStatement limitStatement = new LimitStatement();
             limitStatement.setNodeType(TreeNode.Type.LIMIT_NUMBER);
             visit(ctx.expression());
-            limitStatement.setLimitValueNode(popStatement());
+            limitStatement.setLimitValueNode(treeBuilder.popStatement());
             updateStatement.addUpdateValuesNode(limitStatement);
             if (null != ctx.PERCENT()) {
                 limitStatement.setNodeType(TreeNode.Type.LIMIT_PERCENT);
-                addException("PERCENT", locate(ctx));
+                treeBuilder.addException("PERCENT", locate(ctx));
             }
         }
         if (null != ctx.ddl_object()) {
@@ -1852,7 +1803,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if (null != ctx.CURRENT()) {
             //TODO 在updatastatment上挂游标statement
-            addException("cursor", locate(ctx));
+            treeBuilder.addException("cursor", locate(ctx));
         }
         if (null != ctx.output_clause()) {
             visitFor_clause(ctx.for_clause());
@@ -1863,7 +1814,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         cleanTableVariable();
         updateStatement.setSql(sql.toString());
         updateStatement.addTableNames(tableNameList);
-        pushStatement(updateStatement);
+        treeBuilder.pushStatement(updateStatement);
         return updateStatement;
 
     }
@@ -1879,7 +1830,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
      */
     @Override
     public String visitRowset_function_limited(TSqlParser.Rowset_function_limitedContext ctx) {
-        addException("open query  or openDatasource ", locate(ctx));
+        treeBuilder.addException("open query  or openDatasource ", locate(ctx));
         return "";
     }
 
@@ -1902,7 +1853,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.expression()) {
             TreeNode sqlStatement = (TreeNode) visit(ctx.expression());
             sb.append(sqlStatement.getSql());
-            popStatement();
+            treeBuilder.popStatement();
         } else {
             sb.append(ctx.udt_column_name.getText()).append(".").append(ctx.method_name.getText()).append("(");
             sb.append(visitExpression_list(ctx.expression_list()));
@@ -1938,12 +1889,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
             LimitStatement limitStatement = new LimitStatement();
             limitStatement.setNodeType(TreeNode.Type.LIMIT_NUMBER);
             visit(ctx.expression());
-            limitStatement.setLimitValueNode(popStatement());
+            limitStatement.setLimitValueNode(treeBuilder.popStatement());
             deleteStatement.addDelValuesNode(limitStatement);
             if (null != ctx.PERCENT()) {
                 limitStatement.setNodeType(TreeNode.Type.LIMIT_PERCENT);
                 //rs.sql.append(ctx.PERCENT().getText()).append(Common.SPACE);
-                addException("PERCENT ", locate(ctx));
+                treeBuilder.addException("PERCENT ", locate(ctx));
             }
         }
         sql.append(Common.FROM);
@@ -1957,7 +1908,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
 
         if (null != ctx.table_sources()) {
-            // addException(" multi table deletion", locate(ctx));
+            // treeBuilder.addException(" multi table deletion", locate(ctx));
             sql.append(Common.SPACE);
             sql.append(" from ");
             sql.append(visitTable_sources(ctx.table_sources()));
@@ -1966,7 +1917,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(Common.SPACE).append(ctx.WHERE().getText()).append(Common.SPACE);
             if (null != ctx.search_condition()) {
                 LogicNode logicNode = visitSearch_condition(ctx.search_condition());
-                popStatement();
+                treeBuilder.popStatement();
                 if (null != logicNode) {
                     sql.append(logicNode.toString()).append(Common.SPACE);
                 }
@@ -1975,8 +1926,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.CURRENT()) {
             //TODO 在delstatment上挂游标statement
             //CursorStatement cursorStatement = new CursorStatement();
-            //addNode(cursorStatement);
-            addException(" cursor", locate(ctx));
+            //treeBuilder.addNode(cursorStatement);
+            treeBuilder.addException(" cursor", locate(ctx));
         }
         if (null != ctx.for_clause()) {
             visitFor_clause(ctx.for_clause());
@@ -1985,7 +1936,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             visitOption_clause(ctx.option_clause());
         }
         cleanTableVariable();
-        pushStatement(deleteStatement);
+        treeBuilder.pushStatement(deleteStatement);
         deleteStatement.setSql(sql.toString());
         deleteStatement.addTableNames(tableNameList);
         return deleteStatement;
@@ -2113,7 +2064,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitOutput_clause(TSqlParser.Output_clauseContext ctx) {
         //SqlStatement rs = new SqlStatement();
         if (null != ctx.OUTPUT()) {
-            addException("output  option", locate(ctx));
+            treeBuilder.addException("output  option", locate(ctx));
         }
         return "";
     }
@@ -2211,8 +2162,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
         clearVariable();
 
-        addNode(selectStatement);
-        pushStatement(selectStatement);
+        treeBuilder.addNode(selectStatement);
+        treeBuilder.pushStatement(selectStatement);
         return selectStatement;
     }
 
@@ -2220,7 +2171,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitFor_clause(TSqlParser.For_clauseContext ctx) {
         //SqlStatement rs = new SqlStatement();
-        addException(" for clause ", locate(ctx));
+        treeBuilder.addException(" for clause ", locate(ctx));
         return "";
     }
 
@@ -2228,14 +2179,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitOption_clause(TSqlParser.Option_clauseContext ctx) {
         //SqlStatement rs = new SqlStatement();
         //如指定查询中的 JOIN 操作由 MERGE JOIN 执行，可以使用 MAXRECURSION 来防止不合理的递归公用表表达式进入无限循环等操作
-        addException("query option", locate(ctx));
+        treeBuilder.addException("query option", locate(ctx));
         return "";
     }
 
     @Override
     public String visitWith_expression(TSqlParser.With_expressionContext ctx) {
        /* if (null != ctx.XMLNAMESPACES()) {
-            addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
+            treeBuilder.addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
         }
         if (!ctx.common_table_expression().isEmpty()) {
             for (int i = 0; i < ctx.common_table_expression().size(); i++) {
@@ -2244,7 +2195,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         return "";*/
         if (null != ctx.XMLNAMESPACES()) {
-            addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
+            treeBuilder.addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
         }
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append("with ");
@@ -2281,7 +2232,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         withExpressionSqlMap.put(visitId(ctx.id()), visitSelect_statement(ctx.select_statement())
                 .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE));
-        popStatement();
+        treeBuilder.popStatement();
         withColmnNameAlias.clear();
         return "";*/
 
@@ -2300,7 +2251,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         stringBuffer.append(sql);
         withExpressionSqlMap.put(visitId(ctx.id()), sql);
         stringBuffer.append(" )").append(Common.SPACE);
-        popStatement();
+        treeBuilder.popStatement();
         withColmnNameAlias.clear();
         return stringBuffer.toString();
     }
@@ -2350,7 +2301,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.WHERE()) {
             rs.append(ctx.WHERE().getText()).append(Common.SPACE);
             rs.append(visitSearch_condition(ctx.search_condition(0)).toString()).append(Common.SPACE);
-            popStatement();
+            treeBuilder.popStatement();
         }
         if (null != ctx.GROUP()) {
             rs.append(ctx.GROUP().getText()).append(Common.SPACE);
@@ -2370,24 +2321,24 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 LogicNode logicNode = visitSearch_condition(ctx.search_condition(1));
                 if (null != logicNode) {
                     rs.append(logicNode.toString()).append(Common.SPACE);
-                    popStatement();
+                    treeBuilder.popStatement();
                 }
             } else {
                 LogicNode logicNode = visitSearch_condition(ctx.search_condition(0));
                 if (null != logicNode) {
                     rs.append(logicNode.toString()).append(Common.SPACE);
-                    popStatement();
+                    treeBuilder.popStatement();
                 }
             }
         }
         if (null != ctx.TOP()) {
             StringBuffer sql = new StringBuffer().append(Common.LIMIT).append(Common.SPACE);
             TreeNode sqlStatement = (TreeNode) visit(ctx.expression());
-            popStatement();
+            treeBuilder.popStatement();
             sql.append(sqlStatement.getSql()).append(Common.SPACE);
             if (null != ctx.PERCENT()) {
                 //rs.sql.append(ctx.PERCENT().getText()).append(Common.SPACE);
-                addException("PERCENT", locate(ctx));
+                treeBuilder.addException("PERCENT", locate(ctx));
             }
             limitSql = sql.toString();
         }
@@ -2397,7 +2348,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitGroup_by_item(TSqlParser.Group_by_itemContext ctx) {
         TreeNode ss = (TreeNode) visit(ctx.expression());
-        popStatement();
+        treeBuilder.popStatement();
         return ss.getSql();
     }
 
@@ -2537,7 +2488,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else if (null != ctx.GROUPING()) {
             sql.append(ctx.GROUPING().getText()).append("(");
             sql.append(getExpressionSql(ctx.expression()));
-            popStatement();
+            treeBuilder.popStatement();
             sql.append(")");
         } else if (null != ctx.CHECKSUM_AGG()) {
             sql.append(ctx.CHECKSUM_AGG().getText()).append("(");
@@ -2586,7 +2537,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
         }
         rs.setSql(sql.append(Common.SPACE).toString());
-        pushStatement(rs);
+        treeBuilder.pushStatement(rs);
         return rs;
     }
 
@@ -2600,7 +2551,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             rs.append(ctx.DISTINCT().getText()).append(Common.SPACE);
         }
         rs.append(getExpressionSql(ctx.expression()));
-        popStatement();
+        treeBuilder.popStatement();
         return rs.toString();
     }
 
@@ -2628,8 +2579,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public TreeNode visitLog_function(TSqlParser.Log_functionContext ctx) {
         LogFunction function = new LogFunction(new FuncName(null, "LOG", null));
         visit(ctx.expression());
-        function.setExpr(popStatement());
-        pushStatement(function);
+        function.setExpr(treeBuilder.popStatement());
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2650,12 +2601,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         TSubstringFunction func = new TSubstringFunction(new FuncName(null, "SUBSTRING", null));
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         visit(list.get(0));
-        func.setLeftExpr(popStatement());
+        func.setLeftExpr(treeBuilder.popStatement());
         visit(list.get(1));
-        func.setMidExpr(popStatement());
+        func.setMidExpr(treeBuilder.popStatement());
         visit(list.get(2));
-        func.setRightExpr(popStatement());
-        pushStatement(func);
+        func.setRightExpr(treeBuilder.popStatement());
+        treeBuilder.pushStatement(func);
         return func;
     }
 
@@ -2664,8 +2615,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public TreeNode visitLen_function(TSqlParser.Len_functionContext ctx) {
         LenFunction function = new LenFunction(new FuncName(null, "LEN", null));
         visit(ctx.expression());
-        function.setExpr(popStatement());
-        pushStatement(function);
+        function.setExpr(treeBuilder.popStatement());
+        treeBuilder.pushStatement(function);
         return function;
 
     }
@@ -2676,10 +2627,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         ScalarFunction function = new ScalarFunction(funcName);
         if (null != ctx.expression_list()) {
             visitExpression_list(ctx.expression_list());
-            function.setExprs(popStatement());
+            function.setExprs(treeBuilder.popStatement());
         }
 
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2693,16 +2644,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //        return super.visitCast_function(ctx);
         CastFunction function = new CastFunction(new FuncName(null, "CAST", null));
         visit(ctx.expression());
-        function.setExpr(popStatement());
+        function.setExpr(treeBuilder.popStatement());
         function.setDataType(visitData_type(ctx.data_type()));
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
     @Override
     public BaseFunction visitCast_and_add(TSqlParser.Cast_and_addContext ctx) {
         visit(ctx.function_call());
-        TreeNode expr = popStatement();
+        TreeNode expr = treeBuilder.popStatement();
         int incr = Integer.parseInt(ctx.DECIMAL().getText());
         String unitStr = null;
         if (null != ctx.DAYS()) {
@@ -2719,7 +2670,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         TimeUnit unit = TimeUnit.valueOf(unitStr.toUpperCase());
         if (unit != TimeUnit.DAYS) {
-            addException("Only support DAYS", locate(ctx));
+            treeBuilder.addException("Only support DAYS", locate(ctx));
         }
 
 
@@ -2729,7 +2680,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         function.setIncr(incr);
         function.setTimeUnit(unit);
         function.setOperate(ctx.sign().getText().trim());
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2737,9 +2688,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public BaseFunction visitConvert_function(TSqlParser.Convert_functionContext ctx) {
         ConvertFunction function = new ConvertFunction(new FuncName(null, "CONVERT", null));
         visit(ctx.expression().get(0));
-        function.setExpr(popStatement());
+        function.setExpr(treeBuilder.popStatement());
         function.setDataType(visitData_type(ctx.data_type()));
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2753,9 +2704,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         CoalesceFunction function = new CoalesceFunction(new FuncName(null, "coalesce", null));
         if (null != ctx.expression_list()) {
             visitExpression_list(ctx.expression_list());
-            function.setExprs(popStatement());
+            function.setExprs(treeBuilder.popStatement());
         }
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2764,7 +2715,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //        return super.visitCurrent_timestamp_function(ctx);
         FuncName funcName = new FuncName(null, "GETDATE", null);
         ScalarFunction function = new ScalarFunction(funcName);
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2781,13 +2732,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         function.setDatePart(datePart);
         if ("d".equalsIgnoreCase(datePart) || "dd".equalsIgnoreCase(datePart) || "day".equalsIgnoreCase(datePart)) {
             visit(ctx.expression().get(0));
-            function.setNumber(popStatement());
+            function.setNumber(treeBuilder.popStatement());
             visit(ctx.expression().get(1));
-            function.setDate(popStatement());
+            function.setDate(treeBuilder.popStatement());
         } else {
-            this.addException("datepart #[" + datePart + "]", locate(ctx));
+            this.treeBuilder.addException("datepart #[" + datePart + "]", locate(ctx));
         }
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2798,13 +2749,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         function.setDatePart(datePart);
         if ("d".equalsIgnoreCase(datePart) || "dd".equalsIgnoreCase(datePart) || "day".equalsIgnoreCase(datePart)) {
             visit(ctx.expression().get(0));
-            function.setLeftExpr(popStatement());
+            function.setLeftExpr(treeBuilder.popStatement());
             visit(ctx.expression().get(1));
-            function.setRightExpr(popStatement());
+            function.setRightExpr(treeBuilder.popStatement());
         } else {
-            this.addException("datepart #[" + datePart + "]", locate(ctx));
+            this.treeBuilder.addException("datepart #[" + datePart + "]", locate(ctx));
         }
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2813,16 +2764,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
         DateNameFunction function = new DateNameFunction(new FuncName(null, "DATENAME", null));
         String datePart = ctx.ID().getText();
         if ("weekday".equals(datePart) || "dw".equals(datePart) || "w".equals(datePart)) {
-            addException("DatePart " + datePart, locate(ctx));
+            treeBuilder.addException("DatePart " + datePart, locate(ctx));
         }
         DateUnit dateUnit = DateUnit.parse(datePart);
         if (null == dateUnit) {
-            addException("datepart # " + datePart, locate(ctx));
+            treeBuilder.addException("datepart # " + datePart, locate(ctx));
         }
         function.setDateUnit(dateUnit);
         visit(ctx.expression());
-        function.setExpr(popStatement());
-        pushStatement(function);
+        function.setExpr(treeBuilder.popStatement());
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2832,12 +2783,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String datePart = ctx.ID().getText();
         DateUnit dateUnit = DateUnit.parse(datePart);
         if (null == dateUnit) {
-            addException("datepart # " + datePart, locate(ctx));
+            treeBuilder.addException("datepart # " + datePart, locate(ctx));
         }
         function.setDateUnit(dateUnit);
         visit(ctx.expression());
-        function.setExpr(popStatement());
-        pushStatement(function);
+        function.setExpr(treeBuilder.popStatement());
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2855,10 +2806,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public BaseFunction visitNullif_function(TSqlParser.Nullif_functionContext ctx) {
         NullIfFunction function = new NullIfFunction(new FuncName(null, "NULLIF", null));
         visit(ctx.expression().get(0));
-        function.setLeftExpr(popStatement());
+        function.setLeftExpr(treeBuilder.popStatement());
         visit(ctx.expression().get(1));
-        function.setRightExpr(popStatement());
-        pushStatement(function);
+        function.setRightExpr(treeBuilder.popStatement());
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2867,11 +2818,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         LeftFunction function = new LeftFunction(new FuncName(null, "left", null));
         List<TreeNode> exprList = new ArrayList<TreeNode>();
         visit(ctx.expression().get(0));
-        exprList.add(popStatement());
+        exprList.add(treeBuilder.popStatement());
         visit(ctx.expression().get(1));
-        exprList.add(popStatement());
+        exprList.add(treeBuilder.popStatement());
         function.setExprList(exprList);
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -2880,11 +2831,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         RightFunction function = new RightFunction(new FuncName(null, "right", null));
         List<TreeNode> exprList = new ArrayList<TreeNode>();
         visit(ctx.expression().get(0));
-        exprList.add(popStatement());
+        exprList.add(treeBuilder.popStatement());
         visit(ctx.expression().get(1));
-        exprList.add(popStatement());
+        exprList.add(treeBuilder.popStatement());
         function.setExprList(exprList);
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return visitChildren(ctx);
     }
 
@@ -2893,15 +2844,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
         IsNullFunction func = new IsNullFunction(new FuncName(null, "ISNULL", null));
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() != 2) {
-            addException("ISNULL function need 2 args", locate(ctx));
+            treeBuilder.addException("ISNULL function need 2 args", locate(ctx));
         }
         List<TreeNode> exprList = new ArrayList<TreeNode>();
         visit(list.get(0));
-        exprList.add(popStatement());
+        exprList.add(treeBuilder.popStatement());
         visit(list.get(1));
-        exprList.add(popStatement());
+        exprList.add(treeBuilder.popStatement());
         func.setExprList(exprList);
-        pushStatement(func);
+        treeBuilder.pushStatement(func);
         return func;
     }
 
@@ -2912,10 +2863,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         for (TSqlParser.ExpressionContext exprCtx : list) {
             visit(exprCtx);
-            exprList.add(popStatement());
+            exprList.add(treeBuilder.popStatement());
         }
         trimFunc.setExprList(exprList);
-        pushStatement(trimFunc);
+        treeBuilder.pushStatement(trimFunc);
         return trimFunc;
     }
 
@@ -2963,14 +2914,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //        }
 //        if (null != ctx.CONVERT()) {
 //
-//            addException("CONVERT", locate(ctx));
+//            treeBuilder.addException("CONVERT", locate(ctx));
 //        }
 //        if (null != ctx.CHECKSUM()) {
 //            //用于校验列值是否改变
-//            addException("CHECKSUM is not supported yet.\n ");
+//            treeBuilder.addException("CHECKSUM is not supported yet.\n ");
 //        }
 //        if (null != ctx.BINARY_CHECKSUM()) {
-//            addException("BINARY_CHECKSUM is not supported yet.\n ");
+//            treeBuilder.addException("BINARY_CHECKSUM is not supported yet.\n ");
 //        }
 //        if (null != ctx.COALESCE()) {
 //            //COALESCE()函数可以接受一系列的值，如果列表中所有项都为空(null)，那么只使用一个值
@@ -2990,7 +2941,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //                rs.sql.append(getExpressionSql(ctx.expression(0)));
 //                rs.sql.append(" )");
 //            } else {
-//                addException("DATEADD noly supported add Day \n ");
+//                treeBuilder.addException("DATEADD noly supported add Day \n ");
 //            }
 //        }
 //        if (null != ctx.DATEDIFF()) {
@@ -3001,7 +2952,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //                rs.sql.append(getExpressionSql(ctx.expression(1)));
 //                rs.sql.append(" )");
 //            } else {
-//                addException("DATEDIFF noly supported add Day \n ");
+//                treeBuilder.addException("DATEDIFF noly supported add Day \n ");
 //            }
 //        }
 //        if (null != ctx.DATENAME() || null != ctx.DATEPART()) {
@@ -3035,14 +2986,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //                rs.sql.append(getExpressionSql(ctx.expression(0)));
 //                rs.sql.append(" )");
 //            } else {
-//                addException(id + " is not supported yet \n ");
+//                treeBuilder.addException(id + " is not supported yet \n ");
 //            }
 //        }
 //        if (null != ctx.IDENTITY()) {
-//            addException(ctx.IDENTITY() + " is not supported yet \n ");
+//            treeBuilder.addException(ctx.IDENTITY() + " is not supported yet \n ");
 //        }
 //        if (null != ctx.MIN_ACTIVE_ROWVERSION()) {
-//            addException(ctx.MIN_ACTIVE_ROWVERSION() + " is not supported yet \n ");
+//            treeBuilder.addException(ctx.MIN_ACTIVE_ROWVERSION() + " is not supported yet \n ");
 //        }
 //        if (null != ctx.NULLIF()) {
 //            rs.sql.append(" nullif(");
@@ -3052,10 +3003,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //            rs.sql.append(" )");
 //        }
 //        if (null != ctx.CURRENT_USER()) {
-//            addException(ctx.CURRENT_USER() + " is not supported yet \n ");
+//            treeBuilder.addException(ctx.CURRENT_USER() + " is not supported yet \n ");
 //        }
 //        if (null != ctx.SYSTEM_USER()) {
-//            addException(ctx.SYSTEM_USER() + " is not supported yet \n ");
+//            treeBuilder.addException(ctx.SYSTEM_USER() + " is not supported yet \n ");
 //        }
 //        return rs;
 
@@ -3093,13 +3044,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sb.append(visitOver_clause(ctx.over_clause()));
         }
 
-//        popStatement();
+//        treeBuilder.popStatement();
 
 //        sb.append(visitOver_clause(ctx.over_clause()));
         RankWindowFunction function = new RankWindowFunction(new FuncName(null, funcName, null));
         sb.append(" ");
         function.setSql(sb.toString());
-        pushStatement(function);
+        treeBuilder.pushStatement(function);
         return function;
     }
 
@@ -3111,7 +3062,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.PARTITION()) {
             rs.append(ctx.PARTITION().getText()).append(Common.SPACE);
             rs.append(ctx.BY().getText()).append(Common.SPACE);
-            popStatement();
+            treeBuilder.popStatement();
             rs.append(visitExpression_list(ctx.expression_list()).getSql());
         }
         if (null != ctx.order_by_clause()) {
@@ -3131,13 +3082,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         List<TreeNode> rs = new ArrayList<>();
         for (TSqlParser.ExpressionContext expressionContext : ctx.expression()) {
             visit(expressionContext);
-            rs.add(popStatement());
+            rs.add(treeBuilder.popStatement());
         }
         exprs.addExpresses(rs);
 //        exprs.setSql(getExpressionListSql(rs));
 //        exprs.setSql();
-        addNode(exprs);
-        pushStatement(exprs);
+        treeBuilder.addNode(exprs);
+        treeBuilder.pushStatement(exprs);
         return exprs;
     }
 
@@ -3157,39 +3108,39 @@ public class TExec extends TSqlBaseVisitor<Object> {
             caseWhenStatement.setCaseWhenStatementType(1);
             for (int i = 0; i < ctx.switch_search_condition_section().size(); i++) {
                 sql.append(visitSwitch_search_condition_section(ctx.switch_search_condition_section(i)).getSql());
-                addNode(caseWhenStatement);
+                treeBuilder.addNode(caseWhenStatement);
             }
             if (null != ctx.ELSE()) {
                 sql.append(ctx.ELSE().getText()).append(Common.SPACE);
                 SqlStatement elseSqlStatement = (SqlStatement) visit(ctx.expression(0));
                 elseSqlStatement.setNodeType(TreeNode.Type.ELSE);
                 sql.append(elseSqlStatement.getSql());
-                addNode(caseWhenStatement);
+                treeBuilder.addNode(caseWhenStatement);
             }
         } else {
             //====type=0 简单表达式
             caseWhenStatement.setCaseWhenStatementType(0);
             SqlStatement sqlStatement = (SqlStatement) visit(ctx.expression(0));
             sqlStatement.setNodeType(TreeNode.Type.CASE_INPUT);
-            addNode(caseWhenStatement);
+            treeBuilder.addNode(caseWhenStatement);
             sql.append(sqlStatement.getSql());
 
 
             for (int i = 0; i < ctx.switch_section().size(); i++) {
                 sql.append(visitSwitch_section(ctx.switch_section(i)).getSql());
-                addNode(caseWhenStatement);
+                treeBuilder.addNode(caseWhenStatement);
             }
             if (ctx.expression().size() > 1) {
                 sql.append(ctx.ELSE().getText()).append(Common.SPACE);
                 SqlStatement elseSqlStatement = (SqlStatement) visit(ctx.expression(1));
                 elseSqlStatement.setNodeType(TreeNode.Type.ELSE);
                 sql.append(elseSqlStatement.getSql());
-                addNode(caseWhenStatement);
+                treeBuilder.addNode(caseWhenStatement);
             }
         }
         sql.append(ctx.END().getText()).append(Common.SPACE);
         caseWhenStatement.setSql(sql.toString());
-        pushStatement(caseWhenStatement);
+        treeBuilder.pushStatement(caseWhenStatement);
         return caseWhenStatement;
 
     }
@@ -3204,16 +3155,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SqlStatement whenSqlStatement = (SqlStatement) visit(ctx.expression(0));
         whenSqlStatement.setNodeType(TreeNode.Type.WHEN);
         sql.append(whenSqlStatement.getSql());
-        addNode(swichStatement);
+        treeBuilder.addNode(swichStatement);
         sql.append(ctx.THEN().getText()).append(Common.SPACE);
 
         SqlStatement thenSqlStatement = (SqlStatement) visit(ctx.expression(1));
         thenSqlStatement.setNodeType(TreeNode.Type.THEN);
         sql.append(thenSqlStatement.getSql());
         swichStatement.setSql(sql.toString());
-        addNode(swichStatement);
+        treeBuilder.addNode(swichStatement);
 
-        pushStatement(swichStatement);
+        treeBuilder.pushStatement(swichStatement);
         return swichStatement;
     }
 
@@ -3228,15 +3179,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
         /*logicNode.setNodeType(TreeNode.Type.WHEN)*/
         ;
         sql.append(logicNode.toString());
-        popStatement();
-        addNode(swichStatement);
+        treeBuilder.popStatement();
+        treeBuilder.addNode(swichStatement);
         sql.append(ctx.THEN().getText()).append(Common.SPACE);
         TreeNode sqlStatement = (TreeNode) visit(ctx.expression());
         sqlStatement.setNodeType(TreeNode.Type.THEN);
         sql.append(sqlStatement.getSql());
         swichStatement.setSql(sql.toString());
-        addNode(swichStatement);
-        pushStatement(swichStatement);
+        treeBuilder.addNode(swichStatement);
+        treeBuilder.pushStatement(swichStatement);
         return swichStatement;
     }
 
@@ -3248,7 +3199,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 rs.append(",").append(Common.SPACE);
             }
             rs.append(visitSearch_condition(ctx.search_condition(i))).append(Common.SPACE);
-            popStatement();
+            treeBuilder.popStatement();
         }
         return rs.toString();
     }
@@ -3271,13 +3222,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public SqlStatement visitColumn_ref_expression(TSqlParser.Column_ref_expressionContext ctx) {
         SqlStatement sqlStatement = visitFull_column_name(ctx.full_column_name());
-        pushStatement(sqlStatement);
+        treeBuilder.pushStatement(sqlStatement);
         return sqlStatement;
     }
 
     @Override
     public SqlStatement visitFull_column_name(TSqlParser.Full_column_nameContext ctx) {
-        this.popStatement();
+        this.treeBuilder.popStatement();
         SqlStatement rs = new SqlStatement();
         StringBuffer sql = new StringBuffer();
         if (null != ctx.table_name()) {
@@ -3301,8 +3252,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(getExpressionSql(ctx.expression()));
         sql.append(")").append(Common.SPACE);
         es.setSql(sql.toString());
-        addNode(es);
-        pushStatement(es);
+        treeBuilder.addNode(es);
+        treeBuilder.pushStatement(es);
         return es;
     }
 
@@ -3314,8 +3265,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(visitSubquery(ctx.subquery()).getSql());
         sql.append(")");
         subqueryStatement.setSql(sql.toString());
-        addNode(subqueryStatement);
-        pushStatement(subqueryStatement);
+        treeBuilder.addNode(subqueryStatement);
+        treeBuilder.pushStatement(subqueryStatement);
         return subqueryStatement;
     }
 
@@ -3332,10 +3283,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
             expressionBean.setOperatorSign(OperatorSign.BIT_NOT);
         }
         TreeNode ss = (TreeNode) visit(ctx.expression());
-        addNode(expressionStatement);
+        treeBuilder.addNode(expressionStatement);
         sql.append(ss.getSql());
         expressionStatement.setSql(sql.toString());
-        pushStatement(expressionStatement);
+        treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
 
@@ -3348,26 +3299,26 @@ public class TExec extends TSqlBaseVisitor<Object> {
             if (null != ctx.comparison_operator()) {
                 expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.comparison_operator().getText()));
                 sql.append(getExpressionSql(ctx.expression(0)));
-                addNode(es);
+                treeBuilder.addNode(es);
                 sql.append(ctx.comparison_operator().getText());
                 sql.append(getExpressionSql(ctx.expression(1)));
-                addNode(es);
+                treeBuilder.addNode(es);
             } else {
                 expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
                 sql.append(getExpressionSql(ctx.expression(0)));
-                addNode(es);
+                treeBuilder.addNode(es);
                 sql.append(ctx.op.getText());
                 sql.append(getExpressionSql(ctx.expression(1)));
-                addNode(es);
+                treeBuilder.addNode(es);
             }
         } else {
             expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
             sql.append(ctx.op.getText());
             sql.append(getExpressionSql(ctx.expression(0)));
-            addNode(es);
+            treeBuilder.addNode(es);
         }
         es.setSql(sql.toString());
-        pushStatement(es);
+        treeBuilder.pushStatement(es);
         return es;
     }
 
@@ -3415,7 +3366,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         ExpressionStatement expressionStatement = new ExpressionStatement(expressionBean);
         sql.append(SPACE);
         expressionStatement.setSql(sql.toString());
-        this.pushStatement(expressionStatement);
+        this.treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
 
@@ -3434,7 +3385,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         // (OFFSET expression (ROW | ROWS) (FETCH (FIRST | NEXT) expression (ROW | ROWS) ONLY)?)?
         if (null != ctx.OFFSET()) {
-            addException("[OFFSET  FETCH NEXT ONLY ]", locate(ctx));
+            treeBuilder.addException("[OFFSET  FETCH NEXT ONLY ]", locate(ctx));
         }
         return sql.toString();
     }
@@ -3444,7 +3395,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitOrder_by_expression(TSqlParser.Order_by_expressionContext ctx) {
         StringBuffer rs = new StringBuffer();
         rs.append(getExpressionSql(ctx.expression()));
-        popStatement();
+        treeBuilder.popStatement();
         if (null != ctx.ASC()) {
             rs.append(Common.SPACE).append(ctx.ASC()).append(Common.SPACE);
         }
@@ -3547,7 +3498,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         rs.append("( ");
         rs.append(visitSubquery(ctx.subquery()).getSql());
         rs.append(" )");
-        popStatement();
+        treeBuilder.popStatement();
         return rs.toString();
     }
 
@@ -3555,15 +3506,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public SqlStatement visitSubquery(TSqlParser.SubqueryContext ctx) {
         SubqueryStatement subqueryStatement = new SubqueryStatement();
         subqueryStatement.setSql(visitSelect_statement(ctx.select_statement()).getSql());
-        addNode(subqueryStatement);
-        pushStatement(subqueryStatement);
+        treeBuilder.addNode(subqueryStatement);
+        treeBuilder.pushStatement(subqueryStatement);
         return subqueryStatement;
     }
 
     @Override
     public String visitRowset_function(TSqlParser.Rowset_functionContext ctx) {
         //TODO 访问远程数据库字符串
-        addException("rowSet function ", locate(ctx));
+        treeBuilder.addException("rowSet function ", locate(ctx));
         return "";
     }
 
@@ -3618,7 +3569,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitTable_hint(TSqlParser.Table_hintContext ctx) {
         //TODO LOCK TABLE
-        addException("table lock", locate(ctx));
+        treeBuilder.addException("table lock", locate(ctx));
         return "";
     }
 
@@ -3664,7 +3615,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             rs.append(ctx.OUTER()).append(Common.SPACE);
         }
         if (null != ctx.join_hint) {
-            addException(" joinType :" + ctx.join_hint.getText(), locate(ctx));
+            treeBuilder.addException(" joinType :" + ctx.join_hint.getText(), locate(ctx));
         }
         rs.append(ctx.JOIN().getText()).append(Common.SPACE);
         rs.append(visitTable_source(ctx.table_source())).append(Common.SPACE);
@@ -3672,7 +3623,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         LogicNode logicNode = visitSearch_condition(ctx.search_condition());
         if (null != logicNode) {
             rs.append(logicNode.toString()).append(Common.SPACE);
-            popStatement();
+            treeBuilder.popStatement();
         }
         if (null != ctx.CROSS()) {
             rs.append(ctx.CROSS().getText()).append(Common.SPACE);
@@ -3682,7 +3633,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             rs.append(visitTable_source(ctx.table_source())).append(Common.SPACE);
         }
         if (null != ctx.APPLY()) {
-            addException("APPLY", locate(ctx));
+            treeBuilder.addException("APPLY", locate(ctx));
         }
         return rs.toString();
     }
@@ -3721,7 +3672,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             rs.append("  as ");
             String columnAlias = visitColumn_alias(ctx.column_alias());
             rs.append(columnAlias).append(Common.SPACE);
-            popStatement();
+            treeBuilder.popStatement();
             return rs.toString();
         }
         if (null != ctx.table_name()) {
@@ -3729,7 +3680,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             rs.append(tableName).append(".");
         }
         if (null != ctx.IDENTITY() || null != ctx.ROWGUID()) {
-            addException(" IDENTITY, ROWGUID", locate(ctx));
+            treeBuilder.addException(" IDENTITY, ROWGUID", locate(ctx));
         }
 
         if (null != ctx.expression()) {
@@ -3757,11 +3708,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
         }
         if (ctx.column_alias() == null && ctx.expression() == null && (null != ctx.IDENTITY() || null != ctx.ROWGUID())) {
-            addException("IDENTITY. ROWGUID", locate(ctx));
+            treeBuilder.addException("IDENTITY. ROWGUID", locate(ctx));
         }
         if (ctx.column_alias() == null && ctx.expression() == null && null == ctx.IDENTITY() && null == ctx.IDENTITY()) {
             if (!withColmnNameAlias.isEmpty()) {
-                addException("with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable", locate(ctx));
+                treeBuilder.addException("with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable", locate(ctx));
             } else {
                 rs.append("*").append(Common.SPACE);
             }
@@ -3775,20 +3726,20 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (expressionContext.getChildCount() == 3) {
             if (!expressionContext.getChild(1).getText().equals("=")) {
                 visit(expressionContext);
-                stringBuffer.append(popStatement().getSql());
+                stringBuffer.append(treeBuilder.popStatement().getSql());
                 return;
             }
             String localIdVariableName = expressionContext.getChild(0).getText();
             if (localIdVariableName.contains("@")) {
                 resultSetVariable.add(localIdVariableName);
                 SqlStatement exprStatement = (SqlStatement) visit(expressionContext.getChild(2));
-                popStatement();
+                treeBuilder.popStatement();
                 stringBuffer.append(exprStatement.getSql());
             }
         } else {
 //            TreeNode expressionStatement = (TreeNode) visit(expressionContext);
             visit(expressionContext);
-            stringBuffer.append(popStatement().getSql());
+            stringBuffer.append(treeBuilder.popStatement().getSql());
         }
     }
 
@@ -3803,10 +3754,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(ctx.ALL().getText()).append(Common.SPACE);
         }
         if (null != ctx.EXCEPT()) {
-            addException(ctx.EXCEPT().getText(), locate(ctx));
+            treeBuilder.addException(ctx.EXCEPT().getText(), locate(ctx));
         }
         if (null != ctx.INTERSECT()) {
-            addException(ctx.INTERSECT().getText(), locate(ctx));
+            treeBuilder.addException(ctx.INTERSECT().getText(), locate(ctx));
         }
         if (null != ctx.query_specification()) {
             String querySpecRs = visitQuery_specification(ctx.query_specification());
@@ -3832,7 +3783,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     private void checkLength(String str, int length, String warningMsg) {
         if (str.length() > length) {
-            addException(new Exception(warningMsg + ":" + "[" + str + "]" + " is too long"));
+            treeBuilder.addException(new Exception(warningMsg + ":" + "[" + str + "]" + " is too long"));
         }
     }
 }
