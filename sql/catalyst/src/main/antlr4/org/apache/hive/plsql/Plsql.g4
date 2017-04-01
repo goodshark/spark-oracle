@@ -24,7 +24,7 @@ swallow_to_semi
 
 compilation_unit
     : unit_statement* EOF
-    | seq_of_statements* EOF
+//    | seq_of_statements* EOF
     ;
 
 sql_script
@@ -64,6 +64,11 @@ unit_statement
     | drop_view
     | truncate_table
     | data_manipulation_language_statements
+    | anonymous_block
+    ;
+
+anonymous_block
+    : label_declaration* block ';'
     ;
 
 // $<DDL -> SQL Statements for Stored PL/SQL Units

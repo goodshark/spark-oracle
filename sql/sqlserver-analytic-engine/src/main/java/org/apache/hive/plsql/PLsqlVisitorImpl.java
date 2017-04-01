@@ -39,10 +39,10 @@ public class PlsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             visit(unitCtx);
             treeBuilder.addNode(treeBuilder.getRootNode());
         }
-        for (PlsqlParser.Seq_of_statementsContext seqCtx: ctx.seq_of_statements()) {
+        /*for (PlsqlParser.Seq_of_statementsContext seqCtx: ctx.seq_of_statements()) {
             visit(seqCtx);
             treeBuilder.addNode(treeBuilder.getRootNode());
-        }
+        }*/
         return null;
     }
 
