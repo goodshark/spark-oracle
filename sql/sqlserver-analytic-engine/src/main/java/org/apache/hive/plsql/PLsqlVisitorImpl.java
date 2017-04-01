@@ -3,6 +3,7 @@ package org.apache.hive.plsql;
 import org.antlr.v4.runtime.misc.Interval;
 import org.apache.hive.basesql.TreeBuilder;
 import org.apache.hive.plsql.PlsqlBaseVisitor;
+import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.tsql.cfl.BeginEndStatement;
 import org.apache.hive.tsql.cfl.GotoStatement;
 import org.apache.hive.tsql.common.TreeNode;
@@ -72,6 +73,18 @@ public class PlsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         gotoStatement.setLabel(ctx.label_name().getText());
         treeBuilder.pushStatement(gotoStatement);
         return gotoStatement;
+    }
+
+    @Override
+    public Object visitAnonymous_block(PlsqlParser.Anonymous_blockContext ctx) {
+        AnonymousBlock anonymousBlock = new AnonymousBlock();
+        if (ctx.block() != null) {
+            ctx.block().body().EXCEPTION();
+            visit(ctx.block());
+            treeBuilder.addNode(anonymousBlock);
+        }
+        treeBuilder.pushStatement(anonymousBlock);
+        return anonymousBlock;
     }
 
     @Override

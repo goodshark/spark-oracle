@@ -65,10 +65,11 @@ unit_statement
     | truncate_table
     | data_manipulation_language_statements
     | anonymous_block
+    | label_declaration
     ;
 
 anonymous_block
-    : label_declaration* block ';'
+    : DECLARE? declare_spec* body ';'
     ;
 
 // $<DDL -> SQL Statements for Stored PL/SQL Units
