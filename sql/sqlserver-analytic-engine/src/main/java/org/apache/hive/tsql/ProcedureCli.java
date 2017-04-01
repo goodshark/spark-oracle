@@ -1,44 +1,42 @@
 package org.apache.hive.tsql;
 
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.basesql.Engine;
+import org.apache.hive.basesql.EngineManager;
 import org.apache.hive.tsql.another.GoStatement;
-import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.exception.ParserErrorListener;
-import org.apache.hive.tsql.exception.ParserException;
 import org.apache.hive.tsql.execute.Executor;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
 
 /**
  * Created by zhongdg1 on 2017/1/6.
  */
 public class ProcedureCli {
-    private boolean isTsql = true;
-    private ParseTree tree = null;
     private ExecSession session = null;
     private ParserErrorListener listener;
     private SparkSession sparkSession = null;
     private static final Logger LOG = LoggerFactory.getLogger(ProcedureCli.class);
+    private String engineName;
 
-//    public SparkSession getSparkSession() {
-//        return sparkSession;
-//    }
+    static {
+        // load all supported sql engine
+        try {
+            Class.forName("org.apache.hive.tsql.SqlserverEngine");
+            Class.forName("org.apache.hive.plsql.OracleEngine");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     public ProcedureCli(SparkSession ss) {
         listener = new ParserErrorListener();
-//        session = ExecSession.getSession();
         session = new ExecSession();
-        //session.setSparkSession(sparkSession);
         session.setSparkSession(ss);
         sparkSession = ss;
     }
@@ -50,43 +48,18 @@ public class ProcedureCli {
 
     public void callProcedure(String sql) throws Throwable {
         try {
-            //1. parser sql to tree
-            LOG.info("query sql is " + sql);
-            parse(sql);
-            if (!listener.getExceptions().isEmpty()) {
-                printExceptions(listener.getExceptions());
-                // return;
-                throw new Exception(listener.getExceptions().get(0));
-            }
-
-            //2. visit tree
-            TExec visitor = new TExec(session.getRootNode());
-            if (isTsql) {
-                session.setVisitor(visitor);
-            } else {
-                LOG.info("Not TSQL ....");
-            }
-            visitor.visit(tree);
-            LOG.info("Visit Tree completed, waiting for executing....");
-            if (visitor.getExceptions().size() > 0) {
-                printExceptions(visitor.getExceptions());
-                //return;
-                throw new Exception(visitor.getExceptions().get(0));
-            }
-
-            //3. check treenode
+            engineName = sparkSession.conf().get("spark.sql.analytical.engine");
+            LOG.info("spark-engine: " + engineName + ", query sql is " + sql);
+            // generate execute plan
+            buildExecutePlan(sql);
+            // check treenode
             check();
-
-            //4. optimize
+            // optimize
             optimize();
-
-            //5. execute treenode
+            // execute treenode
             Executor executor = new Executor(session);
             executor.run();
-
             LOG.info("size is =======>" + session.getResultSets().size());
-
-
         } catch (Throwable e) {
             LOG.error("callProcedure error, sql:" + sql, e);
             throw e;
@@ -170,37 +143,10 @@ public class ProcedureCli {
         }
     }
 
-    public void parse(String sql) throws ParserException {
-        InputStream inputStream = null;
-        try {
-//            inputStream = new FileInputStream(sql);
-            inputStream = new ByteArrayInputStream(sql.getBytes("UTF-8"));
-            ANTLRInputStream input = new ANTLRInputStream(inputStream);
-
-            TSqlLexer lexer = new TSqlLexer(input);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            TSqlParser parser = new TSqlParser(tokens);
-
-            parser.addErrorListener(listener);
-            tree = parser.tsql_file();
-
-        } catch (Exception e) {
-            throw new ParserException("Parse SQL ERROR # " + e);
-        } finally {
-            if (null != inputStream) {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+    private void buildExecutePlan(String sql) throws Throwable {
+        Engine engine = EngineManager.getEngine(engineName);
+        engine.setSession(session);
+        engine.parse(sql);
+        engine.visitTree();
     }
-
-    private void printExceptions(List<Exception> exceptions) {
-        for (Exception exception : exceptions) {
-            System.err.println(exception);
-        }
-    }
-
 }
