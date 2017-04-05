@@ -50,9 +50,12 @@ public class ProcedureCli {
 
     public void callProcedure(String sql) throws Throwable {
         try {
+            long startTime=System.currentTimeMillis();
             //1. parser sql to tree
             LOG.info("query sql is " + sql);
             parse(sql);
+            long startTime_parse=System.currentTimeMillis();
+            LOG.warn("parse sql use :"+(startTime_parse-startTime));
             if (!listener.getExceptions().isEmpty()) {
                 printExceptions(listener.getExceptions());
                 // return;
@@ -67,6 +70,8 @@ public class ProcedureCli {
                 LOG.info("Not TSQL ....");
             }
             visitor.visit(tree);
+            long visitTime=System.currentTimeMillis();
+            LOG.warn("visitor sql use :"+(visitTime-startTime_parse));
             LOG.info("Visit Tree completed, waiting for executing....");
             if (visitor.getExceptions().size() > 0) {
                 printExceptions(visitor.getExceptions());
@@ -83,7 +88,8 @@ public class ProcedureCli {
             //5. execute treenode
             Executor executor = new Executor(session);
             executor.run();
-
+            long executorTime=System.currentTimeMillis();
+            LOG.warn("visitor sql use :"+(executorTime-visitTime));
             LOG.info("size is =======>" + session.getResultSets().size());
 
 
