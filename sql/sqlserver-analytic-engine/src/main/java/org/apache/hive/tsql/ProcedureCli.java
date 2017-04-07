@@ -89,7 +89,7 @@ public class ProcedureCli {
             Executor executor = new Executor(session);
             executor.run();
             long executorTime=System.currentTimeMillis();
-            LOG.warn("visitor sql use :"+(executorTime-visitTime));
+            LOG.warn("executor sql use :"+(executorTime-visitTime));
             LOG.info("size is =======>" + session.getResultSets().size());
 
 

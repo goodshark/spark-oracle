@@ -2309,6 +2309,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return stringBuffer.toString();
     }
 
+
     @Override
     public String visitQuery_expression(TSqlParser.Query_expressionContext ctx) {
         StringBuffer sql = new StringBuffer();
@@ -2435,6 +2436,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public QuerySpecificationBean visitQuery_specification(TSqlParser.Query_specificationContext ctx) {
         QuerySpecificationBean querySpecificationBean = new QuerySpecificationBean();
+        String intoTableSql=" ";
         StringBuffer rs = new StringBuffer();
         rs.append(ctx.SELECT().getText()).append(Common.SPACE);
         if (null != ctx.ALL()) {
@@ -2504,7 +2506,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
             limitSql = sql.toString();
         }
-        querySpecificationBean.setSql(rs.toString());
+        querySpecificationBean.setSql(intoTableSql + rs.toString());
         return querySpecificationBean;
     }
 
