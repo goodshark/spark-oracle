@@ -14,10 +14,10 @@ import java.util.List;
  * Created by dengrb1 on 3/31 0031.
  */
 
-public class PlsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
+public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     private TreeBuilder treeBuilder = null;
 
-    public PlsqlVisitorImpl(TreeNode rootNode) {
+    public PLsqlVisitorImpl(TreeNode rootNode) {
         treeBuilder = new TreeBuilder(rootNode);
     }
 
