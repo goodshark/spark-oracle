@@ -380,7 +380,7 @@ public class Var implements Serializable {
             case DATETIME:
             case DATETIME2:
 //                varValue = fillDate(varValue.toString());
-                pattern = "yyyy-MM-dd HH:mm:ss";
+                pattern = "yyyy-MM-dd HH:mm:ss.SSS";
                 break;
             case TIME:
 //                varValue = fillDate(varValue.toString());
