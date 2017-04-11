@@ -29,6 +29,12 @@
             <artifactId>commons-lang3</artifactId>
             <version>${commons-lang3.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>sqlserver-analytic-engine_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <!--<build>
