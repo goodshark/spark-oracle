@@ -19,7 +19,7 @@ public class DateDiffUdf extends UDF {
             DateUnit unit = DateUnit.parse(part);
             Date left = DateUtil.parseLenient(first, PATTERN);
             Date right = DateUtil.parseLenient(second, PATTERN);
-            return new DateDiffCalculator().doEval(unit, left, right);
+            return new DateDiffCalculator().doEval(unit, right, left);
 
         } catch (Exception e) {
             e.printStackTrace();
