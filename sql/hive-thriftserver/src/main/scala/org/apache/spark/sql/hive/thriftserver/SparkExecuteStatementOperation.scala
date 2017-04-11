@@ -227,6 +227,14 @@ private[hive] class SparkExecuteStatementOperation(
     try {
       // 执行sqlserver
       if (sqlServerEngine.equalsIgnoreCase("true")) {
+        val udfJarPath = sqlContext.sessionState.
+          conf.getConfString("spark.sql.sqlserver.udf.jar.path",
+          "hdfs://avatarcluster/tmp/udf/sqlserver-udf.jar")
+
+        val addJarSql = "create temporary function T_DATEDIFF" +
+          " as 'org.apache.hive.extra.udf.DateDiffUdf' " +
+          " using jar '" + udfJarPath + "';"
+        sqlContext.sparkSession.sql(addJarSql);
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement)
         val sqlServerRs = procCli.getExecSession().getResultSets()
