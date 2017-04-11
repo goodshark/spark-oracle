@@ -54,14 +54,18 @@ public class DateDiffUdf extends UDF {
                     ret = getYear(leftCal, rigthCal);
                     break;
                 case QUARTER:
-                    ret = getYear(leftCal, rigthCal) * 4L + (((leftCal.get(Calendar.MONTH) / 3 + 1) - leftCal.get(Calendar.MONTH) / 3 + 1));
+                    ret = getYear(leftCal, rigthCal) * 4L + (((leftCal.get(Calendar.MONTH) / 3 + 1) - (rigthCal.get(Calendar.MONTH) / 3 + 1)));
                     break;
                 case WEEK:
                     ret = getYear(leftCal, rigthCal) * 52L + (leftCal.get(Calendar.WEEK_OF_YEAR) - rigthCal.get(Calendar.WEEK_OF_YEAR));
+//                    ret = getResult(leftCal, rigthCal, millSubRet, WEEK_DIV, Calendar.WEEK_OF_YEAR);
+//                    if (ret == 0L) {
+//                        ret = Long.valueOf(leftCal.get(Calendar.WEEK_OF_YEAR) - rigthCal.get(Calendar.WEEK_OF_YEAR));
+//                    }
                     break;
                 default:
                     break;
-            }
+        }
         } catch (ParseException e) {
             e.printStackTrace();
         }
