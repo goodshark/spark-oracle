@@ -2412,8 +2412,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
                         .append(rightQueryBean.getSelectList().get(j).getRealColumnName());
                 sql.append(Common.SPACE);
             }
-            sql.append(" ) ");
         }
+        sql.append(" ) ");
         return sql.toString();
 
     }
