@@ -29,27 +29,20 @@ public class MergeIntoStatement extends SqlStatement {
     @Override
     public int execute() throws Exception {
         //TODO 将mergeinto拆分成多个语句执行不能保证事务性
-        if (!targetNotMatcheBeanArrayList.isEmpty()) {
-            throw new Exception("WHEN NOT MATCHED IS NOT SUPPORT NOW.");
+        if (!sourceNotMatchedBeans.isEmpty()) {
+            sourceNotMatched();
         }
         if (!targetNotMatcheBeanArrayList.isEmpty()) {
-            throw new Exception("WHEN NOT MATCHED IS NOT SUPPORT NOW.");
+            executeTargetNotMatche();
         }
         if (!statmentBeanList.isEmpty()) {
-            execMatched();
+            executeMatched();
         }
         return 1;
     }
 
-    private void execTargetNotMatche() {
-        for (TargetNotMatcheBean bean : targetNotMatcheBeanArrayList) {
-
-        }
-    }
-
-
-    private void execMatched() {
-        for (MatchedStatmentBean bean : statmentBeanList) {
+    private void sourceNotMatched() {
+        for (SourceNotMatchedBean bean : sourceNotMatchedBeans) {
             switch (bean.getMatchedBean().getType()) {
                 case DEL:
                     StringBuffer sql = new StringBuffer();
@@ -57,20 +50,22 @@ public class MergeIntoStatement extends SqlStatement {
                     sql.append(targetTableName.getFullFuncName());
                     sql.append(Common.SPACE);
 
-                    sql.append(" inner join ");
+                    sql.append(" from ");
                     sql.append(srcTableName);
                     sql.append(Common.SPACE);
 
 
                     sql.append(" where ");
 
+                    sql.append("not");
+                    sql.append("(");
                     sql.append(replaceTableAlias(searchCondition));
+                    sql.append(")");
                     sql.append(Common.SPACE);
 
 
-
                     String searchSql = bean.getSearchCondition();
-                    if(StringUtils.isBlank(searchSql)){
+                    if (!StringUtils.isBlank(searchSql)) {
                         sql.append(" and ");
                         sql.append(replaceTableAlias(searchSql));
                     }
@@ -82,7 +77,91 @@ public class MergeIntoStatement extends SqlStatement {
                     updateSql.append(targetTableName.getFullFuncName());
                     String setsql = bean.getMatchedBean().getUpdateSetSql();
                     updateSql.append(Common.SPACE);
-                    updateSql.append(" set ");
+                    updateSql.append(replaceTableAlias(setsql));
+                    updateSql.append(Common.SPACE);
+
+                    updateSql.append(" inner join ");
+                    updateSql.append(srcTableName.getFuncName());
+                    updateSql.append(Common.SPACE);
+
+                    updateSql.append(" where ");
+
+                    updateSql.append("not");
+                    updateSql.append("(");
+                    updateSql.append(replaceTableAlias(searchCondition));
+                    updateSql.append(")");
+
+
+                    String searchSqlForUp = bean.getSearchCondition();
+                    if (!StringUtils.isBlank(searchSqlForUp)) {
+                        updateSql.append(" and ");
+                        updateSql.append(replaceTableAlias(searchSqlForUp));
+                    }
+
+
+                    commitStatement(updateSql.toString());
+                    break;
+            }
+        }
+    }
+
+    private void executeTargetNotMatche() {
+        for (TargetNotMatcheBean bean : targetNotMatcheBeanArrayList) {
+            StringBuffer sql = new StringBuffer();
+            sql.append("insert into  ").append(targetTableName.getFuncName()).append(Common.SPACE);
+            sql.append(" select * from ");
+            sql.append(srcTableName.getFuncName());
+            sql.append(",").append(targetTableName.getFuncName());
+            sql.append(Common.SPACE);
+            sql.append(" where ");
+            sql.append(" not");
+            sql.append("(");
+            sql.append(replaceTableAlias(searchCondition));
+            sql.append(")");
+            sql.append(Common.SPACE);
+            String searchSql = bean.getSearchCondition();
+            if (!StringUtils.isBlank(searchSql)) {
+                sql.append(" and ");
+                sql.append(replaceTableAlias(searchSql));
+            }
+            commitStatement(sql.toString());
+        }
+    }
+
+
+    private void executeMatched() {
+        for (MatchedStatmentBean bean : statmentBeanList) {
+            switch (bean.getMatchedBean().getType()) {
+                case DEL:
+                    StringBuffer sql = new StringBuffer();
+                    sql.append(" delete ");
+                    sql.append(targetTableName.getFullFuncName());
+                    sql.append(Common.SPACE);
+
+                    sql.append(" from ");
+                    sql.append(srcTableName);
+                    sql.append(Common.SPACE);
+
+
+                    sql.append(" where ");
+
+                    sql.append(replaceTableAlias(searchCondition));
+                    sql.append(Common.SPACE);
+
+
+                    String searchSql = bean.getSearchCondition();
+                    if (!StringUtils.isBlank(searchSql)) {
+                        sql.append(" and ");
+                        sql.append(replaceTableAlias(searchSql));
+                    }
+                    commitStatement(sql.toString());
+                    break;
+                case UPDATE:
+                    StringBuffer updateSql = new StringBuffer();
+                    updateSql.append(" update ");
+                    updateSql.append(targetTableName.getFullFuncName());
+                    String setsql = bean.getMatchedBean().getUpdateSetSql();
+                    updateSql.append(Common.SPACE);
                     updateSql.append(replaceTableAlias(setsql));
                     updateSql.append(Common.SPACE);
 
@@ -96,11 +175,10 @@ public class MergeIntoStatement extends SqlStatement {
 
 
                     String searchSqlForUp = bean.getSearchCondition();
-                    if(StringUtils.isBlank(searchSqlForUp)){
+                    if (!StringUtils.isBlank(searchSqlForUp)) {
                         updateSql.append(" and ");
                         updateSql.append(replaceTableAlias(searchSqlForUp));
                     }
-
 
 
                     commitStatement(updateSql.toString());
@@ -110,22 +188,19 @@ public class MergeIntoStatement extends SqlStatement {
     }
 
     private String replaceTargetTableAlias(String sql) {
-        sql = sql.replaceAll(" " + targetTableAlias + ".", " "+targetTableName.getFuncName() + ".");
+        //System.out.println("befor target sql ==>" + sql);
+        //System.out.println("targetTableAlias ==>" + targetTableAlias + " 替换为：" + targetTableName.getFuncName());
+        sql = sql.replaceAll(targetTableAlias + "\\.", " " + targetTableName.getFuncName() + "\\.");
+        // System.out.println("替换结果为：" + sql);
         return sql;
     }
 
     private String replaceSrcTableAlias(String sql) {
-        sql = sql.replaceAll(" " + srcTableAlias + ".", " "+srcTableName.getFuncName() + ".");
+       /* System.out.println("befor srctable sql ==>" + sql);
+        System.out.println("targetTableAlias ==>" + srcTableAlias + " 替换为：" + srcTableName.getFuncName());*/
+        sql = sql.replaceAll(srcTableAlias + "\\.", " " + srcTableName.getFuncName() + "\\.");
+        //System.out.println("替换结果为：" + sql);
         return sql;
-    }
-
-    public static void main(String[] args) {
-        String sql="set test2.name=s.name";
-        String srcTableAlias="s";
-        FuncName srcTableAlias2= new FuncName();
-        srcTableAlias2.setFuncName("test1");
-        sql = sql.replaceAll(" " + srcTableAlias + ".", " "+srcTableAlias2.getFuncName() + ".");
-        System.out.println(sql);
     }
 
 
