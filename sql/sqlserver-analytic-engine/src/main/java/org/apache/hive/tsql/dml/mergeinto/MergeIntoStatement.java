@@ -119,6 +119,15 @@ public class MergeIntoStatement extends SqlStatement {
         return sql;
     }
 
+    public static void main(String[] args) {
+        String sql="set test2.name=s.name";
+        String srcTableAlias="s";
+        FuncName srcTableAlias2= new FuncName();
+        srcTableAlias2.setFuncName("test1");
+        sql = sql.replaceAll(" " + srcTableAlias + ".", " "+srcTableAlias2.getFuncName() + ".");
+        System.out.println(sql);
+    }
+
 
     private String replaceTableAlias(String sql) {
         if (StringUtils.isBlank(sql)) {
