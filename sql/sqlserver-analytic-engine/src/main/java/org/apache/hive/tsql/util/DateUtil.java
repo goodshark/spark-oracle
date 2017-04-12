@@ -13,7 +13,8 @@ import java.util.Date;
  * @author calvin
  */
 public class DateUtil {
-    private static String defaultDatePattern = "yyyy-MM-dd HH:mm:ss";
+    private static final String defaultDatePattern = "yyyy-MM-dd HH:mm:ss";
+    private static final String MILLISECOND_PATTERN = "yyyy-MM-dd HH:mm:ss.SSS";
 //    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat(defaultDatePattern);
 //    /**
 //     * 获得默认的 date pattern
@@ -65,13 +66,13 @@ public class DateUtil {
 //        return StringUtils.isBlank(sb.toString()) ? null : parseLenient(sb.toString());
 //    }
 
-    public static String fillDate(String strDate) {
+    public static String fillDate(String strDate, String pattern) {
         if (null == strDate) {
             return null;
         }
         strDate = StrUtils.trimQuot(strDate);
         StringBuffer sb = new StringBuffer();
-        if(strDate.indexOf("-") == -1) {
+        if (strDate.indexOf("-") == -1) {
             sb.append("1900-01-01 ");
         }
         sb.append(strDate);
@@ -83,6 +84,16 @@ public class DateUtil {
                 sb.append(":00");
             }
         }
+        if (MILLISECOND_PATTERN.equals(pattern)) {
+            sb.append(".");
+            int dotIndex = strDate.indexOf(".");
+            if (-1 == dotIndex) {
+                sb.append("0");
+            } else {
+                sb.append(strDate.substring(dotIndex));
+            }
+        }
+
         return sb.toString();
     }
 
@@ -95,13 +106,13 @@ public class DateUtil {
         if (StringUtils.isBlank(strDate)) {
             return null;
         }
-        if ("yyyy-MM-dd HH:mm:ss".equals(pattern)) {
-            strDate = fillDate(strDate);
+        if (defaultDatePattern.equals(pattern) || MILLISECOND_PATTERN.equals(pattern)) {
+            strDate = fillDate(strDate, pattern);
         }
 
         if ("HH:mm:ss".equals(pattern) && strDate.trim().indexOf(" ") != -1) {
             String[] strDateFields = strDate.trim().split(" ");
-            strDate = strDateFields[strDateFields.length -1];
+            strDate = strDateFields[strDateFields.length - 1];
         }
 
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
@@ -112,6 +123,7 @@ public class DateUtil {
     /**
      * 在日期上增加数个整月
      */
+
     public static Date addMonth(Date date, int n) {
         Calendar cal = Calendar.getInstance();
         cal.setTime(date);

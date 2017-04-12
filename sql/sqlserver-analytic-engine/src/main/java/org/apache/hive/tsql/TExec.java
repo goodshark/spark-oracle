@@ -2910,15 +2910,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public BaseFunction visitDatediff_function(TSqlParser.Datediff_functionContext ctx) {
         DatediffFunction function = new DatediffFunction(new FuncName(null, "DATEDIFF", null));
         String datePart = ctx.ID().getText();
-        function.setDatePart(datePart);
-        if ("d".equalsIgnoreCase(datePart) || "dd".equalsIgnoreCase(datePart) || "day".equalsIgnoreCase(datePart)) {
-            visit(ctx.expression().get(0));
-            function.setLeftExpr(popStatement());
-            visit(ctx.expression().get(1));
-            function.setRightExpr(popStatement());
-        } else {
+        DateUnit unit = DateUnit.parse(datePart);
+        if (null == unit) {
             this.addException("datepart #[" + datePart + "]", locate(ctx));
         }
+        function.setDatePart(unit);
+
+        visit(ctx.expression().get(0));
+        function.setLeftExpr(popStatement());
+        visit(ctx.expression().get(1));
+        function.setRightExpr(popStatement());
         pushStatement(function);
         return function;
     }
