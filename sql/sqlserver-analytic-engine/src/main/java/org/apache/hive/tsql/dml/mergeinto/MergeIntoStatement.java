@@ -67,11 +67,13 @@ public class MergeIntoStatement extends SqlStatement {
                     sql.append(replaceTableAlias(searchCondition));
                     sql.append(Common.SPACE);
 
-                    sql.append(" and ");
+
 
                     String searchSql = bean.getSearchCondition();
-                    sql.append(replaceTableAlias(searchSql));
-
+                    if(StringUtils.isBlank(searchSql)){
+                        sql.append(" and ");
+                        sql.append(replaceTableAlias(searchSql));
+                    }
                     commitStatement(sql.toString());
                     break;
                 case UPDATE:
@@ -92,9 +94,13 @@ public class MergeIntoStatement extends SqlStatement {
 
                     updateSql.append(replaceTableAlias(searchCondition));
 
-                    updateSql.append(" and ");
+
                     String searchSqlForUp = bean.getSearchCondition();
-                    updateSql.append(replaceTableAlias(searchSqlForUp));
+                    if(StringUtils.isBlank(searchSqlForUp)){
+                        updateSql.append(" and ");
+                        updateSql.append(replaceTableAlias(searchSqlForUp));
+                    }
+
 
 
                     commitStatement(updateSql.toString());
@@ -104,12 +110,12 @@ public class MergeIntoStatement extends SqlStatement {
     }
 
     private String replaceTargetTableAlias(String sql) {
-        sql = sql.replaceAll(" " + targetTableAlias + ".", targetTableName.getFuncName() + ".");
+        sql = sql.replaceAll(" " + targetTableAlias + ".", " "+targetTableName.getFuncName() + ".");
         return sql;
     }
 
     private String replaceSrcTableAlias(String sql) {
-        sql = sql.replaceAll(" " + srcTableAlias + ".", srcTableName.getFuncName() + ".");
+        sql = sql.replaceAll(" " + srcTableAlias + ".", " "+srcTableName.getFuncName() + ".");
         return sql;
     }
 

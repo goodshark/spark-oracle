@@ -13,7 +13,7 @@
     <artifactId>sqlserver-udf</artifactId>
 
     <packaging>jar</packaging>
-    <name>sqlserver-udf</name>
+    <name>Spark Project sqlserver-udf</name>
     <url>http://spark.apache.org/</url>
     <properties>
         <sbt.project.name>sql</sbt.project.name>

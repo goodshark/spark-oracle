@@ -55,7 +55,43 @@ dml_clause
     | insert_statement
     | select_statement
     | update_statement
+    | merge_statement
     ;
+
+ /**
+
+MERGE [INTO [schema .] table [t_alias]
+USING [schema .] { table | view | subquery } [t_alias]
+ON ( condition )
+WHEN MATCHED THEN merge_update_clause
+WHEN NOT MATCHED THEN merge_insert_clause;
+ **/
+merge_statement:
+    with_expression?
+    MERGE (TOP '(' expression ')' PERCENT?)? INTO? target_table=table_name  target_table_alias=as_table_alias?
+    USING src_table=table_name src_table_alias=as_table_alias?
+    ON search_condition
+    matched_statment*
+    target_not_matched*
+    source_not_matched*
+;
+matched_statment:
+    WHEN MATCHED THEN (AND search_condition)? merge_matched
+;
+
+target_not_matched:
+    WHEN NOT MATCHED  (BY TARGET)? (AND search_condition)?  THEN  merge_not_matched
+;
+source_not_matched:
+    WHEN NOT MATCHED  BY SOURCE (AND search_condition)?  THEN  merge_matched
+;
+merge_matched:
+    (UPDATE SET update_elem (',' update_elem)* ) | DELETE
+;
+merge_not_matched:
+    INSERT  ('(' column_name_list ')')?  VALUES '(' expression_list ')' (',' '(' expression_list ')')*
+;
+
 
 // Data Definition Language: https://msdn.microsoft.com/zh-cn/library/ff848799.aspx)
 ddl_clause
@@ -1850,6 +1886,9 @@ TRUE:                                  '"' T R U E '"';
 SHOW:                                   S H O W;
 TABLES:                                 T A B L E S;
 DATABASES:                              D A T A B A S E S;
+
+//add for merge into
+MATCHED:                                M A T C H E D;
 
 SPACE:              [ \t\r\n]+    -> skip;
 COMMENT:            '/*' .*? '*/' -> channel(HIDDEN);
