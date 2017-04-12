@@ -239,7 +239,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
         if (!partitionSet.contains(column.name)) {
           colString.append(tb)
           colString.append(".")
-          colString.append(column.name)
+          colString.append(column.name.toLowerCase)
           colString.append(",")
         }
       }
@@ -337,7 +337,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
     sb.append(" select ")
     tableMetadata.schema.foreach(c => {
       if (!partitionSet.contains(c.name)) {
-        colString.append("1")
+        colString.append("NULL")
         colString.append(",")
       }
     })
