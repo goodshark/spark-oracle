@@ -21,8 +21,8 @@ public class FuncName implements Serializable {
         this.schema = schema;
     }
 
-    public FuncName(String server,String database, String funcName, String schema) {
-        this.server=server;
+    public FuncName(String server, String database, String funcName, String schema) {
+        this.server = server;
         this.database = database;
         this.funcName = funcName;
         this.schema = schema;
@@ -66,6 +66,9 @@ public class FuncName implements Serializable {
         }
         sb = StringUtils.isNotBlank(this.database) ? sb.append(this.database).append(".") : sb;
         sb = StringUtils.isNotBlank(this.schema) ? sb.append(this.schema).append(".") : sb;
+        if (funcName.startsWith("[") && funcName.endsWith("]")) {
+            funcName = funcName.substring(1, funcName.length() - 1);
+        }
         sb.append(this.funcName);
         return sb.toString().trim();
     }

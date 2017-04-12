@@ -12,6 +12,7 @@ import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.cursor.*;
 import org.apache.hive.tsql.ddl.*;
 import org.apache.hive.tsql.dml.*;
+import org.apache.hive.tsql.dml.mergeinto.*;
 import org.apache.hive.tsql.exception.AlreadyDeclaredException;
 import org.apache.hive.tsql.exception.Position;
 import org.apache.hive.tsql.exception.UnsupportedException;
@@ -1216,7 +1217,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
             if (null != ctx.DECIMAL()) {
                 sb.append(ctx.DECIMAL().getText());
-                var.setDataType(Var.DataType.INT);
+                var.setDataType(Var.DataType.LONG);
             }
             if (null != ctx.REAL()) {
                 sb.append(ctx.REAL().getText());
@@ -1683,7 +1684,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         cleanTableVariable();
         StringBuffer sql = new StringBuffer();
         if (null != ctx.with_expression()) {
-            sql.append(visitWith_expression(ctx.with_expression()));
+            sql.append(visitWith_expression(ctx.with_expression()).getSql());
         }
         if (null != ctx.TOP()) {
             LimitStatement limitStatement = new LimitStatement();
@@ -2189,7 +2190,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         StringBuffer sql = new StringBuffer();
         clearVariable();
         if (null != ctx.with_expression()) {
-            sql.append(visitWith_expression(ctx.with_expression()));
+            sql.append(visitWith_expression(ctx.with_expression()).getSql());
         }
         sql.append(visitQuery_expression(ctx.query_expression()));
         if (null != ctx.order_by_clause()) {
@@ -2237,16 +2238,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     @Override
-    public String visitWith_expression(TSqlParser.With_expressionContext ctx) {
-       /* if (null != ctx.XMLNAMESPACES()) {
-            addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
-        }
-        if (!ctx.common_table_expression().isEmpty()) {
-            for (int i = 0; i < ctx.common_table_expression().size(); i++) {
-                visitCommon_table_expression(ctx.common_table_expression(i));
-            }
-        }
-        return "";*/
+    public WithExpressionBean visitWith_expression(TSqlParser.With_expressionContext ctx) {
+        WithExpressionBean withExpressionBean = new WithExpressionBean();
+        List<CommonTableExpressionBean> list = new ArrayList<>();
         if (null != ctx.XMLNAMESPACES()) {
             addException(ctx.XMLNAMESPACES().toString(), locate(ctx));
         }
@@ -2257,10 +2251,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 if (i != 0) {
                     stringBuffer.append(",").append(Common.SPACE);
                 }
-                stringBuffer.append(visitCommon_table_expression(ctx.common_table_expression(i)));
+                CommonTableExpressionBean commonTableExpressionBean = visitCommon_table_expression(ctx.common_table_expression(i));
+                list.add(commonTableExpressionBean);
+                stringBuffer.append(commonTableExpressionBean.getSql());
             }
         }
-        return stringBuffer.toString();
+        withExpressionBean.setSql(stringBuffer.toString());
+        withExpressionBean.setList(list);
+        return withExpressionBean;
     }
 
     private Queue<String> withColmnNameAlias = new LinkedList<>();
@@ -2274,39 +2272,31 @@ public class TExec extends TSqlBaseVisitor<Object> {
      */
 
     @Override
-    public String visitCommon_table_expression(TSqlParser.Common_table_expressionContext ctx) {
-       /* //SqlStatement rs = new SqlStatement();
-        withColmnNameAlias.clear();
-        if (null != ctx.column_name_list()) {
-            List<String> list = visitColumn_name_list(ctx.column_name_list());
-            for (String c : list) {
-                withColmnNameAlias.add(c);
-            }
-        }
-        withExpressionSqlMap.put(visitId(ctx.id()), visitSelect_statement(ctx.select_statement())
-                .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE));
-        popStatement();
-        withColmnNameAlias.clear();
-        return "";*/
-
+    public CommonTableExpressionBean visitCommon_table_expression(TSqlParser.Common_table_expressionContext ctx) {
+        CommonTableExpressionBean commonTableExpressionBean = new CommonTableExpressionBean();
         StringBuffer stringBuffer = new StringBuffer();
         withColmnNameAlias.clear();
         if (null != ctx.column_name_list()) {
             List<String> list = visitColumn_name_list(ctx.column_name_list());
+            commonTableExpressionBean.setColumnNameList(list);
             for (String c : list) {
                 withColmnNameAlias.add(c);
             }
         }
-        stringBuffer.append(visitId(ctx.id())).append(Common.SPACE);
+        String expressionName = visitId(ctx.id());
+        commonTableExpressionBean.setExpressionName(expressionName);
+        stringBuffer.append(expressionName).append(Common.SPACE);
         stringBuffer.append("as (").append(Common.SPACE);
         String sql = visitSelect_statement(ctx.select_statement())
                 .getSql().toString().replaceAll(Common.SEMICOLON, Common.SPACE);
+        commonTableExpressionBean.setSelectsql(sql);
         stringBuffer.append(sql);
         withExpressionSqlMap.put(visitId(ctx.id()), sql);
         stringBuffer.append(" )").append(Common.SPACE);
         popStatement();
         withColmnNameAlias.clear();
-        return stringBuffer.toString();
+        commonTableExpressionBean.setSql(stringBuffer.toString());
+        return commonTableExpressionBean;
     }
 
 
@@ -2335,8 +2325,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
                     leftQueryBean.setTableName(getTableNameByUUId());
                 }
                 UnionBean unionBean = visitUnion(ctx.union(j));
-                if(null!=unionType&&!unionType.equals(unionBean.getUnionType())){
-                    addException("UNION ,EXCEPT, INTERSECT  ",locate(ctx));
+                if (null != unionType && !unionType.equals(unionBean.getUnionType())) {
+                    addException("UNION ,EXCEPT, INTERSECT  ", locate(ctx));
                 }
                 unionType = unionBean.getUnionType();
                 if (j == ctx.union().size() - 1 || !popflag) {
@@ -2436,7 +2426,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public QuerySpecificationBean visitQuery_specification(TSqlParser.Query_specificationContext ctx) {
         QuerySpecificationBean querySpecificationBean = new QuerySpecificationBean();
-        String intoTableSql=" ";
+        String intoTableSql = " ";
         StringBuffer rs = new StringBuffer();
         rs.append(ctx.SELECT().getText()).append(Common.SPACE);
         if (null != ctx.ALL()) {
@@ -3741,6 +3731,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public String visitAs_table_alias(TSqlParser.As_table_aliasContext ctx) {
+
         StringBuffer rs = new StringBuffer();
         if (null != ctx.AS()) {
             rs.append(Common.SPACE).append(ctx.AS().getText()).append(Common.SPACE);
@@ -3965,4 +3956,147 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException(new Exception(warningMsg + ":" + "[" + str + "]" + " is too long"));
         }
     }
+
+
+
+    @Override
+    public MergeIntoStatement visitMerge_statement(TSqlParser.Merge_statementContext ctx) {
+        MergeIntoStatement mergeIntoStatement = new MergeIntoStatement();
+        if (null != ctx.with_expression()) {
+            WithExpressionBean withExpressionBean = visitWith_expression(ctx.with_expression());
+            mergeIntoStatement.setWithExpressionBean(withExpressionBean);
+        }
+        if (null != ctx.TOP()) {
+            if (null != ctx.PERCENT()) {
+                addException("percent", locate(ctx));
+            }
+            visit(ctx.expression());
+            LimitBean limitBean = new LimitBean();
+            limitBean.setExpression(popStatement().getSql());
+            limitBean.setSql(" limit " + limitBean.getExpression() + Common.SPACE);
+        }
+        FuncName targetTableName = visitTable_name(ctx.target_table);
+        mergeIntoStatement.setTargetTableName(targetTableName);
+        if (null != ctx.target_table_alias) {
+            String targetTbAlias = visitAs_table_alias(ctx.target_table_alias).trim();
+            if (StringUtils.startsWith("AS ", targetTbAlias)) {
+                targetTbAlias = targetTbAlias.substring(2, targetTbAlias.length());
+            }
+            mergeIntoStatement.setTargetTableAlias(targetTbAlias);
+        }
+
+
+        FuncName srcTableName = visitTable_name(ctx.src_table);
+        mergeIntoStatement.setSrcTableName(srcTableName);
+        if (null != ctx.src_table_alias) {
+            String srcTbAlias = visitAs_table_alias(ctx.src_table_alias).trim();
+            if (StringUtils.startsWith("AS ", srcTbAlias)) {
+                srcTbAlias = srcTbAlias.substring(2, srcTbAlias.length());
+            }
+            mergeIntoStatement.setSrcTableAlias(srcTbAlias);
+        }
+
+        String searchContion = visitSearch_condition(ctx.search_condition()).toString();
+        mergeIntoStatement.setSearchCondition(searchContion);
+
+        List<MatchedStatmentBean> statmentBeanList = new ArrayList<>();
+        for (int i = 0; i < ctx.matched_statment().size(); i++) {
+            MatchedStatmentBean matchedStatment = visitMatched_statment(ctx.matched_statment(i));
+            statmentBeanList.add(matchedStatment);
+        }
+        mergeIntoStatement.setStatmentBeanList(statmentBeanList);
+        List<TargetNotMatcheBean> targetNotMatcheBeanArrayList = new ArrayList<>();
+        for (int i = 0; i < ctx.target_not_matched().size(); i++) {
+            TargetNotMatcheBean targetNotMatcheBean = visitTarget_not_matched(ctx.target_not_matched(i));
+            targetNotMatcheBeanArrayList.add(targetNotMatcheBean);
+        }
+        mergeIntoStatement.setTargetNotMatcheBeanArrayList(targetNotMatcheBeanArrayList);
+        List<SourceNotMatchedBean> sourceNotMatchedBeans = new ArrayList<>();
+        for (int i = 0; i < ctx.source_not_matched().size(); i++) {
+            SourceNotMatchedBean sourceNotMatchedBean = visitSource_not_matched(ctx.source_not_matched(i));
+            sourceNotMatchedBeans.add(sourceNotMatchedBean);
+        }
+        mergeIntoStatement.setSourceNotMatchedBeans(sourceNotMatchedBeans);
+        pushStatement(mergeIntoStatement);
+        return mergeIntoStatement;
+    }
+
+
+    @Override
+    public MatchedStatmentBean visitMatched_statment(TSqlParser.Matched_statmentContext ctx) {
+        MatchedStatmentBean matchedStatmentBean = new MatchedStatmentBean();
+        if (null != ctx.search_condition()) {
+            String searchCondition = visitSearch_condition(ctx.search_condition()).toString();
+            matchedStatmentBean.setSearchCondition(searchCondition);
+        }
+        matchedStatmentBean.setMatchedBean(visitMerge_matched(ctx.merge_matched()));
+        return matchedStatmentBean;
+
+    }
+
+    @Override
+    public MatchedBean visitMerge_matched(TSqlParser.Merge_matchedContext ctx) {
+        MatchedBean matchedBean = new MatchedBean();
+        if (null != ctx.DELETE()) {
+            matchedBean.setType(MatchedBean.MatchedBeanType.DEL);
+        } else {
+            matchedBean.setType(MatchedBean.MatchedBeanType.UPDATE);
+            StringBuffer sql = new StringBuffer();
+            sql.append(Common.SPACE).append(" set ");
+            for (int i = 0; i < ctx.update_elem().size(); i++) {
+                if (i != 0) {
+                    sql.append(",");
+                }
+                sql.append(visitUpdate_elem(ctx.update_elem(i)));
+            }
+            matchedBean.setUpdateSetSql(sql.toString());
+        }
+        return matchedBean;
+    }
+
+    @Override
+    public MergeNotMatchedBean visitMerge_not_matched(TSqlParser.Merge_not_matchedContext ctx) {
+        MergeNotMatchedBean mergeNotMatchedBean = new MergeNotMatchedBean();
+        if (null != ctx.column_name_list()) {
+            List<String> list = visitColumn_name_list(ctx.column_name_list());
+            mergeNotMatchedBean.setColumnNameList(list);
+        }
+        StringBuffer values = new StringBuffer();
+        for (int i = 0; i < ctx.expression_list().size(); i++) {
+            if (i != 0) {
+                values.append(",");
+            }
+            values.append("(");
+            values.append(visitExpression_list(ctx.expression_list(i)).getSql());
+            popStatement();
+            values.append(")");
+        }
+        mergeNotMatchedBean.setValues(values.toString());
+        return mergeNotMatchedBean;
+    }
+
+
+    @Override
+    public TargetNotMatcheBean visitTarget_not_matched(TSqlParser.Target_not_matchedContext ctx) {
+        TargetNotMatcheBean targetNotMatcheBean = new TargetNotMatcheBean();
+        if (null != ctx.search_condition()) {
+            String searchCondition = visitSearch_condition(ctx.search_condition()).toString();
+            targetNotMatcheBean.setSearchCondition(searchCondition);
+        }
+        targetNotMatcheBean.setMergeNotMatchedBean(visitMerge_not_matched(ctx.merge_not_matched()));
+        return targetNotMatcheBean;
+    }
+
+    @Override
+    public SourceNotMatchedBean visitSource_not_matched(TSqlParser.Source_not_matchedContext ctx) {
+        SourceNotMatchedBean sourceNotMatchedBean = new SourceNotMatchedBean();
+        if (null != ctx.search_condition()) {
+            String searchCondition = visitSearch_condition(ctx.search_condition()).getSql();
+            sourceNotMatchedBean.setSearchCondition(searchCondition);
+        }
+        sourceNotMatchedBean.setMatchedBean(visitMerge_matched(ctx.merge_matched()));
+        return sourceNotMatchedBean;
+    }
+
+
 }
