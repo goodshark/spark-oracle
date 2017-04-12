@@ -35,19 +35,19 @@ public class CreateTableStatement extends SqlStatement {
         HashMap<Integer, HashMap<String,String>> sparkSessonTableMap = getExecSession().getSparkSession().getSqlServerTable();
         if (tableNameUtils.checkIsTmpTable(tableName)) {
             addTmpTable(tableName, tableAliasName);
-            addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,2);
+            getExecSession().addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,2);
 
         }
         if(tableNameUtils.checkIsGlobalTmpTable(tableName)){
             addTmpTable(tableName, tableAliasName);
-            addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,3);
+            getExecSession().addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,3);
         }
         setAddResult(false);
         commitStatement(sb.toString());
         return 1;
     }
 
-    private void addTableToSparkSeesion(String tableName,String tableAliasName, HashMap<Integer, HashMap<String,String>> map , int key) {
+    /*private void addTableToSparkSeesion(String tableName,String tableAliasName, HashMap<Integer, HashMap<String,String>> map , int key) {
         if(null!=map.get(key)){
             map.get(key).put(tableName,tableAliasName);
         }else{
@@ -55,7 +55,7 @@ public class CreateTableStatement extends SqlStatement {
             tb.put(tableName,tableAliasName);
             map.put(key,tb);
         }
-    }
+    }*/
 
     public CreateTableStatement(String tableName) {
         this.tableName = tableName;

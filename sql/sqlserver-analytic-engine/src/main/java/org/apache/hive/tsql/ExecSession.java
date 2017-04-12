@@ -13,6 +13,7 @@ import org.apache.spark.sql.execution.SparkPlan;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Stack;
 
@@ -123,6 +124,8 @@ public class ExecSession {
             realTableName=sparkSession.getRealTable(tableName);
             if(StringUtils.equals(tableName,realTableName)){
                 realTableName =tmpTableNameUtils.createTableName(tableName);
+                HashMap<Integer, HashMap<String,String>> sparkSessonTableMap = sparkSession.getSqlServerTable();
+                addTableToSparkSeesion(realTableName,tableName,sparkSessonTableMap,2);
             }
         }else if(tmpTableNameUtils.checkIsGlobalTmpTable(tableName)){
             realTableName=tmpTableNameUtils.getGlobalTbName(tableName);
@@ -133,5 +136,16 @@ public class ExecSession {
             throw new Exception("Table "+ tableName +" is not  exist ");
         }
         return  realTableName;
+    }
+
+
+    public void addTableToSparkSeesion(String tableName, String tableAliasName, HashMap<Integer, HashMap<String,String>> map , int key) {
+        if(null!=map.get(key)){
+            map.get(key).put(tableName,tableAliasName);
+        }else{
+            HashMap<String,String> tb = new HashMap<>();
+            tb.put(tableName,tableAliasName);
+            map.put(key,tb);
+        }
     }
 }
