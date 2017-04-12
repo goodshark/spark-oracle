@@ -121,6 +121,9 @@ public class ExecSession {
             realTableName = getVariableContainer().findTableVarAlias(tableName);
         } else if(tmpTableNameUtils.checkIsTmpTable(tableName)){
             realTableName=sparkSession.getRealTable(tableName);
+            if(StringUtils.isBlank(realTableName)){
+                realTableName =tmpTableNameUtils.createTableName(tableName);
+            }
         }else if(tmpTableNameUtils.checkIsGlobalTmpTable(tableName)){
             realTableName=tmpTableNameUtils.getGlobalTbName(tableName);
         }else{

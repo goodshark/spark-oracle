@@ -238,7 +238,7 @@ private[hive] class SparkExecuteStatementOperation(
             " using jar '" + udfJarPath + "'"
           sqlContext.sparkSession.sql(addJarSql)
           sqlContext.sessionState.
-            conf.set("spark.sql.add.jar.run", "true")
+            conf.setConfString("spark.sql.add.jar.run", "true")
         }
 
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
