@@ -16,7 +16,7 @@
     <name>sqlserver-udf</name>
     <url>http://spark.apache.org/</url>
     <properties>
-        <sbt.project.name>sqlserver-udf</sbt.project.name>
+        <sbt.project.name>sql</sbt.project.name>
     </properties>
     <dependencies>
         <dependency>
