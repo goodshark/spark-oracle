@@ -32,6 +32,7 @@ public class ConvertFunction extends BaseFunction {
         expr.execute();
 
         Var result = ((Var)expr.getRs().getObject(0)).clone();
+        result.setVarValue(result.toString());
         result.setDataType(dataType);
         List<Var> results = new ArrayList<>();
         results.add(result);
