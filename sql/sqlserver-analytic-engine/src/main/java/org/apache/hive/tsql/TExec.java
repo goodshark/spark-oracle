@@ -2394,24 +2394,26 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(" select * from (");
         sql.append(rightQueryBean.getSql());
         sql.append(") " + rightQueryBean.getTableName());
-        sql.append(" where ");
-        String leftTbName = leftQueryBean.getTableName();
-        String rightTbName = rightQueryBean.getTableName();
-        for (int j = 0; j < rightQueryBean.getSelectList().size(); j++) {
-            if (j != 0) {
-                sql.append("  and ");
+        if (rightQueryBean.getSelectList().size() > 0 && !StringUtils.isBlank(rightQueryBean.getSelectList().get(0).getRealColumnName())) {
+            sql.append(" where ");
+            String leftTbName = leftQueryBean.getTableName();
+            String rightTbName = rightQueryBean.getTableName();
+            for (int j = 0; j < rightQueryBean.getSelectList().size(); j++) {
+                if (j != 0) {
+                    sql.append("  and ");
+                }
+                sql.append(Common.SPACE);
+                sql.append(leftTbName)
+                        .append(".")
+                        .append(leftQueryBean.getSelectList().get(j).getRealColumnName());
+                sql.append("=");
+                sql.append(rightTbName)
+                        .append(".")
+                        .append(rightQueryBean.getSelectList().get(j).getRealColumnName());
+                sql.append(Common.SPACE);
             }
-            sql.append(Common.SPACE);
-            sql.append(leftTbName)
-                    .append(".")
-                    .append(leftQueryBean.getSelectList().get(j).getRealColumnName());
-            sql.append("=");
-            sql.append(rightTbName)
-                    .append(".")
-                    .append(rightQueryBean.getSelectList().get(j).getRealColumnName());
-            sql.append(Common.SPACE);
+            sql.append(" ) ");
         }
-        sql.append(" ) ");
         return sql.toString();
 
     }
@@ -3956,7 +3958,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException(new Exception(warningMsg + ":" + "[" + str + "]" + " is too long"));
         }
     }
-
 
 
     @Override
