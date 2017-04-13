@@ -132,7 +132,7 @@ public class ExecSession {
                 LOG.info("will create table Name :-> " + realTableName + ".");
                 HashMap<Integer, HashMap<String, String>> sparkSessonTableMap = sparkSession.getSqlServerTable();
                 LOG.info("add to sparkSession .....");
-                sparkSession.addTableToSparkSeesion(realTableName, tableName, 2);
+                sparkSession.addTableToSparkSeesion(tableName,realTableName, 2);
                 LOG.info("after add success , get from sparkSession by tmpTableName: " + tableName + " ,the rs is " + sparkSession.getRealTable(tableName) + "  .");
             }
         } else if (tmpTableNameUtils.checkIsGlobalTmpTable(tableName)) {

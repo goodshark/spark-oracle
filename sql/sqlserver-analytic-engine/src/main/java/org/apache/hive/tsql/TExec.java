@@ -3980,8 +3980,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         mergeIntoStatement.setTargetTableName(targetTableName);
         if (null != ctx.target_table_alias) {
             String targetTbAlias = visitAs_table_alias(ctx.target_table_alias).trim();
-            if (StringUtils.startsWith("AS ", targetTbAlias)) {
-                targetTbAlias = targetTbAlias.substring(2, targetTbAlias.length());
+            if (targetTbAlias.startsWith("as ") || targetTbAlias.startsWith("AS ")) {
+                targetTbAlias = targetTbAlias.substring(2, targetTbAlias.length()).trim();
             }
             mergeIntoStatement.setTargetTableAlias(targetTbAlias);
         }
@@ -3991,8 +3991,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         mergeIntoStatement.setSrcTableName(srcTableName);
         if (null != ctx.src_table_alias) {
             String srcTbAlias = visitAs_table_alias(ctx.src_table_alias).trim();
-            if (StringUtils.startsWith("AS ", srcTbAlias)) {
-                srcTbAlias = srcTbAlias.substring(2, srcTbAlias.length());
+            if (srcTbAlias.startsWith("as ") || srcTbAlias.startsWith("AS ")) {
+                srcTbAlias = srcTbAlias.substring(2, srcTbAlias.length()).trim();
             }
             mergeIntoStatement.setSrcTableAlias(srcTbAlias);
         }
