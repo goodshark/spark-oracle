@@ -35,12 +35,12 @@ public class CreateTableStatement extends SqlStatement {
         HashMap<Integer, HashMap<String,String>> sparkSessonTableMap = getExecSession().getSparkSession().getSqlServerTable();
         if (tableNameUtils.checkIsTmpTable(tableName)) {
             addTmpTable(tableName, tableAliasName);
-            getExecSession().addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,2);
+            getExecSession().getSparkSession().addTableToSparkSeesion(tableName,tableAliasName,2);
 
         }
         if(tableNameUtils.checkIsGlobalTmpTable(tableName)){
             addTmpTable(tableName, tableAliasName);
-            getExecSession().addTableToSparkSeesion(tableName,tableAliasName, sparkSessonTableMap,3);
+            getExecSession().getSparkSession().addTableToSparkSeesion(tableName,tableAliasName,3);
         }
         setAddResult(false);
         commitStatement(sb.toString());

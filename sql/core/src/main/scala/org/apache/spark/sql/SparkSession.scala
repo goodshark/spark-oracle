@@ -105,6 +105,19 @@ class SparkSession private(
     sqlServerTable
   }
 
+
+  def addTableToSparkSeesion (tableName: String,
+                              tableAliasName: String, key: Integer) : Unit = {
+      if (sqlServerTable.containsKey(key)) {
+        sqlServerTable.get(key).put(tableName, tableAliasName)
+      } else {
+        val map = new  HashMap[String, String]()
+        map.put(tableName, tableAliasName)
+        sqlServerTable.put(key, map)
+      }
+  }
+
+
   def getRealTable(tableAliaName: String): String = {
     var tbName: String = tableAliaName
     val iterator = sqlServerTable.keySet().iterator()
