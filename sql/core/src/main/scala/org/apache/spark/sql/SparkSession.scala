@@ -106,8 +106,8 @@ class SparkSession private(
   }
 
 
-  def addTableToSparkSeesion (tableName: String,
-                              tableAliasName: String, key: Integer) : Unit = {
+  def addTableToSparkSeesion (tableAliasName: String,
+                              tableName: String, key: Integer) : Unit = {
       if (sqlServerTable.containsKey(key)) {
         sqlServerTable.get(key).put(tableName, tableAliasName)
       } else {

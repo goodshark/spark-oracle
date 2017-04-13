@@ -109,7 +109,9 @@ public class MergeIntoStatement extends SqlStatement {
         for (TargetNotMatcheBean bean : targetNotMatcheBeanArrayList) {
             StringBuffer sql = new StringBuffer();
             sql.append("insert into  ").append(targetTableName.getFuncName()).append(Common.SPACE);
-            sql.append(" select * from ");
+            sql.append(" select ");
+            sql.append(srcTableName.getFuncName());
+            sql.append(".* from ");
             sql.append(srcTableName.getFuncName());
             sql.append(",").append(targetTableName.getFuncName());
             sql.append(Common.SPACE);
