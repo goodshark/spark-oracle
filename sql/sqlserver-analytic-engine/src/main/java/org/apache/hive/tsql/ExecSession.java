@@ -9,7 +9,8 @@ import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
-import org.apache.spark.sql.execution.SparkPlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -22,17 +23,18 @@ import java.util.Stack;
  */
 public class ExecSession {
 
-
+    private static final Logger LOG = LoggerFactory.getLogger(ExecSession.class);
     private List<LogicalPlan> logicalPlans = new ArrayList<>();
     private TreeNode rootNode;
     private VariableContainer variableContainer;
     private SparkSession sparkSession;
     private List<ResultSet> resultSets;
     private Stack<BaseStatement> jumpCmds = new Stack<>();
-//    private List<Exception> exceptions;
+    //    private List<Exception> exceptions;
     private AbstractParseTreeVisitor visitor;
     private boolean isReset = true;
     private String errorStr = "";
+
     // mark break/continue/goto/return/raise/throw cmd
     public enum Scope {
         BEGIN, IF, WHILE, PROCEDURE, TRY, CATCH
@@ -54,7 +56,7 @@ public class ExecSession {
 
 //    }
 
-    public void addLogicalPlans(LogicalPlan plan){
+    public void addLogicalPlans(LogicalPlan plan) {
         logicalPlans.add(plan);
     }
 
@@ -115,37 +117,43 @@ public class ExecSession {
     }
 
 
-    public String getRealTableName(String tableName)throws Exception{
+    public String getRealTableName(String tableName) throws Exception {
         TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
         String realTableName = "";
         if (tableName.indexOf("@") != -1) {
             realTableName = getVariableContainer().findTableVarAlias(tableName);
-        } else if(tmpTableNameUtils.checkIsTmpTable(tableName)){
-            realTableName=sparkSession.getRealTable(tableName);
-            if(StringUtils.equals(tableName,realTableName)){
-                realTableName =tmpTableNameUtils.createTableName(tableName);
-                HashMap<Integer, HashMap<String,String>> sparkSessonTableMap = sparkSession.getSqlServerTable();
-                addTableToSparkSeesion(realTableName,tableName,sparkSessonTableMap,2);
+        } else if (tmpTableNameUtils.checkIsTmpTable(tableName)) {
+            LOG.info("tbName: " + tableName + " , is tmp table.");
+            realTableName = sparkSession.getRealTable(tableName);
+            LOG.info("tbName: " + tableName + " find in sparkSession ,realTbName is " + realTableName + ".");
+            if (StringUtils.equals(tableName, realTableName)) {
+                LOG.info("tmp table " + tableName + "not find in sparkSession");
+                realTableName = tmpTableNameUtils.createTableName(tableName);
+                LOG.info("will create table Name :-> " + realTableName + ".");
+                HashMap<Integer, HashMap<String, String>> sparkSessonTableMap = sparkSession.getSqlServerTable();
+                LOG.info("add to sparkSession .....");
+                addTableToSparkSeesion(realTableName, tableName, sparkSessonTableMap, 2);
+                LOG.info("after add success , get from sparkSession by tmpTableName: " + tableName + " ,the rs is " + sparkSession.getRealTable(tableName) + "  .");
             }
-        }else if(tmpTableNameUtils.checkIsGlobalTmpTable(tableName)){
-            realTableName=tmpTableNameUtils.getGlobalTbName(tableName);
-        }else{
-            realTableName=tableName;
+        } else if (tmpTableNameUtils.checkIsGlobalTmpTable(tableName)) {
+            realTableName = tmpTableNameUtils.getGlobalTbName(tableName);
+        } else {
+            realTableName = tableName;
         }
-        if(StringUtils.isBlank(realTableName)){
-            throw new Exception("Table "+ tableName +" is not  exist ");
+        if (StringUtils.isBlank(realTableName)) {
+            throw new Exception("Table " + tableName + " is not  exist ");
         }
-        return  realTableName;
+        return realTableName;
     }
 
 
-    public void addTableToSparkSeesion(String tableName, String tableAliasName, HashMap<Integer, HashMap<String,String>> map , int key) {
-        if(null!=map.get(key)){
-            map.get(key).put(tableName,tableAliasName);
-        }else{
-            HashMap<String,String> tb = new HashMap<>();
-            tb.put(tableName,tableAliasName);
-            map.put(key,tb);
+    public void addTableToSparkSeesion(String tableName, String tableAliasName, HashMap<Integer, HashMap<String, String>> map, int key) {
+        if (null != map.get(key)) {
+            map.get(key).put(tableName, tableAliasName);
+        } else {
+            HashMap<String, String> tb = new HashMap<>();
+            tb.put(tableName, tableAliasName);
+            map.put(key, tb);
         }
     }
 }
