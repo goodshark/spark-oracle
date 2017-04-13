@@ -232,7 +232,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
     })
 
     tableMetadata.schema.foreach(column => {
-      if (columnMap.contains(column.name)) {
+      if (columnMap.contains(column.name.toLowerCase)) {
         colString.append(columnMap.get(column.name).get)
         colString.append(",")
       } else {
