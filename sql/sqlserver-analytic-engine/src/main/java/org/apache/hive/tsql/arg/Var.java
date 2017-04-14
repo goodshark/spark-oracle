@@ -436,6 +436,39 @@ public class Var implements Serializable {
         }
         return varValue == null ? null : varValue.toString();
     }
+
+
+    public boolean isDate() {
+        boolean flag = false;
+        switch (dataType) {
+            case DATE:
+            case DATETIME:
+            case DATETIME2:
+            case TIME:
+            case TIMESTAMP:
+                flag = true;
+                break;
+            default:
+                break;
+        }
+        return flag;
+    }
+
+    public boolean isNumber() {
+        boolean flag = false;
+        switch (dataType) {
+            case LONG:
+            case INT:
+            case INTEGER:
+            case DOUBLE:
+            case FLOAT:
+                flag = true;
+                break;
+            default:
+                break;
+        }
+        return flag;
+    }
 }
 
 

@@ -3,6 +3,7 @@ package org.apache.hive.tsql.common;
 import org.apache.hive.tsql.arg.Var;
 
 import java.text.ParseException;
+import java.util.Calendar;
 import java.util.Set;
 
 /**
@@ -146,10 +147,28 @@ public class ExpressionComputer {
             Number number = new Number();
             number = number.operator(paserVarToNuber(v1), paserVarToNuber(v2), Number.Operator.SUB);
             return paserNumberToVar(number);
+        } else if (isDateAndNumber(v1, v2)) {
+            return subDate(v1, v2);
         }
         return Var.Null;
     }
 
+
+    private Var subDate(Var v1, Var v2) throws ParseException {
+        Calendar cal = Calendar.getInstance();
+        int days = 0;
+        if (v1.isDate()) {
+            cal.setTime(v1.getDate());
+            days = v2.getInt();
+        } else {
+            cal.setTime(v2.getDate());
+            days = v1.getInt();
+        }
+
+//        cal.add(Calendar.DATE, days);
+        cal.set(Calendar.DATE, cal.get(Calendar.DATE) - 1);
+        return new Var(cal.getTime(), Var.DataType.DATETIME);
+    }
 
     /**
      * Addition operator
@@ -164,8 +183,32 @@ public class ExpressionComputer {
             Number number = new Number();
             number = number.operator(paserVarToNuber(v1), paserVarToNuber(v2), Number.Operator.ADD);
             return paserNumberToVar(number);
+        } else if (isDateAndNumber(v1, v2)) {
+            return addDate(v1, v2);
         }
         return Var.Null;
+    }
+
+    private Var addDate(Var v1, Var v2) throws ParseException {
+        Calendar cal = Calendar.getInstance();
+        int days = 0;
+        if (v1.isDate()) {
+            cal.setTime(v1.getDate());
+            days = v2.getInt();
+        } else {
+            cal.setTime(v2.getDate());
+            days = v1.getInt();
+        }
+
+        cal.add(Calendar.DATE, days);
+        return new Var(cal.getTime(), Var.DataType.DATETIME);
+    }
+
+    private boolean isDateAndNumber(Var v1, Var v2) {
+        if ((v1.isDate() && v2.isNumber()) || (v2.isDate() && v1.isNumber())) {
+            return true;
+        }
+        return false;
     }
 
 
