@@ -2846,6 +2846,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
         visit(ctx.expression().get(0));
         function.setExpr(popStatement());
         function.setDataType(visitData_type(ctx.data_type()));
+        if (ctx.data_type().getChildCount() == 4) {
+            function.setLength(Integer.valueOf(ctx.data_type().getChild(2).getText().trim()));
+        }
+        if(ctx.expression().size() == 2) {
+            visit(ctx.expression().get(1));
+            function.setStyle(popStatement());
+        }
+
         pushStatement(function);
         return function;
     }
