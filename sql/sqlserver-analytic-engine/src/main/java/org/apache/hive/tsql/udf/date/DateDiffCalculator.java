@@ -34,28 +34,32 @@ public class DateDiffCalculator extends BaseCalculator {
 
     public long doEval(DateUnit unit, Date left, Date right) {
         long ret = 0;
-        long leftMillisecond = left.getTime();
-        long rightMillisecond = right.getTime();
+//        long leftMillisecond = left.getTime();
+//        long rightMillisecond = right.getTime();
         Calendar leftCal = Calendar.getInstance();
         leftCal.setTime(left);
         Calendar rightCal = Calendar.getInstance();
         rightCal.setTime(right);
-        long millSubRet = leftMillisecond - rightMillisecond;
+//        long millSubRet = leftMillisecond - rightMillisecond;
         switch (unit) {
             case MILLISECOND:
-                ret = millSubRet;
+                ret = left.getTime() - right.getTime();
                 break;
             case SECOND:
-                ret = getResult(leftCal, rightCal, millSubRet, SECOND_DIV, Calendar.SECOND);
+                clearMillSecond(leftCal, rightCal);
+                ret = getResult(leftCal, rightCal, (leftCal.getTimeInMillis() - rightCal.getTimeInMillis()), SECOND_DIV, Calendar.SECOND);
                 break;
             case MINUTE:
-                ret = getResult(leftCal, rightCal, millSubRet, MINUTE_DIV, Calendar.MINUTE);
+                clearSecond(leftCal, rightCal);
+                ret = getResult(leftCal, rightCal, (leftCal.getTimeInMillis() - rightCal.getTimeInMillis()), MINUTE_DIV, Calendar.MINUTE);
                 break;
             case HOUR:
-                ret = getResult(leftCal, rightCal, millSubRet, HOUR_DIV, Calendar.HOUR_OF_DAY);
+                clearMinute(leftCal, rightCal);
+                ret = getResult(leftCal, rightCal, (leftCal.getTimeInMillis() - rightCal.getTimeInMillis()), HOUR_DIV, Calendar.HOUR_OF_DAY);
                 break;
             case DAY:
-                ret = getResult(leftCal, rightCal, millSubRet, DAY_DIV, Calendar.DAY_OF_MONTH);
+                clearHour(leftCal, rightCal);
+                ret = getResult(leftCal, rightCal, (leftCal.getTimeInMillis() - rightCal.getTimeInMillis()), DAY_DIV, Calendar.DAY_OF_MONTH);
                 break;
             case MONTH:
                 ret = getYear(leftCal, rightCal) * 12L + (leftCal.get(Calendar.MONTH) - rightCal.get(Calendar.MONTH));
@@ -73,10 +77,38 @@ public class DateDiffCalculator extends BaseCalculator {
 //                        ret = Long.valueOf(leftCal.get(Calendar.WEEK_OF_YEAR) - rigthCal.get(Calendar.WEEK_OF_YEAR));
 //                    }
                 break;
+
+            case DAYOFYEAR:
+                ret = leftCal.get(Calendar.DAY_OF_YEAR) - rightCal.get(Calendar.DAY_OF_YEAR);
+                break;
             default:
                 break;
         }
         return ret;
+    }
+
+    private void clearSecond(Calendar leftCal, Calendar rightCal) {
+        clearMillSecond(leftCal, rightCal);
+        leftCal.set(Calendar.SECOND, 0);
+        rightCal.set(Calendar.SECOND, 0);
+    }
+
+    private void clearHour(Calendar leftCal, Calendar rightCal) {
+        clearMinute(leftCal, rightCal);
+        leftCal.set(Calendar.HOUR_OF_DAY, 0);
+        rightCal.set(Calendar.HOUR_OF_DAY, 0);
+    }
+
+
+    private void clearMinute(Calendar leftCal, Calendar rightCal) {
+        clearSecond(leftCal, rightCal);
+        leftCal.set(Calendar.MINUTE, 0);
+        rightCal.set(Calendar.MINUTE, 0);
+    }
+
+    private void clearMillSecond(Calendar leftCal, Calendar rightCal) {
+        leftCal.set(Calendar.MILLISECOND, 0);
+        rightCal.set(Calendar.MILLISECOND, 0);
     }
 
 
