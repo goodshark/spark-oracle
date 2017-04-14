@@ -109,10 +109,10 @@ class SparkSession private(
   def addTableToSparkSeesion (tableAliasName: String,
                               tableName: String, key: Integer) : Unit = {
       if (sqlServerTable.containsKey(key)) {
-        sqlServerTable.get(key).put(tableName, tableAliasName)
+        sqlServerTable.get(key).put(tableAliasName, tableName)
       } else {
         val map = new  HashMap[String, String]()
-        map.put(tableName, tableAliasName)
+        map.put(tableAliasName, tableName)
         sqlServerTable.put(key, map)
       }
   }

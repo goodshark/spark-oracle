@@ -113,9 +113,10 @@ public class MergeIntoStatement extends SqlStatement {
             sql.append(srcTableName.getFuncName());
             sql.append(".* from ");
             sql.append(srcTableName.getFuncName());
-            sql.append(",").append(targetTableName.getFuncName());
+            sql.append(" left join ");
+            sql.append(targetTableName.getFuncName());
             sql.append(Common.SPACE);
-            sql.append(" where ");
+            sql.append(" on ");
             sql.append(" not");
             sql.append("(");
             sql.append(replaceTableAlias(searchCondition));
@@ -123,6 +124,7 @@ public class MergeIntoStatement extends SqlStatement {
             sql.append(Common.SPACE);
             String searchSql = bean.getSearchCondition();
             if (!StringUtils.isBlank(searchSql)) {
+                sql.append(" where 1 =1 ");
                 sql.append(" and ");
                 sql.append(replaceTableAlias(searchSql));
             }
@@ -167,17 +169,21 @@ public class MergeIntoStatement extends SqlStatement {
                     updateSql.append(replaceTableAlias(setsql));
                     updateSql.append(Common.SPACE);
 
+                    updateSql.append(" from ");
+                    updateSql.append(targetTableName.getFuncName());
+                    updateSql.append(" ");
+
                     updateSql.append(" inner join ");
                     updateSql.append(srcTableName.getFuncName());
                     updateSql.append(Common.SPACE);
 
-                    updateSql.append(" where ");
-
+                    updateSql.append(" on ");
                     updateSql.append(replaceTableAlias(searchCondition));
 
 
                     String searchSqlForUp = bean.getSearchCondition();
                     if (!StringUtils.isBlank(searchSqlForUp)) {
+                        updateSql.append(" where 1=1 ");
                         updateSql.append(" and ");
                         updateSql.append(replaceTableAlias(searchSqlForUp));
                     }

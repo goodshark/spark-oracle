@@ -13,10 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 /**
  * Created by zhongdg1 on 2016/11/29.
@@ -130,9 +127,19 @@ public class ExecSession {
                 LOG.info("tmp table " + tableName + "not find in sparkSession");
                 realTableName = tmpTableNameUtils.createTableName(tableName);
                 LOG.info("will create table Name :-> " + realTableName + ".");
-                HashMap<Integer, HashMap<String, String>> sparkSessonTableMap = sparkSession.getSqlServerTable();
+
                 LOG.info("add to sparkSession .....");
-                sparkSession.addTableToSparkSeesion(tableName,realTableName, 2);
+                sparkSession.addTableToSparkSeesion(tableName, realTableName, 2);
+                HashMap<Integer, HashMap<String, String>> sparkSessonTableMap = sparkSession.getSqlServerTable();
+                Set<Integer> keys = sparkSessonTableMap.keySet();
+                for (Integer key : keys) {
+                    HashMap<String, String> map = sparkSessonTableMap.get(key);
+                    Set<String> mk = map.keySet();
+                    for (String s : mk) {
+                        String reaTb = map.get(mk);
+                        LOG.info("sparkSessionMap ，key:" + key + ", tableAliasName:" + s + ", realTbName:" + reaTb);
+                    }
+                }
                 LOG.info("after add success , get from sparkSession by tmpTableName: " + tableName + " ,the rs is " + sparkSession.getRealTable(tableName) + "  .");
             }
         } else if (tmpTableNameUtils.checkIsGlobalTmpTable(tableName)) {
@@ -145,7 +152,6 @@ public class ExecSession {
         }
         return realTableName;
     }
-
 
 
 }
