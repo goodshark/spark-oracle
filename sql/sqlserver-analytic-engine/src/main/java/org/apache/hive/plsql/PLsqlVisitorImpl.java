@@ -42,7 +42,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         // TODO test only
         String sql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return visitChildren(ctx);
+        return null;
     }
 
     @Override
@@ -117,7 +117,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         visit(ctx.type_spec());
         if (ctx.default_value_part() != null) {
         }
-        return visitChildren(ctx);
+        return null;
     }
 
     /*@Override
@@ -231,7 +231,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.addNode(predicateNode);
         }
         treeBuilder.pushStatement(predicateNode);
-        return visitChildren(ctx);
+        return predicateNode;
     }
 
     @Override
@@ -257,7 +257,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.addNode(ifStatement);
         }
         treeBuilder.pushStatement(rootIfStatement);
-        return visitChildren(ctx);
+        return rootIfStatement;
     }
 
     @Override
@@ -272,7 +272,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.addNode(ifStatement);
         }
         treeBuilder.pushStatement(ifStatement);
-        return visitChildren(ctx);
+        return ifStatement;
     }
 
     /*@Override
@@ -304,7 +304,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         visit(ctx.seq_of_statements());
         treeBuilder.addNode(loopStatement);
         treeBuilder.pushStatement(loopStatement);
-        return visitChildren(ctx);
+        return loopStatement;
     }
 
     @Override
@@ -355,19 +355,19 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return expressionStatement;
     }
 
-    /*@Override
+    @Override
     public Object visitConcatenation(PlsqlParser.ConcatenationContext ctx) {
         // TODO test only constant
-        visit(ctx.additive_expression(0));
+        System.out.println("get here");
         return visitChildren(ctx);
-    }*/
+    }
 
     // TODO only for test, all function call just only print args
     @Override
     public Object visitFunction_call(PlsqlParser.Function_callContext ctx) {
         Function function = new Function();
         visit(ctx.routine_name());
-        treeBuilder.popStatement();
+        treeBuilder.popAll();
         if (ctx.function_argument() != null) {
             List<Var> args = (List<Var>) visit(ctx.function_argument());
             function.setVars(args);
