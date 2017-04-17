@@ -86,6 +86,7 @@ public class UdfFactory {
             registFunction("isnull".toUpperCase(), "org.apache.hive.tsql.udf.IsNullCalculator");
             registFunction("OBJECT_ID".toUpperCase(), "org.apache.hive.tsql.udf.ObjectIdCalculator");
             registFunction("Coalesce".toUpperCase(), "org.apache.hive.tsql.udf.CoalesceCalculator");
+            registFunction("error_message".toUpperCase(), "org.apache.hive.tsql.udf.ErrorMessageCalculator");
         } catch (Exception e) {
             e.printStackTrace();
         }
