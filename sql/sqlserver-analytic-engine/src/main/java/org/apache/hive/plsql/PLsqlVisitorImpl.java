@@ -221,6 +221,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
+        predicateNode.setEvalType(PredicateNode.CompType.COMP);
         String op = ctx.relational_operator().getText();
         predicateNode.setOp(op);
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
@@ -240,7 +241,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         IfStatement rootIfStatement = ifStatement;
         if (ctx.condition() != null) {
             visit(ctx.condition());
-            ifStatement.setCondtion((LogicNode) treeBuilder.popStatement());
+            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            ifStatement.setCondtion(conditionNode);
         }
         if (ctx.seq_of_statements() != null) {
             visit(ctx.seq_of_statements());
@@ -355,12 +357,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return expressionStatement;
     }
 
-    @Override
+    /*@Override
     public Object visitConcatenation(PlsqlParser.ConcatenationContext ctx) {
         // TODO test only constant
         System.out.println("get here");
         return visitChildren(ctx);
-    }
+    }*/
 
     // TODO only for test, all function call just only print args
     @Override
