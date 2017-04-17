@@ -251,7 +251,7 @@ private[hive] class SparkHiveWriterContainer(
     } else if (dataType.equalsIgnoreCase("short")) {
       rs = "tinyint"
     }
-    logInfo("dataType src is " + dataType + "is + " + rs)
+    logDebug("dataType src is " + dataType + "is + " + rs)
     rs
   }
 

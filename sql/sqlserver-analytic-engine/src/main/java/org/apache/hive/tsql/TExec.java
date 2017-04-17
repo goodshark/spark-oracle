@@ -13,6 +13,8 @@ import org.apache.hive.tsql.cursor.*;
 import org.apache.hive.tsql.ddl.*;
 import org.apache.hive.tsql.dml.*;
 import org.apache.hive.tsql.dml.mergeinto.*;
+import org.apache.hive.tsql.dml.select.QueryExpressionBean;
+import org.apache.hive.tsql.dml.select.SelectIntoBean;
 import org.apache.hive.tsql.exception.AlreadyDeclaredException;
 import org.apache.hive.tsql.exception.Position;
 import org.apache.hive.tsql.exception.UnsupportedException;
@@ -2175,13 +2177,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
     private String intoTableSql = "";
     private String limitSql = "";
 
+
     private void clearVariable() {
         intoTableSql = "";
         limitSql = "";
-        //localIdVariable.clear();
-        //resultSetVariable.clear();
-        //tableNameList.clear();
-
     }
 
     @Override
@@ -2192,7 +2191,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.with_expression()) {
             sql.append(visitWith_expression(ctx.with_expression()).getSql());
         }
-        sql.append(visitQuery_expression(ctx.query_expression()));
+        QueryExpressionBean queryExpressionBean = visitQuery_expression(ctx.query_expression());
+        if (null != queryExpressionBean.getQuerySpecificationBean()) {
+            selectStatement.setSelectIntoBean(queryExpressionBean.getQuerySpecificationBean().getSelectIntoBean());
+        }
+        sql.append(queryExpressionBean.getSql());
+        if (null != queryExpressionBean.getExceptions() && !queryExpressionBean.getExceptions().isEmpty()) {
+            for (String s:queryExpressionBean.getExceptions()) {
+                addException(s, locate(ctx));
+            }
+        }
         if (null != ctx.order_by_clause()) {
             sql.append(visitOrder_by_clause(ctx.order_by_clause()));
         }
@@ -2213,9 +2221,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         selectStatement.addVariables(localIdVariable);
         selectStatement.addResultSetVariables(resultSetVariable);
         selectStatement.addTableNames(tableNameList);
-
         clearVariable();
-
         addNode(selectStatement);
         pushStatement(selectStatement);
         return selectStatement;
@@ -2299,12 +2305,25 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return commonTableExpressionBean;
     }
 
-
+    //: (query_specification | '(' query_expression ')') union*
     @Override
-    public String visitQuery_expression(TSqlParser.Query_expressionContext ctx) {
+    public QueryExpressionBean visitQuery_expression(TSqlParser.Query_expressionContext ctx) {
         StringBuffer sql = new StringBuffer();
-
+        QueryExpressionBean queryExpressionBean = new QueryExpressionBean();
         if (null != ctx.query_expression()) {
+            QueryExpressionBean leftQueryExpressionBean = visitQuery_expression(ctx.query_expression());
+            queryExpressionBean.setQueryExpressionBean(leftQueryExpressionBean);
+        } else if (null != ctx.query_specification()) {
+            QuerySpecificationBean querySpecificationBean = visitQuery_specification(ctx.query_specification());
+            queryExpressionBean.setQuerySpecificationBean(querySpecificationBean);
+        }
+        List<UnionBean> unionBeanList = new ArrayList<>();
+        for (int j = 0; j < ctx.union().size(); j++) {
+            UnionBean unionBean = visitUnion(ctx.union(j));
+            unionBeanList.add(unionBean);
+        }
+        queryExpressionBean.setUnionBeanList(unionBeanList);
+        /*if (null != ctx.query_expression()) {
             sql.append("(");
             sql.append(visitQuery_expression(ctx.query_expression()));
             sql.append(")");
@@ -2361,7 +2380,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
 
         }
-        return sql.toString();
+        return sql.toString();*/
+        return queryExpressionBean;
     }
 
     private String getTableNameByUUId() {
@@ -2370,60 +2390,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     }
 
-    private String createExceptOrIntersectSql(QuerySpecificationBean leftQueryBean,
-                                              QuerySpecificationBean rightQueryBean, UnionBean.UnionType unionType) {
-        checkQuerySql(leftQueryBean, rightQueryBean);
-        String exceptOrIntersectSql = "";
-        switch (unionType) {
-            case EXCEPT:
-                exceptOrIntersectSql = "NOT EXISTS";
-                break;
-            case INTERSECT:
-                exceptOrIntersectSql = " EXISTS ";
-                break;
-        }
-        StringBuffer sql = new StringBuffer();
-        sql.append(" select * from (");
-        sql.append(leftQueryBean.getSql());
-        sql.append(") " + leftQueryBean.getTableName());
-        sql.append(" WHERE  ");
-        sql.append(exceptOrIntersectSql).append(Common.SPACE);
-
-        sql.append("( ");
-
-        sql.append(" select * from (");
-        sql.append(rightQueryBean.getSql());
-        sql.append(") " + rightQueryBean.getTableName());
-        if (rightQueryBean.getSelectList().size() > 0 && !StringUtils.isBlank(rightQueryBean.getSelectList().get(0).getRealColumnName())) {
-            sql.append(" where ");
-            String leftTbName = leftQueryBean.getTableName();
-            String rightTbName = rightQueryBean.getTableName();
-            for (int j = 0; j < rightQueryBean.getSelectList().size(); j++) {
-                if (j != 0) {
-                    sql.append("  and ");
-                }
-                sql.append(Common.SPACE);
-                sql.append(leftTbName)
-                        .append(".")
-                        .append(leftQueryBean.getSelectList().get(j).getRealColumnName());
-                sql.append("=");
-                sql.append(rightTbName)
-                        .append(".")
-                        .append(rightQueryBean.getSelectList().get(j).getRealColumnName());
-                sql.append(Common.SPACE);
-            }
-        }
-        sql.append(" ) ");
-        return sql.toString();
-
-    }
-
-    private void checkQuerySql(QuerySpecificationBean leftQueryBean, QuerySpecificationBean rightQueryBean) {
-        if (leftQueryBean == null || rightQueryBean == null || leftQueryBean.getSelectList().size() !=
-                rightQueryBean.getSelectList().size()) {
-            addException(new Exception(" sql analytic exception ..."));
-        }
-    }
 
     @Override
     public QuerySpecificationBean visitQuery_specification(TSqlParser.Query_specificationContext ctx) {
@@ -2443,12 +2409,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.INTO()) {
             String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
             tableNameList.add(tableName);
-            //#表示临时表，需要先创建
-            //if (tableName.startsWith("#")) {
+            SelectIntoBean selectIntoBean = new SelectIntoBean();
+            selectIntoBean.setTableNanme(tableName);
+            querySpecificationBean.setSelectIntoBean(selectIntoBean);
             intoTableSql = "create table " + tableName + " as ";
-            // } else {
-            //  intoTableSql = "insert into table " + tableName;
-            //}
+
         }
         if (null != ctx.FROM()) {
             rs.append(ctx.FROM().getText()).append(Common.SPACE);
@@ -3945,7 +3910,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (!ctx.query_expression().isEmpty()) {
             for (int i = 0; i < ctx.query_expression().size(); i++) {
                 sql.append("(");
-                sql.append(visitQuery_expression(ctx.query_expression(i)));
+                sql.append(visitQuery_expression(ctx.query_expression(i)).getSql());
                 sql.append(")");
             }
         }

@@ -120,27 +120,10 @@ public class ExecSession {
         if (tableName.indexOf("@") != -1) {
             realTableName = getVariableContainer().findTableVarAlias(tableName);
         } else if (tmpTableNameUtils.checkIsTmpTable(tableName)) {
-            LOG.info("tbName: " + tableName + " , is tmp table.");
             realTableName = sparkSession.getRealTable(tableName);
-            LOG.info("tbName: " + tableName + " find in sparkSession ,realTbName is " + realTableName + ".");
             if (StringUtils.equals(tableName, realTableName)) {
-                LOG.info("tmp table " + tableName + "not find in sparkSession");
                 realTableName = tmpTableNameUtils.createTableName(tableName);
-                LOG.info("will create table Name :-> " + realTableName + ".");
-
-                LOG.info("add to sparkSession .....");
                 sparkSession.addTableToSparkSeesion(tableName, realTableName, 2);
-                HashMap<Integer, HashMap<String, String>> sparkSessonTableMap = sparkSession.getSqlServerTable();
-                Set<Integer> keys = sparkSessonTableMap.keySet();
-                for (Integer key : keys) {
-                    HashMap<String, String> map = sparkSessonTableMap.get(key);
-                    Set<String> mk = map.keySet();
-                    for (String s : mk) {
-                        String reaTb = map.get(mk);
-                        LOG.info("sparkSessionMap ，key:" + key + ", tableAliasName:" + s + ", realTbName:" + reaTb);
-                    }
-                }
-                LOG.info("after add success , get from sparkSession by tmpTableName: " + tableName + " ,the rs is " + sparkSession.getRealTable(tableName) + "  .");
             }
         } else if (tmpTableNameUtils.checkIsGlobalTmpTable(tableName)) {
             realTableName = tmpTableNameUtils.getGlobalTbName(tableName);

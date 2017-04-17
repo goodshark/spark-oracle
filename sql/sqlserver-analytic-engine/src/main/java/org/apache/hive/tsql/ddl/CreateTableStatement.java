@@ -1,9 +1,14 @@
 package org.apache.hive.tsql.ddl;
 
+import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.common.TmpTableNameUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
+import java.util.Set;
 
 /**
  * Created by wangsm9 on 2017/1/4.
@@ -13,15 +18,15 @@ public class CreateTableStatement extends SqlStatement {
     private String tableName;
     private String columnDefs;
     private String crudStr = "";
-
+    private static final Logger LOG = LoggerFactory.getLogger(CreateTableStatement.class);
 
     @Override
     public int execute() {
         StringBuffer sb = new StringBuffer();
         sb.append("CREATE TABLE ");
         TmpTableNameUtils tableNameUtils = new TmpTableNameUtils();
-        String tableAliasName = tableNameUtils.createTableName(tableName);
-        sb.append(tableAliasName)
+        String realTableName = tableNameUtils.createTableName(tableName);
+        sb.append(realTableName)
                 .append(" (")
                 .append(columnDefs)
                 .append(")")
@@ -32,15 +37,14 @@ public class CreateTableStatement extends SqlStatement {
          * key=2 表示存储的临时表 #t1
          * key=3 表示存储的全局表 ##t2
          */
-        HashMap<Integer, HashMap<String,String>> sparkSessonTableMap = getExecSession().getSparkSession().getSqlServerTable();
-        if (tableNameUtils.checkIsTmpTable(tableName)) {
-            addTmpTable(tableName, tableAliasName);
-            getExecSession().getSparkSession().addTableToSparkSeesion(tableAliasName,tableName,2);
 
+        if (tableNameUtils.checkIsTmpTable(tableName)) {
+            addTmpTable(tableName, realTableName);
+            getExecSession().getSparkSession().addTableToSparkSeesion(tableName,realTableName,2);
         }
         if(tableNameUtils.checkIsGlobalTmpTable(tableName)){
-            addTmpTable(tableName, tableAliasName);
-            getExecSession().getSparkSession().addTableToSparkSeesion(tableAliasName,tableName,3);
+            addTmpTable(tableName, realTableName);
+            getExecSession().getSparkSession().addTableToSparkSeesion(tableName,realTableName,3);
         }
         setAddResult(false);
         commitStatement(sb.toString());

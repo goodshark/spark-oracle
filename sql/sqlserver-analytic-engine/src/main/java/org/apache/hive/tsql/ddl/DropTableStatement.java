@@ -10,7 +10,7 @@ import java.util.List;
  * Created by wangsm9 on 2017/1/4.
  */
 public class DropTableStatement extends SqlStatement {
-    protected List<String> tableNames;
+    private List<String> tableNames;
 
     @Override
     public int execute() throws Exception{

@@ -233,10 +233,14 @@ private[hive] class SparkExecuteStatementOperation(
           val udfJarPath = sqlContext.sessionState.
             conf.getConfString("spark.sql.sqlserver.udf.jar.path",
             "hdfs://avatarcluster/tmp/udf/sqlserver-udf.jar")
-          val addJarSql = "create temporary function T_DATEDIFF" +
+          val addDateDifSql = "create temporary function T_DATEDIFF" +
             " as 'org.apache.hive.extra.udf.DateDiffUdf' " +
             " using jar '" + udfJarPath + "'"
-          sqlContext.sparkSession.sql(addJarSql)
+          val addDateAddSql = "create temporary function DATE_ADD2" +
+            " as 'org.apache.hive.extra.udf.DateDiffUdf' " +
+            " using jar '" + udfJarPath + "'"
+          sqlContext.sparkSession.sql(addDateDifSql)
+          sqlContext.sparkSession.sql(addDateAddSql)
           sqlContext.sessionState.
             conf.setConfString("spark.sql.add.jar.run", "true")
         }

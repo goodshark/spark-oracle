@@ -1,16 +1,13 @@
 package org.apache.hive.tsql.dml;
 
-import org.apache.hive.tsql.arg.Var;
-import org.apache.hive.tsql.common.Row;
-import org.apache.hive.tsql.common.SparkResultSet;
-import org.apache.hive.tsql.common.SqlStatement;
-import org.apache.hive.tsql.common.TreeNode;
-import org.apache.hive.tsql.util.StrUtils;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hive.tsql.common.*;
+import org.apache.hive.tsql.dml.select.SelectIntoBean;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.reflect.internal.Trees;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -46,6 +43,9 @@ public class SelectStatement extends SqlStatement {
     private List<String> tableNames = new ArrayList<>();
 
     private String execSQL = "";
+
+
+    private SelectIntoBean selectIntoBean;
 
     @Override
     public int execute() throws Exception {
@@ -103,9 +103,29 @@ public class SelectStatement extends SqlStatement {
     }
 
     public void init() throws Exception {
+        selectIntoExec();
         execSQL = getSql();
         execSQL = replaceVariable(execSQL, localIdVariableName);
         replaceTableNames();
+    }
+
+
+    private void selectIntoExec() throws Exception {
+        if (null != selectIntoBean && !StringUtils.isBlank(selectIntoBean.getTableNanme())) {
+            String tableName = selectIntoBean.getTableNanme();
+            TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
+            String sql = "DROP TABLE IF EXISTS " + tableName;
+            //如果是局部临时表，需要删除
+            if (tmpTableNameUtils.checkIsTmpTable(tableName)) {
+                String realTableName = getExecSession().getRealTableName(tableName);
+                LOG.info("realTableName:" + realTableName + ",orcTableName:" + tableName);
+                if (!StringUtils.equals(tableName, realTableName)) {
+                    sql = replaceTableName(tableName, sql);
+                    commitStatement(sql);
+                }
+
+            }
+        }
     }
 
     private void replaceTableNames() throws Exception {
@@ -136,5 +156,11 @@ public class SelectStatement extends SqlStatement {
         return resultSetVariable;
     }
 
+    public SelectIntoBean getSelectIntoBean() {
+        return selectIntoBean;
+    }
 
+    public void setSelectIntoBean(SelectIntoBean selectIntoBean) {
+        this.selectIntoBean = selectIntoBean;
+    }
 }
