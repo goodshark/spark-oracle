@@ -1,8 +1,12 @@
 package org.apache.hive.tsql.cfl;
 
+import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.common.TreeNode;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by dengrb1 on 12/7 0007.
@@ -10,6 +14,8 @@ import org.apache.hive.tsql.common.TreeNode;
 public class WhileStatement extends BaseStatement {
 
     private LogicNode condtionNode = null;
+    // only for index in loop: for i in 1..10
+    private Map<String, Var> varMap = new HashMap<>();
 
     public WhileStatement() {
     }
@@ -37,6 +43,7 @@ public class WhileStatement extends BaseStatement {
     public int execute() throws Exception {
         return 0;
     }
+
     public BaseStatement createStatement() {
         return null;
     }

@@ -149,6 +149,18 @@ public abstract class TreeNode implements Serializable {
         return newNode;
     }
 
+    public TreeNode insertNode(int index, TreeNode newNode) {
+        newNode.setNodeId(Sequence.getNodeId());
+        if (index >= childrenNodes.size()) {
+            newNode.setSeqId(childrenNodes.size());
+            childrenNodes.add(newNode);
+        } else {
+            newNode.setSeqId(index);
+            childrenNodes.add(index, newNode);
+        }
+        return newNode;
+    }
+
     public void setNodeType(Type t) {
         nodeType = t;
     }

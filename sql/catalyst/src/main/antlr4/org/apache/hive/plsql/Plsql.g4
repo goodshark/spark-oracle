@@ -64,12 +64,16 @@ unit_statement
     | drop_view
     | truncate_table
     | data_manipulation_language_statements
-    | anonymous_block
+    | top_anonymous_block
     | label_declaration
     ;
 
+top_anonymous_block
+    : anonymous_block ';'
+    ;
+
 anonymous_block
-    : DECLARE? declare_spec* body ';'
+    : DECLARE? declare_spec* body
     ;
 
 // $<DDL -> SQL Statements for Stored PL/SQL Units
@@ -87,7 +91,7 @@ alter_function
 create_function_body
     : (CREATE (OR REPLACE)?)? FUNCTION function_name ('(' parameter (',' parameter)* ')')?
       RETURN type_spec (invoker_rights_clause|parallel_enable_clause|result_cache_clause|DETERMINISTIC)*
-      ((PIPELINED? (IS | AS) (DECLARE? declare_spec* body | call_spec)) | (PIPELINED | AGGREGATE) USING implementation_type_name) ';'
+      ((PIPELINED? (IS | AS) (anonymous_block | call_spec)) | (PIPELINED | AGGREGATE) USING implementation_type_name) ';'
     ;
 
 // $<Creation Function - Specific Clauses
@@ -217,7 +221,7 @@ alter_procedure
 create_procedure_body
     : (CREATE (OR REPLACE)?)? PROCEDURE procedure_name ('(' parameter (',' parameter)* ')')?
       invoker_rights_clause? (IS | AS)
-      (DECLARE? declare_spec* body | call_spec | EXTERNAL) ';'
+      (anonymous_block| call_spec | EXTERNAL) ';'
     ;
 
 // $>
@@ -439,18 +443,18 @@ subprog_decl_in_type
 
 proc_decl_in_type
     : PROCEDURE procedure_name '(' type_elements_parameter (',' type_elements_parameter)* ')'
-      (IS | AS) (call_spec | DECLARE? declare_spec* body ';')
+      (IS | AS) (call_spec | anonymous_block ';')
     ;
 
 func_decl_in_type
     : FUNCTION function_name ('(' type_elements_parameter (',' type_elements_parameter)* ')')?
-      RETURN type_spec (IS | AS) (call_spec | DECLARE? declare_spec* body ';')
+      RETURN type_spec (IS | AS) (call_spec | anonymous_block ';')
     ;
 
 constructor_declaration
     : FINAL? INSTANTIABLE? CONSTRUCTOR FUNCTION type_spec
       ('(' (SELF IN OUT type_spec ',') type_elements_parameter (',' type_elements_parameter)*  ')')?
-      RETURN SELF AS RESULT (IS | AS) (call_spec | DECLARE? declare_spec* body ';')
+      RETURN SELF AS RESULT (IS | AS) (call_spec | anonymous_block ';')
     ;
 
 // $>
@@ -693,8 +697,9 @@ statement
     // ALTER swallow_to_semi
     // TRUNCATE swallow_to_semi
     : GRANT ALL? swallow_to_semi
-    | body
-    | block
+//    | body
+//    | block
+    | anonymous_block
     | assignment_statement
     | continue_statement
     | exit_statement
@@ -1375,18 +1380,22 @@ expression
     ;
 
 logical_or_expression
-    : logical_and_expression
-    | logical_or_expression OR logical_and_expression
+    : logical_and_expression (OR logical_and_expression)*
     ;
 
 logical_and_expression
-    : negated_expression
-    | logical_and_expression AND negated_expression
+    : negated_expression (AND negated_expression)*
     ;
 
 negated_expression
-    : NOT negated_expression
-    | equality_expression
+    : NOT? equality_expression
+    ;
+
+top_expression
+    : IS NOT? (NULL | NAN | PRESENT | INFINITE | A_LETTER SET | EMPTY | OF TYPE? '(' ONLY? type_spec (',' type_spec)* ')')
+    | (MEMBER | SUBMULTISET) OF?
+    | relational_operator
+    |
     ;
 
 equality_expression
@@ -1404,7 +1413,8 @@ multiset_type
     ;
 
 relational_expression
-    : relational_expression relational_operator relational_expression
+//    : relational_expression relational_operator relational_expression
+    : compound_expression relational_operator compound_expression
     | compound_expression
     ;
 
