@@ -404,7 +404,7 @@ public class Executor {
         TreeNode node = null;
         while (!stack.empty()) {
             node = stack.pop();
-            if (node.getNodeType() == TreeNode.Type.TRY) {
+            if (node.getNodeType() == TreeNode.Type.TRY && node.isSkipable()) {
                 List<TreeNode> list = node.getChildrenNodes();
                 if (list.size() != 2)
                     break;
@@ -415,11 +415,14 @@ public class Executor {
         }
         // exception catched by TRY-CATCH block
         if (node != null && node.getNodeType() == TreeNode.Type.TRY) {
+            String errorStr = "";
             // record this exception that maybe THROW without args in subsequent CATCH block
             if (exceptionNode.getNodeType() == TreeNode.Type.THROW) {
-                String errorStr = ((ThrowStatement) exceptionNode).getThrowExeceptionStr();
-                session.setErrorStr(errorStr);
+                errorStr = ((ThrowStatement) exceptionNode).getThrowExeceptionStr();
+            } else {
+                errorStr = ((RaiseStatement) exceptionNode).getExceptionStr();
             }
+            session.setErrorStr(errorStr);
             return;
         }
         // exception is out of try-catch, just throw exception
