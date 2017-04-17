@@ -51,7 +51,7 @@ public class DateNameFunction extends BaseFunction {
                 return sb.toString();
             }
             if(v.getVarValue().toString().charAt(0) == '@') {
-                return sb.append(expr.getSql()).append(")").toString();
+                return sb.append("(").append(expr.getSql()).append(")").toString();
             }
 
             sb.append("(").append(StrUtils.addQuot(v.getDateStr())).append(")");

@@ -284,7 +284,7 @@ public class Var implements Serializable {
     }
 
 
-    public String getExecString() {
+    public String getExecString() throws ParseException {
         if (null == varValue) {
             return null;
         }
@@ -305,6 +305,8 @@ public class Var implements Serializable {
             case DATETIME2:
                 if (varValue instanceof String) {
                     val = StrUtils.addQuot(val);
+                } else {
+                    val = StrUtils.addQuot(getDateStr());
                 }
                 break;
             default:
