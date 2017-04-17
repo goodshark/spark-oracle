@@ -404,7 +404,7 @@ public class Executor {
         TreeNode node = null;
         while (!stack.empty()) {
             node = stack.pop();
-            if (node.getNodeType() == TreeNode.Type.TRY) {
+            if (node.getNodeType() == TreeNode.Type.TRY && node.isSkipable()) {
                 List<TreeNode> list = node.getChildrenNodes();
                 if (list.size() != 2)
                     break;
