@@ -2849,7 +2849,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (ctx.data_type().getChildCount() == 4) {
             function.setLength(Integer.valueOf(ctx.data_type().getChild(2).getText().trim()));
         }
-        if(ctx.expression().size() == 2) {
+        if (ctx.expression().size() == 2) {
             visit(ctx.expression().get(1));
             function.setStyle(popStatement());
         }
@@ -2893,15 +2893,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //        return super.visitDateadd_function(ctx);
         DateAddFunction function = new DateAddFunction(new FuncName(null, "DATEADD", null));
         String datePart = ctx.ID().getText();
-        function.setDatePart(datePart);
-        if ("d".equalsIgnoreCase(datePart) || "dd".equalsIgnoreCase(datePart) || "day".equalsIgnoreCase(datePart)) {
-            visit(ctx.expression().get(0));
-            function.setNumber(popStatement());
-            visit(ctx.expression().get(1));
-            function.setDate(popStatement());
-        } else {
+        DateUnit unit = DateUnit.parse(datePart);
+        if (null == unit) {
             this.addException("datepart #[" + datePart + "]", locate(ctx));
         }
+        function.setDatePart(unit);
+        visit(ctx.expression().get(0));
+        function.setNumber(popStatement());
+        visit(ctx.expression().get(1));
+        function.setDate(popStatement());
         pushStatement(function);
         return function;
     }

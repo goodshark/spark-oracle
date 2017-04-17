@@ -2,6 +2,7 @@ package org.apache.hive.tsql.func;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.util.StrUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.List;
  * Created by zhongdg1 on 2017/2/8.
  */
 public class DateAddFunction extends BaseFunction {
-    private String datePart;
+    private DateUnit datePart;
     private TreeNode number;
     private TreeNode date;
 
@@ -18,7 +19,7 @@ public class DateAddFunction extends BaseFunction {
         super(name);
     }
 
-    public void setDatePart(String datePart) {
+    public void setDatePart(DateUnit datePart) {
         this.datePart = datePart;
     }
 
@@ -43,7 +44,7 @@ public class DateAddFunction extends BaseFunction {
         results.add(new Var(datePart, Var.DataType.STRING));
         results.add(num);
         results.add(oldDate);
-        System.out.println("Excuting function # " + this.getSql());
+//        System.out.println("Excuting function # " + this.getSql());
         doCall(results);
         return 0;
     }
@@ -51,12 +52,13 @@ public class DateAddFunction extends BaseFunction {
     @Override
     public String getSql() {
 
-        StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
-                .getFunctionAliasName(getName().getFullFuncName()));
-        if(date == null || number == null) {
+//        StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
+//                .getFunctionAliasName(getName().getFullFuncName()));
+        StringBuffer sb = new StringBuffer("DATE_ADD2");
+        if (date == null || number == null) {
             return sb.toString();
         }
-        sb.append("(").append(date.getSql()).append(", ").append(number.getSql()).append(")");
+        sb.append("(").append(StrUtils.addQuot(datePart.toString())).append(", ").append(number.getSql()).append(", ").append(date.getSql()).append(")");
         return sb.toString();
     }
 }

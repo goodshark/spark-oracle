@@ -10,7 +10,6 @@ import java.util.Date;
 /**
  * 日期Util类
  *
- * @author calvin
  */
 public class DateUtil {
     private static final String defaultDatePattern = "yyyy-MM-dd HH:mm:ss";
@@ -85,13 +84,15 @@ public class DateUtil {
             }
         }
         if (MILLISECOND_PATTERN.equals(pattern)) {
-            sb.append(".");
             int dotIndex = strDate.indexOf(".");
             if (-1 == dotIndex) {
-                sb.append("0");
-            } else {
-                sb.append(strDate.substring(dotIndex));
+                return sb.append(".").append("0").toString();
             }
+            int endIndex = strDate.length() > dotIndex + 3 ? (dotIndex + 4) : strDate.length();
+            return strDate.substring(0, endIndex);
+//            else {
+//                sb.append(strDate.substring(dotIndex));
+//            }
         }
 
         return sb.toString();
