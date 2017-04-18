@@ -122,8 +122,6 @@ public class MergeIntoStatement extends SqlStatement {
                where aa.Sno=bb.Sno)
              */
 
-
-
             StringBuffer sql = new StringBuffer();
             sql.append("insert into  ").append(targetTableName.getFuncName()).append(Common.SPACE);
 
@@ -137,6 +135,16 @@ public class MergeIntoStatement extends SqlStatement {
             sql.append(srcTableName.getFuncName());
             sql.append(" on ");
             sql.append(replaceTableAlias(searchCondition));
+
+            sql.append(Common.SPACE);
+            String searchSql = bean.getSearchCondition();
+            if (!StringUtils.isBlank(searchSql)) {
+                sql.append(" where 1 =1 ");
+                sql.append(" and ");
+                sql.append(replaceTableAlias(searchSql));
+            }
+            sql.append(")");
+
             sql.append(" )");
             sql.append(srcTableName.getFuncName());
             sql.append(" where not exists ");
@@ -155,45 +163,6 @@ public class MergeIntoStatement extends SqlStatement {
             sql.append(srcTableName.getFuncName());
             sql.append( " where ");
             sql.append(replaceTableAlias(searchCondition));
-
-
-
-
-
-
-
-
-
-
-
-
-
-            sql.append(" select ");
-            sql.append(srcTableName.getFuncName());
-            sql.append(".* from ");
-            sql.append(srcTableName.getFuncName());
-
-            sql.append(" where not exists ");
-            sql.append("( ");
-
-            sql.append(" select ");
-            sql.append(srcTableName.getFuncName());
-            sql.append(".* from ");
-            sql.append(targetTableName.getFuncName());
-
-            sql.append(" left outer join  ");
-            sql.append(srcTableName.getFuncName());
-            sql.append(Common.SPACE);
-            sql.append(" on ");
-            sql.append(replaceTableAlias(searchCondition));
-
-            sql.append(Common.SPACE);
-            String searchSql = bean.getSearchCondition();
-            if (!StringUtils.isBlank(searchSql)) {
-                sql.append(" where 1 =1 ");
-                sql.append(" and ");
-                sql.append(replaceTableAlias(searchSql));
-            }
             sql.append(")");
             commitStatement(sql.toString());
         }
