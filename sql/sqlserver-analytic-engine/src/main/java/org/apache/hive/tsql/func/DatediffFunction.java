@@ -56,7 +56,7 @@ public class DatediffFunction extends BaseFunction {
         if (rightExpr == null || leftExpr == null) {
             return sb.toString();
         }
-        sb.append("(").append("'").append(datePart).append("'").append(",").append(rightExpr.getSql()).append(", ").append(leftExpr.getSql()).append(")");
+        sb.append("(").append("'").append(datePart).append("'").append(",").append(leftExpr.getSql()).append(", ").append(rightExpr.getSql()).append(")");
         return sb.toString();
     }
 }
