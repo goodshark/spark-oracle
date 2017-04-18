@@ -26,12 +26,13 @@ public class VariableContainer {
     private ConcurrentHashMap<String, Cursor> localCursors = new ConcurrentHashMap<>();//本地游标
     private ConcurrentHashMap<String, Cursor> globalCursors = new ConcurrentHashMap<>();//全局游标
     //系统变量
-    private ConcurrentHashMap<String,Var> systemVariables = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Var> systemVariables = new ConcurrentHashMap<>();
 
     public VariableContainer() {
         //init system variables
         addOrUpdateSys(new Var(SystemVName.FETCH_STATUS, 0, Var.DataType.INT));
         addOrUpdateSys(new Var(SystemVName.CURSOR_ROWS, 0, Var.DataType.INT));
+        addOrUpdateSys(new Var(SystemVName.ROWCOUNT, 0, Var.DataType.INT));
     }
 
     public void addTableVars(Var var) {
@@ -115,7 +116,6 @@ public class VariableContainer {
     }
 
 
-
     public void addProcFunc(Procedure function) {
         this.functions.put(function.getName().getFullFuncName(), function);
     }
@@ -181,7 +181,7 @@ public class VariableContainer {
 
     public void resetVars() {
         this.vars = new ConcurrentHashMap<String, Var>();
-        this.tableVars = new ConcurrentHashMap<String,Var>();
+        this.tableVars = new ConcurrentHashMap<String, Var>();
         this.localCursors = new ConcurrentHashMap<String, Cursor>();
     }
 
@@ -192,7 +192,7 @@ public class VariableContainer {
 
     public boolean updateSys(String sysVarName, Object val) {
         Var v = systemVariables.get(sysVarName.toUpperCase());
-        if(null == v) {
+        if (null == v) {
             return false;
         }
         v.setVarValue(val);
