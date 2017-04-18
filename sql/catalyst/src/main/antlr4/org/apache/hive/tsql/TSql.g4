@@ -1041,6 +1041,7 @@ function_call
     | TSUBSTRING '(' expression ',' expression ',' expression ')'      #tsubstring_function
     | TRIM '(' (expression FROM)? expression ')'    #trim_function
     | LEN '(' expression ')'                       #len_function
+    | IIF '('expression ',' expression ',' expression ')'       #iif_function
     ;
 
 
@@ -1746,6 +1747,7 @@ HASH:                                  H A S H;
 HONOR_BROKER_PRIORITY:                 H O N O R '_' B R O K E R '_' P R I O R I T Y;
 HOURS:                                 H O U R S; 
 IGNORE_NONCLUSTERED_COLUMNSTORE_INDEX: I G N O R E '_' N O N C L U S T E R E D '_' C O L U M N S T O R E '_' I N D E X;
+IIF:                                   I I F;
 IMMEDIATE:                             I M M E D I A T E;
 IMPERSONATE:                           I M P E R S O N A T E;
 INCREMENTAL:                           I N C R E M E N T A L; 

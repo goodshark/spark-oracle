@@ -134,21 +134,21 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                             break;
                         case GREATER_THAN:
                             int v = leftChildrenVar.compareTo(rightChildrenVar);
-                            var = v > 0 ? Var.FalseVal : Var.TrueVal;
+                            var = v > 0 ? Var.TrueVal: Var.FalseVal;
                             break;
                         case GREATER_THAN_OR_EQUAL:
                         case NOT_LESS_THEN:
                             int c = leftChildrenVar.compareTo(rightChildrenVar);
-                            var = c >= 0 ? Var.FalseVal : Var.TrueVal;
+                            var = c >= 0 ? Var.TrueVal: Var.FalseVal;
                             break;
                         case NOT_GREATER_THAN:
                         case LESS_THEN_OR_EQUAL:
                             int ngt = leftChildrenVar.compareTo(rightChildrenVar);
-                            var = ngt <= 0 ? Var.FalseVal : Var.TrueVal;
+                            var = ngt <= 0 ? Var.TrueVal: Var.FalseVal;
                             break;
                         case LESS_THEN:
                             int lt = leftChildrenVar.compareTo(rightChildrenVar);
-                            var = lt < 0 ? Var.FalseVal : Var.TrueVal;
+                            var = lt < 0 ? Var.TrueVal: Var.FalseVal;
                             break;
                         case XOR:
                             var = leftChildrenVar.operatorXor(rightChildrenVar);
