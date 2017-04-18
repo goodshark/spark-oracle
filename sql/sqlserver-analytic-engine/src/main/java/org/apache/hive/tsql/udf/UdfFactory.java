@@ -58,6 +58,8 @@ public class UdfFactory {
             registFunction("quarter".toUpperCase(), "org.apache.hive.tsql.udf.date.QuarterCalculator");
             registFunction("dayofyear".toUpperCase(), "org.apache.hive.tsql.udf.date.DayOfYearCalculator");
             registFunction("isdate".toUpperCase(), "org.apache.hive.tsql.udf.date.IsDateCalculator");
+            registFunction("DATEFROMPARTS".toUpperCase(), "org.apache.hive.tsql.udf.date.DateFromPartsCalculator");
+
 
             //math functions
             registFunction("ABS".toUpperCase(), "org.apache.hive.tsql.udf.math.AbsCalculator");
