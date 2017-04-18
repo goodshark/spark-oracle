@@ -30,7 +30,8 @@ public class MergeIntoStatement extends SqlStatement {
     public int execute() throws Exception {
         //TODO 将mergeinto拆分成多个语句执行不能保证事务性
         if (!sourceNotMatchedBeans.isEmpty()) {
-            sourceNotMatched();
+            //sourceNotMatched();
+            throw new Exception("WHEN NOT MATCHED BY SOURCE IS NOT SUPPORT NOW.");
         }
         if (!targetNotMatcheBeanArrayList.isEmpty()) {
             executeTargetNotMatche();
@@ -44,6 +45,8 @@ public class MergeIntoStatement extends SqlStatement {
     private void sourceNotMatched() {
         for (SourceNotMatchedBean bean : sourceNotMatchedBeans) {
             switch (bean.getMatchedBean().getType()) {
+
+                //select * from Student_Target left JOIN Student_Source on Student_Target.Sno=Student_Source.Sno where Student_Source.Sno is NULL
                 case DEL:
                     StringBuffer sql = new StringBuffer();
                     sql.append(" delete ");
@@ -53,7 +56,7 @@ public class MergeIntoStatement extends SqlStatement {
                     sql.append(" from ");
 
                     sql.append(" left outer  join ");
-                    sql.append(srcTableName);
+                    sql.append(srcTableName.getFuncName());
                     sql.append(Common.SPACE);
 
 
