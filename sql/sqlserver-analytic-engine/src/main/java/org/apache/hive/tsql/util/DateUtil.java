@@ -84,12 +84,17 @@ public class DateUtil {
             }
         }
         if (MILLISECOND_PATTERN.equals(pattern)) {
-            int dotIndex = strDate.indexOf(".");
+            int dotIndex = sb.toString().indexOf(".");
             if (-1 == dotIndex) {
                 return sb.append(".").append("0").toString();
             }
-            int endIndex = strDate.length() > dotIndex + 3 ? (dotIndex + 4) : strDate.length();
-            return strDate.substring(0, endIndex);
+//            String millStr = strDate.substring(dotIndex+1);
+            int sbLen = sb.length();
+            int maxLen = dotIndex + 4;
+            if(sbLen > maxLen) {
+                return sb.substring(0, maxLen);
+            }
+//            return sb.toString().substring(0, endIndex);
 //            else {
 //                sb.append(strDate.substring(dotIndex));
 //            }

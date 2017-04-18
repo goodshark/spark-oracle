@@ -13,13 +13,14 @@ import java.util.Date;
 public class DateDiffUdf extends UDF {
 
     private static final String PATTERN = "yyyy-MM-dd HH:mm:ss.SSS";
+    private DateDiffCalculator calculator = new DateDiffCalculator();
 
     public long evaluate(String part, String first, String second) {
         try {
             DateUnit unit = DateUnit.parse(part);
             Date left = DateUtil.parseLenient(first, PATTERN);
             Date right = DateUtil.parseLenient(second, PATTERN);
-            return new DateDiffCalculator().doEval(unit, right, left);
+            return calculator.doEval(unit, right, left);
 
         } catch (Exception e) {
             e.printStackTrace();

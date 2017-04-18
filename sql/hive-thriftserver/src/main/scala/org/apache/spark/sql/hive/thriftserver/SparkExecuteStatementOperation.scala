@@ -237,8 +237,13 @@ private[hive] class SparkExecuteStatementOperation(
             " as 'org.apache.hive.extra.udf.DateDiffUdf' " +
             " using jar '" + udfJarPath + "'"
           val addDateAddSql = "create temporary function DATE_ADD2" +
-            " as 'org.apache.hive.extra.udf.DateDiffUdf' " +
+            " as 'org.apache.hive.extra.udf.DateAddUdf' " +
             " using jar '" + udfJarPath + "'"
+
+          val addDatefrompartsSql = "create temporary function DATEFROMPARTS" +
+            " as 'org.apache.hive.extra.udf.DateFromPartsUdf' " +
+            " using jar '" + udfJarPath + "'"
+          sqlContext.sparkSession.sql(addDatefrompartsSql)
           sqlContext.sparkSession.sql(addDateDifSql)
           sqlContext.sparkSession.sql(addDateAddSql)
           sqlContext.sessionState.
