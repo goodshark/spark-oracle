@@ -76,7 +76,7 @@ merge_statement:
     source_not_matched*
 ;
 matched_statment:
-    WHEN MATCHED THEN (AND search_condition)? merge_matched
+    WHEN MATCHED  (AND search_condition)? THEN merge_matched
 ;
 
 target_not_matched:
@@ -1064,7 +1064,7 @@ table_alias
 
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
 with_table_hints
-    : WITH? '(' table_hint (',' table_hint)* ')'
+    : WITH '(' table_hint (',' table_hint)* ')'
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx

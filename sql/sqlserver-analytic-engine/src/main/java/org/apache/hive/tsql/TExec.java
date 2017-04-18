@@ -3714,7 +3714,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitTable_hint(TSqlParser.Table_hintContext ctx) {
         //TODO LOCK TABLE
-        addException("table lock", locate(ctx));
+        addException("table hint "+ ctx.getText(), locate(ctx));
         return "";
     }
 
