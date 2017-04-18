@@ -2986,6 +2986,21 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return func;
     }
 
+    @Override public Object visitIif_function(TSqlParser.Iif_functionContext ctx) {
+        IifFunction func = new IifFunction(new FuncName(null, "IIF", null));
+        List<TSqlParser.ExpressionContext> exprList = ctx.expression();
+        if (exprList.size() != 3)
+            addException("IIF funciton need 3 args", locate(ctx));
+        List<TreeNode> argList = new ArrayList<>();
+        for (TSqlParser.ExpressionContext expressionContext: exprList) {
+            visit(expressionContext);
+            argList.add(popStatement());
+        }
+        func.setExprList(argList);
+        pushStatement(func);
+        return func;
+    }
+
     @Override
     public Object visitTrim_function(TSqlParser.Trim_functionContext ctx) {
         TrimFunction trimFunc = new TrimFunction(new FuncName(null, "TRIM", null));
