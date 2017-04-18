@@ -143,10 +143,8 @@ public class MergeIntoStatement extends SqlStatement {
                 sql.append(" and ");
                 sql.append(replaceTableAlias(searchSql));
             }
-            sql.append(")");
-
             sql.append(" )");
-            sql.append(srcTableName.getFuncName());
+            sql.append(targetTableName.getFuncName());
             sql.append(" where not exists ");
             sql.append("( ");
             sql.append(" select * from ");

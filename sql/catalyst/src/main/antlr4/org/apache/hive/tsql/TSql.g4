@@ -1889,6 +1889,8 @@ DATABASES:                              D A T A B A S E S;
 
 //add for merge into
 MATCHED:                                M A T C H E D;
+SOURCE:                                 S O U R C E;
+TARGET:                                 T A R G E T;
 
 SPACE:              [ \t\r\n]+    -> skip;
 COMMENT:            '/*' .*? '*/' -> channel(HIDDEN);
