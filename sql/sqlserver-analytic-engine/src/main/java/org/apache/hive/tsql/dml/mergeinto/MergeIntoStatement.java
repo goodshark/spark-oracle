@@ -51,6 +51,8 @@ public class MergeIntoStatement extends SqlStatement {
                     sql.append(Common.SPACE);
 
                     sql.append(" from ");
+
+                    sql.append(" left outer  join ");
                     sql.append(srcTableName);
                     sql.append(Common.SPACE);
 
@@ -80,7 +82,7 @@ public class MergeIntoStatement extends SqlStatement {
                     updateSql.append(replaceTableAlias(setsql));
                     updateSql.append(Common.SPACE);
 
-                    updateSql.append(" inner join ");
+                    updateSql.append(" left outer  join ");
                     updateSql.append(srcTableName.getFuncName());
                     updateSql.append(Common.SPACE);
 
@@ -107,20 +109,84 @@ public class MergeIntoStatement extends SqlStatement {
 
     private void executeTargetNotMatche() {
         for (TargetNotMatcheBean bean : targetNotMatcheBeanArrayList) {
+            //select source001.* from source001 where not EXISTS  (select source001.* from target001 right outer join  source001  on   target001.id  =  source001.id );
+            /*
+             select * from (
+                              select ss.* from Student_Target as st right outer join Student_Source as ss on st.Sno=ss.Sno
+                            ) aa
+             where not EXISTS
+                (
+                    select * from(
+                                    select Student_Target.*  from Student_Target INNER  join Student_Source  on Student_Target.Sno=Student_Source.Sno
+                                   ) bb
+               where aa.Sno=bb.Sno)
+             */
+
+
+
             StringBuffer sql = new StringBuffer();
             sql.append("insert into  ").append(targetTableName.getFuncName()).append(Common.SPACE);
+
+            sql.append("select * from ");
+            sql.append("( ");
+            sql.append(" select ");
+            sql.append(srcTableName.getFuncName());
+            sql.append(".* from ");
+            sql.append(targetTableName.getFuncName());
+            sql.append(" right outer join ");
+            sql.append(srcTableName.getFuncName());
+            sql.append(" on ");
+            sql.append(replaceTableAlias(searchCondition));
+            sql.append(" )");
+            sql.append(srcTableName.getFuncName());
+            sql.append(" where not exists ");
+            sql.append("( ");
+            sql.append(" select * from ");
+            sql.append("(");
+            sql.append(" select ");
+            sql.append(targetTableName.getFuncName());
+            sql.append(".* from ");
+            sql.append(targetTableName.getFuncName());
+            sql.append(" inner join ");
+            sql.append(srcTableName.getFuncName());
+            sql.append(" on ");
+            sql.append(replaceTableAlias(searchCondition));
+            sql.append(")");
+            sql.append(srcTableName.getFuncName());
+            sql.append( " where ");
+            sql.append(replaceTableAlias(searchCondition));
+
+
+
+
+
+
+
+
+
+
+
+
+
             sql.append(" select ");
             sql.append(srcTableName.getFuncName());
             sql.append(".* from ");
             sql.append(srcTableName.getFuncName());
-            sql.append(" left join ");
+
+            sql.append(" where not exists ");
+            sql.append("( ");
+
+            sql.append(" select ");
+            sql.append(srcTableName.getFuncName());
+            sql.append(".* from ");
             sql.append(targetTableName.getFuncName());
+
+            sql.append(" left outer join  ");
+            sql.append(srcTableName.getFuncName());
             sql.append(Common.SPACE);
             sql.append(" on ");
-            sql.append(" not");
-            sql.append("(");
             sql.append(replaceTableAlias(searchCondition));
-            sql.append(")");
+
             sql.append(Common.SPACE);
             String searchSql = bean.getSearchCondition();
             if (!StringUtils.isBlank(searchSql)) {
@@ -128,6 +194,7 @@ public class MergeIntoStatement extends SqlStatement {
                 sql.append(" and ");
                 sql.append(replaceTableAlias(searchSql));
             }
+            sql.append(")");
             commitStatement(sql.toString());
         }
     }

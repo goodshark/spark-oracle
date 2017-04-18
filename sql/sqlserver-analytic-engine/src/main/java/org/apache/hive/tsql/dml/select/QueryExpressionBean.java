@@ -46,8 +46,8 @@ public class QueryExpressionBean extends BaseBean {
                     sql.append(querySpecificationBean.getSql());
                 }
                 for (UnionBean u : unionBeanList) {
-                    sql.append(" union all ");
-                    sql.append(u.getQuerySpecificationBean().getSql());
+                    sql.append("  ");
+                    sql.append(u.getSql());
                 }
                 break;
             case EXCEPT:
@@ -85,7 +85,9 @@ public class QueryExpressionBean extends BaseBean {
     private String createExceptOrIntersectSql(QuerySpecificationBean leftQueryBean,
                                               QuerySpecificationBean rightQueryBean, UnionBean.UnionType unionType) {
         String exception = checkQuerySql(leftQueryBean, rightQueryBean);
-        this.exceptionList.add(exception);
+        if (!StringUtils.isBlank(exception)) {
+            this.exceptionList.add(exception);
+        }
         String exceptOrIntersectSql = "";
         switch (unionType) {
             case EXCEPT:
@@ -134,12 +136,17 @@ public class QueryExpressionBean extends BaseBean {
 
     private List<UnionBean.UnionType> getAllUnionType() {
         List<UnionBean.UnionType> list = new ArrayList<>();
+        UnionBean.UnionType type = null;
         if (null != unionBeanList && !unionBeanList.isEmpty()) {
             for (UnionBean u : unionBeanList) {
                 if (null == u) {
                     continue;
                 }
+                if (null != type && type.equals(u.getUnionType())) {
+                    continue;
+                }
                 list.add(u.getUnionType());
+                type = u.getUnionType();
             }
         }
         return list;
@@ -161,7 +168,10 @@ public class QueryExpressionBean extends BaseBean {
     }
 
     public List<String> getExceptions() {
-        exceptionList.add(getExceptionInfo());
+        String e=getExceptionInfo();
+        if(!StringUtils.isBlank(e)){
+            exceptionList.add(e);
+        }
         return exceptionList;
     }
 
