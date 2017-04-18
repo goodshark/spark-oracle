@@ -2893,9 +2893,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public BaseFunction visitDatename_function(TSqlParser.Datename_functionContext ctx) {
         DateNameFunction function = new DateNameFunction(new FuncName(null, "DATENAME", null));
         String datePart = ctx.ID().getText();
-        if ("weekday".equals(datePart) || "dw".equals(datePart) || "w".equals(datePart)) {
-            addException("DatePart " + datePart, locate(ctx));
-        }
+//        if ("weekday".equals(datePart) || "dw".equals(datePart) || "w".equals(datePart)) {
+//            addException("DatePart " + datePart, locate(ctx));
+//        }
         DateUnit dateUnit = DateUnit.parse(datePart);
         if (null == dateUnit) {
             addException("datepart # " + datePart, locate(ctx));
@@ -2909,7 +2909,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public BaseFunction visitDatepart_function(TSqlParser.Datepart_functionContext ctx) {
-        DateNameFunction function = new DateNameFunction(new FuncName(null, "DATENAME", null));
+        DateNameFunction function = new DateNameFunction(new FuncName(null, "DATEPART", null));
         String datePart = ctx.ID().getText();
         DateUnit dateUnit = DateUnit.parse(datePart);
         if (null == dateUnit) {

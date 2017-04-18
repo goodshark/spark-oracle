@@ -6,6 +6,7 @@ import org.apache.hive.tsql.udf.BaseCalculator;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.TimeZone;
 
 /**
  * Created by zhongdg1 on 2017/2/8.
@@ -36,10 +37,13 @@ public class DateDiffCalculator extends BaseCalculator {
         long ret = 0;
 //        long leftMillisecond = left.getTime();
 //        long rightMillisecond = right.getTime();
-        Calendar leftCal = Calendar.getInstance();
+        Calendar leftCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         leftCal.setTime(left);
-        Calendar rightCal = Calendar.getInstance();
+//        leftCal.setFirstDayOfWeek(Calendar.MONDAY);
+//        leftCal.setFirstDayOfWeek(Calendar.MONDAY);
+        Calendar rightCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         rightCal.setTime(right);
+//        rightCal.setFirstDayOfWeek(Calendar.MONDAY);
 //        long millSubRet = leftMillisecond - rightMillisecond;
         switch (unit) {
             case MILLISECOND:
@@ -71,13 +75,9 @@ public class DateDiffCalculator extends BaseCalculator {
                 ret = getYear(leftCal, rightCal) * 4L + (((leftCal.get(Calendar.MONTH) / 3 + 1) - (rightCal.get(Calendar.MONTH) / 3 + 1)));
                 break;
             case WEEK:
-                ret = getYear(leftCal, rightCal) * 52L + (leftCal.get(Calendar.WEEK_OF_YEAR) - rightCal.get(Calendar.WEEK_OF_YEAR));
-//                    ret = getResult(leftCal, rigthCal, millSubRet, WEEK_DIV, Calendar.WEEK_OF_YEAR);
-//                    if (ret == 0L) {
-//                        ret = Long.valueOf(leftCal.get(Calendar.WEEK_OF_YEAR) - rigthCal.get(Calendar.WEEK_OF_YEAR));
-//                    }
+//                ret = getYear(leftCal, rightCal) * 52L + (leftCal.get(Calendar.WEEK_OF_YEAR) - rightCal.get(Calendar.WEEK_OF_YEAR));
+                ret = getYear(leftCal, rightCal) * 52L + getWeekOfYeay(leftCal) - getWeekOfYeay(rightCal);
                 break;
-
             case DAYOFYEAR:
                 ret = leftCal.get(Calendar.DAY_OF_YEAR) - rightCal.get(Calendar.DAY_OF_YEAR);
                 break;
@@ -85,6 +85,11 @@ public class DateDiffCalculator extends BaseCalculator {
                 break;
         }
         return ret;
+    }
+
+    public int getWeekOfYeay(Calendar cal) {
+        int week = cal.get(Calendar.WEEK_OF_YEAR);
+        return 53 == week ? 52 : week;
     }
 
     private void clearSecond(Calendar leftCal, Calendar rightCal) {

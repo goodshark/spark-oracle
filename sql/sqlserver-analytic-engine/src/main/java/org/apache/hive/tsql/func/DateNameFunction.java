@@ -36,6 +36,7 @@ public class DateNameFunction extends BaseFunction {
         Var date = (Var) expr.getRs().getObject(0);
         results.add(new Var(dateUnit, Var.DataType.DEFAULT));
         results.add(date);
+        results.add(new Var(getName().getFullFuncName(), Var.DataType.STRING));
         System.out.println("Excuting function # " + this.getSql());
         doCall(results);
         return 0;
