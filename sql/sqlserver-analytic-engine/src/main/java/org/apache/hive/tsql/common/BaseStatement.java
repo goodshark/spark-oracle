@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.hive.tsql.arg.SystemVName;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SparkSession;
@@ -38,17 +39,18 @@ public abstract class BaseStatement extends TreeNode {
     public ResultSet commitStatement(String exeSql) {
         System.out.println("SparkServer Executing SQL: [" + exeSql + "]");
 //        //For testing
- /*       SparkResultSet sparkResultSet = new SparkResultSet();
-        sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
-        sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
-        sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
-        for (int i = 0; i < 10; i++) {
-            sparkResultSet.addRow(new Object[]{i * 3, "TEST_" + i, i * 11});
-        }
-        if (isAddResult()) {
-            getExecSession().addRs(sparkResultSet);
-        }
-        return sparkResultSet;*/
+//        SparkResultSet sparkResultSet = new SparkResultSet();
+//        sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
+//        sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
+//        sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
+//        for (int i = 0; i < 10; i++) {
+//            sparkResultSet.addRow(new Object[]{i * 3, "TEST_" + i, i * 11});
+//        }
+//        if (isAddResult()) {
+//            getExecSession().addRs(sparkResultSet);
+//        }
+//        updateRowcount(sparkResultSet);
+//        return sparkResultSet;
         //For testing end
         SparkSession sparkSession = getExecSession().getSparkSession();
         LogicalPlan plan = sparkSession.sqlContext().sessionState().sqlParser().parsePlan(exeSql);
@@ -58,7 +60,16 @@ public abstract class BaseStatement extends TreeNode {
         if(isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
+        updateRowcount(sparkResultSet);
         return sparkResultSet;
+    }
+
+    public void updateRowcount(SparkResultSet rs) {
+        try {
+            updateSys(SystemVName.ROWCOUNT, null == rs ? 0 : rs.getRow());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
