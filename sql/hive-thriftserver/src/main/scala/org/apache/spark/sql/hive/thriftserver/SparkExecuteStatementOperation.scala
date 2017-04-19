@@ -246,6 +246,12 @@ private[hive] class SparkExecuteStatementOperation(
           val addWeekdaySql = "create temporary function weekday" +
             " as 'org.apache.hive.extra.udf.WeekdayUdf' " +
             " using jar '" + udfJarPath + "'"
+
+          val addmillisecondSql = "create temporary function MILLISECOND" +
+            " as 'org.apache.hive.extra.udf.MillisecondUdf' " +
+            " using jar '" + udfJarPath + "'"
+
+          sqlContext.sparkSession.sql(addmillisecondSql)
           sqlContext.sparkSession.sql(addWeekdaySql)
           sqlContext.sparkSession.sql(addDatefrompartsSql)
           sqlContext.sparkSession.sql(addDateDifSql)
