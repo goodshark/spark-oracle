@@ -88,6 +88,9 @@ class SparkSession private(
     this(sc, None)
   }
 
+
+  def sparkSessionUserName: String = ""
+
   /**
     * 用于保存sqlserver模式下的表名称
     * key=1 表示存储的表变量 DECLARE @t_a as TABLE(name VARCHAR(50))

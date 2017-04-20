@@ -224,6 +224,7 @@ private[hive] class SparkExecuteStatementOperation(
     var sqlServerPlans: java.util.List[LogicalPlan] = new util.ArrayList[LogicalPlan]()
     val sqlServerEngine = sqlContext.sessionState.
       conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
+    sqlContext.sparkSession.sparkSessionUserName = parentSession.getUsername
     try {
       // 执行sqlserver
       if (sqlServerEngine.equalsIgnoreCase("true")) {

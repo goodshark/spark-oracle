@@ -21,6 +21,7 @@ public class ProcService {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProcService.class);
     private final static String TABLE_NAME = "LENOVO_SQLSERVER_PROCEDURE";
+    private final static int PRO_TYPE = 1;
 
     private SparkSession sparkSession;
     private String dbUrl;
@@ -53,11 +54,16 @@ public class ProcService {
                 .append("PROC_CONTENT,")
                 .append("PROC_OBJECT,")
                 .append("CREATE_TIME,")
-                .append("MD5");
+                .append("MD5")
+                .append("DB_NAME")
+                .append("USE_NAME")
+                .append("TYPE");
+
+
         sql.append(") ");
         sql.append(" VALUES");
         sql.append(" (");
-        sql.append(" ?,?,?,?,?");
+        sql.append(" ?,?,?,?,?,?,?,?");
         sql.append(" )");
         Connection connection = null;
         PreparedStatement stmt = null;
@@ -76,6 +82,12 @@ public class ProcService {
             stmt.setBytes(3, baos.toByteArray());
             stmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
             stmt.setString(5, procedure.getMd5());
+
+
+            stmt.setString(6, sparkSession.catalog().currentDatabase());
+            stmt.setString(7, sparkSession.sparkSessionUserName());
+            stmt.setInt(8, PRO_TYPE);
+
             rs = stmt.executeUpdate();
         } catch (SQLException e) {
             LOG.error(" execute createProc sql : " + sql.toString() + " error.", e);
@@ -87,10 +99,55 @@ public class ProcService {
         return rs;
     }
 
+    public int updateProc(Procedure procedure) throws Exception{
+        StringBuffer sql = new StringBuffer();
+        sql.append("  UPDATE ").append(TABLE_NAME);
+        sql.append(" SET  ");
+        sql.append(" PROC_CONTENT = ?,");
+        sql.append(" PROC_OBJECT = ?,");
+        sql.append(" MD5 = ?,");
+        sql.append(" DB_NAME = ?,");
+        sql.append(" USE_NAME = ?,");
+        sql.append(" TYPE = ?,");
+        sql.append(" UPDATE_TIME = ?");
+        sql.append(" WHERE ");
+        sql.append("PROC_NAME =");
+        sql.append("?");
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        int rs = 0;
+        ObjectOutputStream out = null;
+        try {
+            DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
+            connection = dbUtils.getConn();
+            stmt = connection.prepareStatement(sql.toString());
+            stmt.setString(1, procedure.getProcSql());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            out = new ObjectOutputStream(baos);
+            out.writeObject(procedure);
+            stmt.setBytes(2, baos.toByteArray());
+            stmt.setString(3, procedure.getMd5());
+            stmt.setString(4, sparkSession.catalog().currentDatabase());
+            stmt.setString(5, sparkSession.sparkSessionUserName());
+            stmt.setInt(6, PRO_TYPE);
+            stmt.setTimestamp(7, new Timestamp(System.currentTimeMillis()));
+            stmt.setString(8, procedure.getName().getFullFuncName());
+            rs = stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOG.error(" update Proc sql : " + sql.toString() + " error.", e);
+            throw e;
+        } finally {
+            close(connection, stmt);
+            out.close();
+        }
+        return rs;
+
+    }
 
     public int delProc(String procName) throws SQLException {
         StringBuffer sql = new StringBuffer();
-        sql.append("  DELETE FROM ").append(TABLE_NAME);
+        sql.append("  UPDATE ").append(TABLE_NAME);
+        sql.append(" SET DEL_FLAG =-1 ");
         sql.append(" WHERE ");
         sql.append("PROC_NAME =");
         sql.append("?");
