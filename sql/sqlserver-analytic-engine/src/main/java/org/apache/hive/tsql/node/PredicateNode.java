@@ -372,8 +372,8 @@ public class PredicateNode extends LogicNode {
     private boolean compareIn(boolean exec) throws Exception {
         if (exprList.size() != 2)
             return false;
-        BaseStatement leftExpr = (BaseStatement) exprList.get(0);
-        BaseStatement rightExpr = (BaseStatement) exprList.get(1);
+        TreeNode leftExpr =  exprList.get(0);
+        TreeNode rightExpr = exprList.get(1);
 
         if (!exec) {
             String not = notComp ? " NOT" : "";
