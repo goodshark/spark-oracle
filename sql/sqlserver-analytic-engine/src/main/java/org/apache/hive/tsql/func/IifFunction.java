@@ -26,6 +26,7 @@ public class IifFunction extends BaseFunction {
     public int execute() throws Exception {
         List<Var> argList = new ArrayList<>();
         LogicNode condition = (LogicNode) exprList.get(0);
+        condition.setExecSession(getExecSession());
         condition.execute();
         Var boolVar = new Var("iif boolean", condition.getBool(), Var.DataType.BOOLEAN);
         argList.add(boolVar);
