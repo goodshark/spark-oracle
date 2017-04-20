@@ -10,6 +10,7 @@ import java.util.List;
 public class IifCalculator extends BaseCalculator {
     public IifCalculator() {
         setMinMax(3);
+        setCheckNull(false);
     }
 
     @Override
