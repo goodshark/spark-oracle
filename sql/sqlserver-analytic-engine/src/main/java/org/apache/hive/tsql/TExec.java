@@ -2969,7 +2969,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         exprList.add(popStatement());
         visit(ctx.expression().get(1));
         exprList.add(popStatement());
-        function.setExprList(exprList)
+        function.setExprList(exprList);
         pushStatement(function);
         return function;
     }
