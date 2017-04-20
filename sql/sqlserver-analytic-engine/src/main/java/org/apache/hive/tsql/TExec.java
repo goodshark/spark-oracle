@@ -4,6 +4,7 @@ package org.apache.hive.tsql;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.antlr.v4.runtime.tree.Tree;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.another.*;
 import org.apache.hive.tsql.arg.Var;
@@ -2969,13 +2970,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         exprList.add(popStatement());
         visit(ctx.expression().get(1));
         exprList.add(popStatement());
-        function.setExprList(exprList);
+        function.setExprList(exprList)
         pushStatement(function);
         return function;
     }
 
     @Override
-    public Object visitIsnull_function(TSqlParser.Isnull_functionContext ctx) {
+    public TreeNode visitIsnull_function(TSqlParser.Isnull_functionContext ctx) {
         IsNullFunction func = new IsNullFunction(new FuncName(null, "ISNULL", null));
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() != 2) {
