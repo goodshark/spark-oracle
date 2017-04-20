@@ -81,7 +81,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitAnonymous_block(PlsqlParser.Anonymous_blockContext ctx) {
-        AnonymousBlock anonymousBlock = new AnonymousBlock();
+        AnonymousBlock anonymousBlock = new AnonymousBlock(TreeNode.Type.ANONY_BLOCK);
         for (PlsqlParser.Declare_specContext declareCtx: ctx.declare_spec()) {
             visit(declareCtx);
             treeBuilder.addNode(anonymousBlock);

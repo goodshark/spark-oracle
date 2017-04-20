@@ -13,6 +13,7 @@ import org.apache.spark.sql.execution.SparkPlan;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
 
@@ -36,6 +37,7 @@ public class ExecSession {
     public enum Scope {
         BEGIN, IF, WHILE, PROCEDURE, TRY, CATCH
     }
+    private LinkedList<TreeNode> scopes = new LinkedList<>();
 
 //    private static class SessionHolder {
 //        private final static ExecSession session = new ExecSession();
@@ -130,5 +132,13 @@ public class ExecSession {
             throw new Exception("Table "+ tableName +" is not  exist ");
         }
         return  realTableName;
+    }
+
+    public void enterScope(TreeNode node) {
+        scopes.add(node);
+    }
+
+    public void leaveScope() {
+        scopes.pollLast();
     }
 }
