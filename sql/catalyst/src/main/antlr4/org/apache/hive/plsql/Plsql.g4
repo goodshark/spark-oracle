@@ -1964,7 +1964,8 @@ respect_or_ignore_nulls
     ;
 
 argument
-    : (id '=' '>')? expression
+//    : (id '=' '>')? expression
+    : concatenation
     ;
 
 type_spec

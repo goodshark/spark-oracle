@@ -8,10 +8,7 @@ import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.function.Function;
 import org.apache.hive.tsql.arg.Var;
-import org.apache.hive.tsql.cfl.BeginEndStatement;
-import org.apache.hive.tsql.cfl.GotoStatement;
-import org.apache.hive.tsql.cfl.IfStatement;
-import org.apache.hive.tsql.cfl.WhileStatement;
+import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.ExpressionBean;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
@@ -42,7 +39,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         // TODO test only
         String sql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return visitChildren(ctx);
+        return null;
     }
 
     @Override
@@ -51,10 +48,6 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             visit(unitCtx);
             treeBuilder.addNode(treeBuilder.getRootNode());
         }
-        /*for (PlsqlParser.Seq_of_statementsContext seqCtx: ctx.seq_of_statements()) {
-            visit(seqCtx);
-            treeBuilder.addNode(treeBuilder.getRootNode());
-        }*/
         return null;
     }
 
@@ -117,7 +110,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         visit(ctx.type_spec());
         if (ctx.default_value_part() != null) {
         }
-        return visitChildren(ctx);
+        return null;
     }
 
     /*@Override
@@ -221,6 +214,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
+        predicateNode.setEvalType(PredicateNode.CompType.COMP);
         String op = ctx.relational_operator().getText();
         predicateNode.setOp(op);
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
@@ -231,7 +225,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.addNode(predicateNode);
         }
         treeBuilder.pushStatement(predicateNode);
-        return visitChildren(ctx);
+        return predicateNode;
     }
 
     @Override
@@ -240,7 +234,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         IfStatement rootIfStatement = ifStatement;
         if (ctx.condition() != null) {
             visit(ctx.condition());
-            ifStatement.setCondtion((LogicNode) treeBuilder.popStatement());
+            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            ifStatement.setCondtion(conditionNode);
         }
         if (ctx.seq_of_statements() != null) {
             visit(ctx.seq_of_statements());
@@ -257,7 +252,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.addNode(ifStatement);
         }
         treeBuilder.pushStatement(rootIfStatement);
-        return visitChildren(ctx);
+        return rootIfStatement;
     }
 
     @Override
@@ -272,7 +267,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.addNode(ifStatement);
         }
         treeBuilder.pushStatement(ifStatement);
-        return visitChildren(ctx);
+        return ifStatement;
     }
 
     /*@Override
@@ -284,8 +279,39 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     }*/
 
     @Override
+    public Object visitContinue_statement(PlsqlParser.Continue_statementContext ctx) {
+        ContinueStatement continueStmt = new ContinueStatement(TreeNode.Type.CONTINUE);
+        if (ctx.label_name() != null) {
+            continueStmt.setLabel(ctx.label_name().getText());
+        }
+        if (ctx.condition() != null) {
+            visit(ctx.condition());
+            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            continueStmt.setCondition(conditionNode);
+        }
+        treeBuilder.pushStatement(continueStmt);
+        return continueStmt;
+    }
+
+    @Override
+    public Object visitExit_statement(PlsqlParser.Exit_statementContext ctx) {
+        BreakStatement exitStmt = new BreakStatement(TreeNode.Type.BREAK);
+        if (ctx.label_name() != null) {
+            exitStmt.setLabel(ctx.label_name().getText());
+        }
+        if (ctx.condition() != null) {
+            visit(ctx.condition());
+            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            exitStmt.setCondition(conditionNode);
+        }
+        treeBuilder.pushStatement(exitStmt);
+        return exitStmt;
+    }
+
+    @Override
     public Object visitLoop_statement(PlsqlParser.Loop_statementContext ctx) {
         WhileStatement loopStatement = new WhileStatement(TreeNode.Type.WHILE);
+        loopStatement.hashCode();
         LogicNode conditionNode = null;
         // while statement
         if (ctx.WHILE() != null) {
@@ -300,11 +326,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             conditionNode = new LogicNode();
             conditionNode.setBool(true);
         }
+        loopStatement.setLoopIndexVar(conditionNode.getIndexVar());
         loopStatement.setCondtionNode(conditionNode);
         visit(ctx.seq_of_statements());
         treeBuilder.addNode(loopStatement);
         treeBuilder.pushStatement(loopStatement);
-        return visitChildren(ctx);
+        return loopStatement;
     }
 
     @Override
@@ -315,41 +342,71 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         andNode.addNode(leftNotNode);
         andNode.addNode(rightNotNode);
         PredicateNode leftPredicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
+        leftPredicateNode.setEvalType(PredicateNode.CompType.COMP);
         leftNotNode.addNode(leftPredicateNode);
         PredicateNode rightPredicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
-        rightNotNode.addNode(rightNotNode);
+        rightPredicateNode.setEvalType(PredicateNode.CompType.COMP);
+        rightNotNode.addNode(rightPredicateNode);
         if (ctx.index_name() != null) {
             // number seq
             leftPredicateNode.setOp(">=");
             rightPredicateNode.setOp("<=");
-            if (ctx.REVERSE() != null) {
-            }
             visit(ctx.index_name());
-            TreeNode indexExprNode = treeBuilder.popStatement();
+            ExpressionStatement indexExprNode = (ExpressionStatement) treeBuilder.popStatement();
+            indexExprNode.getExpressionBean().getVar().setDataType(Var.DataType.INT);
+            indexExprNode.getExpressionBean().getVar().setReadonly(true);
             leftPredicateNode.addNode(indexExprNode);
             visit(ctx.lower_bound());
-            leftPredicateNode.addNode(treeBuilder.popStatement());
+            ExpressionStatement lowerStmt = (ExpressionStatement) treeBuilder.popStatement();
+            leftPredicateNode.addNode(lowerStmt);
             visit(ctx.upper_bound());
+            ExpressionStatement upperStmt = (ExpressionStatement) treeBuilder.popStatement();
             rightPredicateNode.addNode(indexExprNode);
-            rightPredicateNode.addNode(treeBuilder.popStatement());
+            rightPredicateNode.addNode(upperStmt);
+            genLoopIndex(andNode, indexExprNode, lowerStmt, upperStmt, ctx.REVERSE() != null);
         } else if (ctx.record_name() != null) {
             // cursor seq
         } else {
             // non exists
         }
+        treeBuilder.pushStatement(andNode);
         return andNode;
+    }
+
+    private void genLoopIndex(LogicNode condition, ExpressionStatement indexStmt,
+                              ExpressionStatement lowerStmt, ExpressionStatement upperStmt, boolean dir) {
+        try {
+            LogicNode.IndexIterator indexIterator = new LogicNode.IndexIterator();
+            indexIterator.setIndexVar(indexStmt.getExpressionBean().getVar());
+            indexIterator.setLower(lowerStmt.getExpressionBean().getVar());
+            indexIterator.setUpper(upperStmt.getExpressionBean().getVar());
+            indexIterator.init();
+            condition.setIndexIter(indexIterator);
+            if (dir)
+                indexIterator.setReverse();
+        } catch (Exception e) {
+            // TODO add exception
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public Object visitIndex_name(PlsqlParser.Index_nameContext ctx) {
+        visit(ctx.id());
+        TreeNode experssionStmt = treeBuilder.popStatement();
+        treeBuilder.pushStatement(experssionStmt);
+        return experssionStmt;
     }
 
     private ExpressionStatement genExpression(String name, Object value, Var.DataType dataType) {
         ExpressionBean expressionBean = new ExpressionBean();
-        Var var = new Var(value, dataType);
+        Var var = new Var(name, value, dataType);
         expressionBean.setVar(var);
         return new ExpressionStatement(expressionBean);
     }
 
     @Override
     public Object visitRegular_id(PlsqlParser.Regular_idContext ctx) {
-//        Var id = new Var(ctx.getText(), Var.DataType.INT);
         ExpressionStatement expressionStatement = genExpression(ctx.getText(), null, Var.DataType.DEFAULT);
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
@@ -358,7 +415,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     /*@Override
     public Object visitConcatenation(PlsqlParser.ConcatenationContext ctx) {
         // TODO test only constant
-        visit(ctx.additive_expression(0));
+        System.out.println("get here");
         return visitChildren(ctx);
     }*/
 
@@ -367,7 +424,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitFunction_call(PlsqlParser.Function_callContext ctx) {
         Function function = new Function();
         visit(ctx.routine_name());
-        treeBuilder.popStatement();
+        treeBuilder.popAll();
         if (ctx.function_argument() != null) {
             List<Var> args = (List<Var>) visit(ctx.function_argument());
             function.setVars(args);

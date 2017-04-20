@@ -1,28 +1,20 @@
-package org.apache.hive.tsql.cfl;
+package org.apache.hive.basesql.cfl;
 
-import org.apache.hive.basesql.cfl.NonSeqStatement;
+import org.apache.hive.tsql.cfl.WhileStatement;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.LogicNode;
 
 /**
- * Created by dengrb1 on 12/7 0007.
+ * Created by dengrb1 on 4/20 0020.
  */
-public class ContinueStatement extends NonSeqStatement {
-    private String label = "";
-    private LogicNode condition = null;
-    // is continue work
-    private boolean enable = true;
+public abstract class NonSeqStatement extends BaseStatement {
+    protected String label = "";
+    protected LogicNode condition = null;
+    // is continue/break work
+    protected boolean enable = true;
 
-    public ContinueStatement() {
-    }
-
-    public ContinueStatement(TreeNode.Type t) {
-        super();
-        setNodeType(t);
-    }
-
-    /*public void setLabel(String name) {
+    public void setLabel(String name) {
         label = name;
     }
 
@@ -32,17 +24,9 @@ public class ContinueStatement extends NonSeqStatement {
 
     public boolean isEnable() {
         return enable;
-    }*/
-
-    public int execute() throws Exception {
-        if (condition != null) {
-            condition.execute();
-            enable = condition.getBool();
-        }
-        return 0;
     }
 
-    /*public boolean isPair(TreeNode node) {
+    public boolean isPair(TreeNode node) {
         TreeNode loopNode = findPairLoop(this);
         if (loopNode != null && loopNode.equals(node))
             return true;
@@ -56,7 +40,7 @@ public class ContinueStatement extends NonSeqStatement {
         if (pNode.getNodeType() != TreeNode.Type.WHILE) {
             return findPairLoop(pNode);
         } else {
-            if (label.isEmpty()) {
+            if (label == null || label.isEmpty()) {
                 return pNode;
             } else {
                 WhileStatement loopStmt = (WhileStatement) pNode;
@@ -64,14 +48,10 @@ public class ContinueStatement extends NonSeqStatement {
                     loopStmt.searchAllLabels();
                 }
                 if (loopStmt.existLabel(label))
-                        return pNode;
-                    else
-                        return findPairLoop(pNode);
+                    return pNode;
+                else
+                    return findPairLoop(pNode);
             }
         }
-    }*/
-
-    public BaseStatement createStatement() {
-        return null;
     }
 }
