@@ -108,13 +108,13 @@ class SparkSession private(
 
   def addTableToSparkSeesion (tableAliasName: String,
                               tableName: String, key: Integer) : Unit = {
-      if (sqlServerTable.containsKey(key)) {
-        sqlServerTable.get(key).put(tableAliasName, tableName)
-      } else {
-        val map = new  HashMap[String, String]()
-        map.put(tableAliasName, tableName)
-        sqlServerTable.put(key, map)
-      }
+    if (sqlServerTable.containsKey(key)) {
+      sqlServerTable.get(key).put(tableAliasName, tableName)
+    } else {
+      val map = new  HashMap[String, String]()
+      map.put(tableAliasName, tableName)
+      sqlServerTable.put(key, map)
+    }
   }
 
 
@@ -676,13 +676,13 @@ class SparkSession private(
       val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
       val tb: String = sessionState.catalog.getTableName(tableIdent)
       val db: String = sessionState.catalog.getDbName(tableIdent)
-       checkConcurrentOperation(db, tb, "deleting")
+      checkConcurrentOperation(db, tb, "deleting")
       sql = plan.asInstanceOf[AcidDelCommand].parseAcidSql(sessionState)
     } else if (plan.isInstanceOf[AcidUpdateCommand]) {
       val tableIdent = plan.asInstanceOf[AcidUpdateCommand].tableIdent
       val tb: String = sessionState.catalog.getTableName(tableIdent)
       val db: String = sessionState.catalog.getDbName(tableIdent)
-       checkConcurrentOperation(db, tb, "updating")
+      checkConcurrentOperation(db, tb, "updating")
       sql = plan.asInstanceOf[AcidUpdateCommand].parseAcidSql(sessionState)
     } else if (plan.isInstanceOf[InsertIntoTable]) {
       val tableName = plan.asInstanceOf[InsertIntoTable].tableName
@@ -693,7 +693,7 @@ class SparkSession private(
       val db: String = sessionState.catalog.getDbName(tableIdent)
       val tableMetadata = sessionState.catalog.getTableMetadata(tableIdent)
       if (sessionState.catalog.checkAcidTable(tableMetadata)) {
-         checkConcurrentOperation(db, tb, "insert")
+        checkConcurrentOperation(db, tb, "insert")
         sessionState.conf.setConfString(OPTION_TYPE, "0")
         sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
       }
