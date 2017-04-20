@@ -1,10 +1,7 @@
 package org.apache.hive.tsql.func;
 
 import org.apache.hive.tsql.arg.Var;
-import org.apache.hive.tsql.common.SparkResultSet;
 import org.apache.hive.tsql.common.TreeNode;
-import org.apache.hive.tsql.dml.ExpressionStatement;
-import org.apache.hive.tsql.udf.UdfFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +13,8 @@ public class CastFunction extends BaseFunction {
 
     private TreeNode expr;
     private Var.DataType dataType;
+    private int length = -1;
+
 
     public CastFunction(FuncName name) {
         super(name);
@@ -33,13 +32,23 @@ public class CastFunction extends BaseFunction {
         return expr;
     }
 
+    public void setLength(int length) {
+        this.length = length;
+    }
+
     @Override
     public int execute() throws Exception {
         expr.setExecSession(getExecSession());
         expr.execute();
 
-        Var result = ((Var)expr.getRs().getObject(0)).clone();
+        Var result = ((Var) expr.getRs().getObject(0)).clone();
+        String val = result.toString();
+        if (null != val && -1 != length && val.length() > length) {
+            val = val.substring(0, length);
+        }
+
         result.setDataType(dataType);
+        result.setVarValue(val);
         List<Var> results = new ArrayList<>();
         results.add(result);
         doCall(results);
