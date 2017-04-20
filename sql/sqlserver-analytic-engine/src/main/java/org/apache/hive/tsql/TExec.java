@@ -4,7 +4,6 @@ package org.apache.hive.tsql;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.antlr.v4.runtime.tree.Tree;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.another.*;
 import org.apache.hive.tsql.arg.Var;
