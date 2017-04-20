@@ -274,7 +274,7 @@ create_index
     ';'?
     ;
 
-// https://msdn.microsoft.com/zh-cn/library/ms187926(v=sql.120).aspx
+// https://msdn.microsoft.com/zh-cn/library/ms187926(v=sqlF.120).aspx
 create_procedure
     : action=(CREATE | ALTER) proc=(PROC | PROCEDURE) func_proc_name (';' DECIMAL)?
       ('('? procedure_param (',' procedure_param)* ')'?)?

@@ -227,7 +227,6 @@ locationSpec
 query
     : ctes? queryNoWith
     ;
-
 insertInto
     : INSERT OVERWRITE TABLE tableIdentifier (partitionSpec (IF NOT EXISTS)?)?
     | INSERT INTO TABLE? tableIdentifier partitionSpec?
@@ -323,15 +322,29 @@ queryNoWith
     ;
 
 deleteStatement
-    : DELETE FROM? tableIdentifier  fromTable?  joinRelation? (')')? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : DELETE FROM? tableIdentifier  fromTable?  (joinRelationUpate*)?  (')')? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
  fromTable
-    :FROM ('(')? tableIdentifier
+    :FROM ('(')? tableIdentifier strictIdentifier?
     ;
 
 updateStatement
-    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* fromClause? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* fromClauseForUpdate? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
+fromClauseForUpdate
+	: FROM relationUpate (',' relationUpate)*
+	;
+
+relationUpate
+	: tableNameUpdate joinRelationUpate*
+	;
+
+tableNameUpdate
+	: tableIdentifier sample? (AS? strictIdentifier)?
+	;
+joinRelationUpate
+	:(joinType) JOIN right=tableNameUpdate joinCriteria?
+	;
 
 assignExpression
     : (qualifiedName) EQ expression
@@ -554,7 +567,7 @@ primaryExpression
     | '(' expression (',' expression)+ ')'                                                     #rowConstructor
     | '(' query ')'                                                                            #subqueryExpression
     | qualifiedName '(' (setQuantifier? expression (',' expression)*)? ')' (OVER windowSpec)?  #functionCall
-    | value=primaryExpression '[' index=valueExpression ']'                                    #subscript
+    | primaryExpression '[' index=valueExpression ']'                                    #subscript
     | identifier                                                                               #columnReference
     | base=primaryExpression '.' fieldName=identifier                                          #dereference
     | '(' expression ')'                                                                       #parenthesizedExpression
