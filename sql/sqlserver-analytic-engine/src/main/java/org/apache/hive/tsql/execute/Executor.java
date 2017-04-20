@@ -101,6 +101,12 @@ public class Executor {
                     goBlockCheck(node);
                     goExecute(node);
                     break;
+                case ANONY_BLOCK:
+                    anonyBlockExecute(node);
+                    break;
+                case BORDER:
+                    borderExecute();
+                    break;
                 default:
                     node.execute();
                     pushChild(node);
@@ -121,6 +127,14 @@ public class Executor {
         List<TreeNode> list = node.getChildrenNodes();
         for (int i = list.size() - 1; i >= 0; i--)
             stack.push(list.get(i));
+    }
+
+    public void enterBlock(TreeNode node) {
+        session.enterScope(node);
+    }
+
+    public void leaveBlock() {
+        session.leaveScope();
     }
 
     public void goExecute(TreeNode node) throws Exception {
@@ -250,6 +264,7 @@ public class Executor {
         if (initLoop) {
             stack.push(new BlockBorder(node));
             ((WhileStatement) node).getCondtionNode().initIndex();
+            enterBlock(node);
         }
 
         WhileStatement whileStmt = (WhileStatement) node;
@@ -460,5 +475,16 @@ public class Executor {
             expStr = ((RaiseStatement)exceptionNode).getExceptionStr();
             throw new Exception(expStr);
         }
+    }
+
+    public void anonyBlockExecute(TreeNode node) throws Exception {
+        stack.push(new BlockBorder(node));
+        enterBlock(node);
+        node.execute();
+        pushChild(node);
+    }
+
+    public void borderExecute() {
+        leaveBlock();
     }
 }
