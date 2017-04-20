@@ -241,7 +241,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String sourceSql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         FuncName funcName = visitFunc_proc_name(ctx.func_proc_name());
-        checkLength(funcName.getFullFuncName(), 128, "procedure name ");
+        checkLength(funcName.getRealFullFuncName(), 128, "procedure name ");
         Procedure func = new Procedure(funcName);
         func.setProcSql(sourceSql);
         func.setMd5(MD5Util.md5Hex(sourceSql));
@@ -1167,13 +1167,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public FuncName visitFunc_proc_name(TSqlParser.Func_proc_nameContext ctx) {
         FuncName fn = new FuncName();
         if (ctx.database != null) {
-            fn.setDatabase(ctx.database.getText());
+            fn.setDatabase(visitId(ctx.database));
         }
         if (ctx.schema != null) {
-            fn.setSchema(ctx.schema.getText());
+            fn.setSchema(visitId(ctx.schema));
         }
         if (null != ctx.procedure) {
-            fn.setFuncName(ctx.procedure.getText());
+            fn.setFuncName(visitId(ctx.procedure));
         }
         if (null != ctx.LOCAL_ID()) {
             fn.setFuncName(ctx.LOCAL_ID().getText().trim());
@@ -1242,14 +1242,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
         String funcName = "";
         String schema = "";
         if (ctx.database != null) {
-            database = ctx.database.getText();
+            database = visitId(ctx.database);
         }
         if (ctx.schema != null) {
-            schema = ctx.schema.getText();
+            schema = visitId(ctx.schema);
         }
-        funcName = ctx.table.getText();
+        funcName =visitId(ctx.table);
         FuncName fn = new FuncName(database, funcName, schema);
-        tableNameList.add(fn.getFullFuncName());
+        tableNameList.add(fn.getRealFullFuncName());
         return fn;
     }
 
@@ -1263,7 +1263,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitCreate_table(TSqlParser.Create_tableContext ctx) {
-        String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
+        String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
         checkLength(tableName, 128, "table name ");
         CreateTableStatement createTableStatement = new CreateTableStatement(tableName);
         createTableStatement.setColumnDefs(visitColumn_def_table_constraints(ctx.column_def_table_constraints()));
@@ -1316,7 +1316,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.IDENTITY()) {
             addException(ctx.IDENTITY().getText(), locate(ctx));
         }
-        sb.append(visitId(ctx.id(0)));
+        sb.append(StrUtils.replaceAllBracketToQuit(visitId(ctx.id(0))));
         sb.append(Common.SPACE);
         if (null != ctx.data_type()) {
             sb.append(formatDataType(ctx.data_type())).append(Common.SPACE);
@@ -1358,14 +1358,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else if (dataType.contains("TEXT") || dataType.contains("MAX")) {
             return "STRING";
         } else if (dataType.contains("NCHAR")) {
-            return dataType.replaceAll("NCHAR", "CHAR");
+            dataType = dataType.replaceAll("NCHAR", "CHAR");
+            return  StrUtils.trimBracket(dataType);
         } else if (dataType.contains("NVARCHAR")) {
-            return dataType.replaceAll("NVARCHAR", "VARCHAR");
+            String d=dataType.replaceAll("NVARCHAR", "VARCHAR");
+            return StrUtils.replaceAllBracket(d);
         } else {
-            return dataType;
+            return StrUtils.replaceAllBracket(dataType);
         }
     }
-
 
     @Override
     public String visitColumn_constraint(TSqlParser.Column_constraintContext ctx) {
@@ -1452,7 +1453,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         StringBuffer sql = new StringBuffer();
         sql.append(ctx.ALTER(0).getText()).append(Common.SPACE);
         sql.append(ctx.TABLE(0).getText()).append(Common.SPACE);
-        sql.append(visitTable_name(ctx.table_name(0)).getFullFuncName());
+        sql.append(visitTable_name(ctx.table_name(0)).getRealFullFuncName());
         if (null != ctx.SET()) {
             addException("SET   LOCK_ESCALATION ", locate(ctx));
         }
@@ -1525,7 +1526,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitTruncate_table(TSqlParser.Truncate_tableContext ctx) {
-        String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
+        String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
         TruncateTableStatement truncateTableStatement = new TruncateTableStatement(tableName);
         truncateTableStatement.setAddResult(false);
         pushStatement(truncateTableStatement);
@@ -1579,7 +1580,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                     sql.append(Common.SPACE).append(",");
                 }
                 FuncName funcName = visitFunc_proc_name(ctx.func_proc_name(i));
-                sql.append(funcName.getFullFuncName());
+                sql.append(funcName.getRealFullFuncName());
                 funcNames.add(funcName);
             }
         }
@@ -1620,7 +1621,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         List<String> tableNames = new ArrayList<>();
         if (!ctx.table_name().isEmpty()) {
             for (int i = 0; i < ctx.table_name().size(); i++) {
-                String tabName = visitTable_name(ctx.table_name(i)).getFullFuncName();
+                String tabName = visitTable_name(ctx.table_name(i)).getRealFullFuncName();
                 tableNames.add(tabName);
             }
         }
@@ -2049,7 +2050,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitDdl_object(TSqlParser.Ddl_objectContext ctx) {
         StringBuffer sb = new StringBuffer();
         if (null != ctx.full_table_name()) {
-            String tbName = visitFull_table_name(ctx.full_table_name()).getFullFuncName();
+            String tbName = visitFull_table_name(ctx.full_table_name()).getRealFullFuncName();
             sb.append(tbName);
             tableNameList.add(tbName);
         }
@@ -2409,7 +2410,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         querySpecificationBean.setSelectList(columns);
         rs.append(StringUtils.join(columns.toArray(), ","));
         if (null != ctx.INTO()) {
-            String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
+            String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
             tableNameList.add(tableName);
             SelectIntoBean selectIntoBean = new SelectIntoBean();
             selectIntoBean.setTableNanme(tableName);
@@ -3386,7 +3387,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SqlStatement rs = new SqlStatement();
         StringBuffer sql = new StringBuffer();
         if (null != ctx.table_name()) {
-            sql.append(visitTable_name(ctx.table_name()).getFullFuncName());
+            sql.append(visitTable_name(ctx.table_name()).getRealFullFuncName());
             sql.append(".");
         }
         sql.append(visitId(ctx.id())).append(Common.SPACE);
@@ -3684,7 +3685,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitTable_name_with_hint(TSqlParser.Table_name_with_hintContext ctx) {
         StringBuffer rs = new StringBuffer();
-        String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
+        String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
         /**
          * 如果写了with表达式，将替换为子查询，如果没有则直接写表名
          */
@@ -3829,7 +3830,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return columnBean;
         }
         if (null != ctx.table_name()) {
-            String tableName = visitTable_name(ctx.table_name()).getFullFuncName();
+            String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
             rs.append(tableName).append(".");
         }
         if (null != ctx.IDENTITY() || null != ctx.ROWGUID()) {
@@ -3867,7 +3868,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if (ctx.column_alias() == null && ctx.expression() == null && null == ctx.IDENTITY() && null == ctx.IDENTITY()) {
             if (!withColmnNameAlias.isEmpty()) {
-                addException("with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable", locate(ctx));
+                //不支持 with tmpTable(col,col2) as select * from table1 insert into select * from tmpTable"
+                addException("with sql has columns ", locate(ctx));
             } else {
                 rs.append("*").append(Common.SPACE);
             }
@@ -3900,7 +3902,16 @@ public class TExec extends TSqlBaseVisitor<Object> {
 //            TreeNode expressionStatement = (TreeNode) visit(expressionContext);
             visit(expressionContext);
             String expression = popStatement().getSql();
-            columnBean.setCloumnName(expression);
+            /**
+             * 解决 select a1.*, NULL as Billing_Month, 1+2 as ss from a1
+             * 列为null
+             */
+            if(StringUtils.isBlank(expression)|| StringUtils.equals(expression.toUpperCase().trim(),"NULL")){
+                columnBean.setCloumnName("'' ");
+                expression ="'' ";
+            }else{
+                columnBean.setCloumnName(expression);
+            }
             stringBuffer.append(expression);
         }
     }

@@ -57,13 +57,14 @@ public class ProcService {
                 .append("MD5")
                 .append("DB_NAME")
                 .append("USE_NAME")
-                .append("TYPE");
+                .append("TYPE")
+                .append("PROC_ORC_NAME");
 
 
         sql.append(") ");
         sql.append(" VALUES");
         sql.append(" (");
-        sql.append(" ?,?,?,?,?,?,?,?");
+        sql.append(" ?,?,?,?,?,?,?,?,?");
         sql.append(" )");
         Connection connection = null;
         PreparedStatement stmt = null;
@@ -73,7 +74,7 @@ public class ProcService {
             DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
             connection = dbUtils.getConn();
             stmt = connection.prepareStatement(sql.toString());
-            stmt.setString(1, procedure.getName().getFullFuncName());
+            stmt.setString(1, procedure.getName().getRealFullFuncName());
             stmt.setString(2, procedure.getProcSql());
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -87,6 +88,7 @@ public class ProcService {
             stmt.setString(6, sparkSession.catalog().currentDatabase());
             stmt.setString(7, sparkSession.sparkSessionUserName());
             stmt.setInt(8, PRO_TYPE);
+            stmt.setString(9, procedure.getName().getFullFuncName());
 
             rs = stmt.executeUpdate();
         } catch (SQLException e) {
@@ -109,7 +111,8 @@ public class ProcService {
         sql.append(" DB_NAME = ?,");
         sql.append(" USE_NAME = ?,");
         sql.append(" TYPE = ?,");
-        sql.append(" UPDATE_TIME = ?");
+        sql.append(" UPDATE_TIME = ?,");
+        sql.append(" PROC_ORC_NAME = ?");
         sql.append(" WHERE ");
         sql.append("PROC_NAME =");
         sql.append("?");
@@ -132,6 +135,7 @@ public class ProcService {
             stmt.setInt(6, PRO_TYPE);
             stmt.setTimestamp(7, new Timestamp(System.currentTimeMillis()));
             stmt.setString(8, procedure.getName().getFullFuncName());
+            stmt.setString(9, procedure.getName().getRealFullFuncName());
             rs = stmt.executeUpdate();
         } catch (SQLException e) {
             LOG.error(" update Proc sql : " + sql.toString() + " error.", e);

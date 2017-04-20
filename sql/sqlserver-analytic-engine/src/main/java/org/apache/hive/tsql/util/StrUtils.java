@@ -62,4 +62,29 @@ public class StrUtils {
         }
         return str.substring(0, index + 1);
     }
+
+    public static String trimBracket(String s) {
+        String rs = s.trim();
+        if (s.startsWith("[")) {
+            rs = s.substring(1, s.length());
+        }
+        if (s.endsWith("]")) {
+            rs = rs.substring(0, rs.length() - 1);
+        }
+        return rs;
+    }
+
+    public static String replaceAllBracket(String s) {
+        return s.replaceAll("]", "").replaceAll("\\[", "");
+    }
+
+    public static String replaceAllBracketToQuit(String s) {
+        String rs = s;
+        if (s.startsWith("[") &&s.endsWith("]")) {
+            rs = "`" + s.substring(1,s.length()-2) + "`";
+        }else{
+            rs = "`" + s + "`";
+        }
+        return rs;
+    }
 }

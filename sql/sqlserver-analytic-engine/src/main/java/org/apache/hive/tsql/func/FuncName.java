@@ -60,18 +60,41 @@ public class FuncName implements Serializable {
 
     public String getFullFuncName() {
         StringBuffer sb = new StringBuffer();
-        sb = StringUtils.isNotBlank(this.server) ? sb.append(this.server) : sb;
-        if (sb.length() > 0) {
+        sb = StringUtils.isNotBlank(this.server) ? sb.append(this.server).append(".") : sb;
+       /* if (sb.length() > 0) {
             sb.append(".");
-        }
+        }*/
         sb = StringUtils.isNotBlank(this.database) ? sb.append(this.database).append(".") : sb;
         sb = StringUtils.isNotBlank(this.schema) ? sb.append(this.schema).append(".") : sb;
-        if (funcName.startsWith("[") && funcName.endsWith("]")) {
+       /* if (funcName.startsWith("[") && funcName.endsWith("]")) {
             funcName = funcName.substring(1, funcName.length() - 1);
-        }
+        }*/
         sb.append(this.funcName);
         return sb.toString().trim();
     }
+
+    public String getRealFullFuncName() {
+        StringBuffer sb = new StringBuffer();
+        sb = StringUtils.isNotBlank(this.database) ? sb.append(bracketTrim(this.database)).append(".") : sb;
+        sb.append(getRealFuncName());
+        return sb.toString().trim();
+    }
+
+    public String getRealFuncName() {
+        return bracketTrim(this.funcName);
+    }
+
+    private String bracketTrim(String s) {
+        String rs = s;
+        if (s.startsWith("[")) {
+            rs = s.substring(1, s.length());
+        }
+        if (s.endsWith("]")) {
+            rs = rs.substring(0, rs.length() - 1);
+        }
+        return rs;
+    }
+
 
     public boolean isVariable() {
         return isVariable;

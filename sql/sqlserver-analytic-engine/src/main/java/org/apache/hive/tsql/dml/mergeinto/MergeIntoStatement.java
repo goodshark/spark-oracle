@@ -235,7 +235,7 @@ public class MergeIntoStatement extends SqlStatement {
     private String replaceTargetTableAlias(String sql)throws  Exception {
         //System.out.println("befor target sql ==>" + sql);
         //System.out.println("targetTableAlias ==>" + targetTableAlias + " 替换为：" + targetTableName.getFuncName());
-        sql = sql.replaceAll(targetTableAlias + "\\.", " " + getExecSession().getRealTableName(targetTableName.getFullFuncName()) + "\\.");
+        sql = sql.replaceAll(targetTableAlias + "\\.", " " + getExecSession().getRealTableName(targetTableName.getRealFuncName()) + "\\.");
         // System.out.println("替换结果为：" + sql);
         return sql;
     }
@@ -243,7 +243,7 @@ public class MergeIntoStatement extends SqlStatement {
     private String replaceSrcTableAlias(String sql) throws  Exception{
        /* System.out.println("befor srctable sql ==>" + sql);
         System.out.println("targetTableAlias ==>" + srcTableAlias + " 替换为：" + srcTableName.getFuncName());*/
-        sql = sql.replaceAll(srcTableAlias + "\\.", " " + getExecSession().getRealTableName(srcTableName.getFullFuncName()) + "\\.");
+        sql = sql.replaceAll(srcTableAlias + "\\.", " " + getExecSession().getRealTableName(srcTableName.getRealFuncName()) + "\\.");
         //System.out.println("替换结果为：" + sql);
         return sql;
     }
