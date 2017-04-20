@@ -25,7 +25,7 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.catalog.{BucketSpec, CatalogTable, CatalogUtils}
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan}
-import org.apache.spark.sql.catalyst.parser.SqlBaseParser.{DeleteContext, DeleteStatementContext, UpdateContext, UpdateStatementContext}
+import org.apache.spark.sql.catalyst.parser.SqlBaseParser._
 import org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.command.RunnableCommand
@@ -260,6 +260,20 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
   }
 }
 
+case class InsertIntoWithColumnsCommand(ctx: InsertIntoWithColumnsContext,
+                                        insertColumns: Seq[String])
+  extends RunnableCommand {
+
+  def rewrite(sessionState: SessionState) : String = {
+    ""
+  }
+
+  override def run(sparkSession: SparkSession): Seq[Row] = {
+    Seq.empty[Row]
+  }
+}
+
+
 case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
                           tableNameAlias: String)
   extends RunnableCommand {
@@ -333,7 +347,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
         val fromTable = statement.fromTable
         sb.append(fromTable.start.getInputStream().getText(
           new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex()))
-        .replaceAll("\\(", "")  )
+          .replaceAll("\\(", "")  )
         sb.append(", ")
         sb.append(db)
         sb.append(".")
@@ -355,7 +369,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
         sb.append(fromTable.start.getInputStream().getText(
           new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex()))
           .replaceAll("\\(", ""))
-        .append(" ")
+          .append(" ")
       }
 
       val joinRelation = statement.joinRelationUpate()
