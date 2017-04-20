@@ -227,6 +227,16 @@ locationSpec
 query
     : ctes? queryNoWith
     ;
+
+
+insertColumns
+     :'('identifierSeq')'
+     ;
+
+insertIntoWithColumns
+     : INSERT OVERWRITE TABLE tableIdentifier insertColumns (partitionSpec (IF NOT EXISTS)?)?
+     | INSERT INTO TABLE? tableIdentifier insertColumns partitionSpec?
+        ;
 insertInto
     : INSERT OVERWRITE TABLE tableIdentifier (partitionSpec (IF NOT EXISTS)?)?
     | INSERT INTO TABLE? tableIdentifier partitionSpec?
