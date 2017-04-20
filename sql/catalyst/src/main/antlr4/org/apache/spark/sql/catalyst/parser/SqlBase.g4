@@ -325,7 +325,7 @@ resource
     ;
 
 queryNoWith
-    : insertInto? queryTerm queryOrganization                                              #singleInsertQuery
+    : (insertInto|insertIntoWithColumns)? queryTerm queryOrganization                                              #singleInsertQuery
     | fromClause multiInsertQueryBody+                                                     #multiInsertQuery
     | deleteStatement                                                                      #delete
     | updateStatement                                                                      #update
@@ -370,7 +370,7 @@ queryOrganization
     ;
 
 multiInsertQueryBody
-    : insertInto?
+    : (insertInto|insertIntoWithColumns)?
       querySpecification
       queryOrganization
     ;
