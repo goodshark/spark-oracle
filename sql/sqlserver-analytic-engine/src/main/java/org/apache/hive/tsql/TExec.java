@@ -412,7 +412,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 || dataType.contains("HIERARCHYID")) {
             addException(dataType, locate(ctx));
             return Var.DataType.NULL;
-        } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
+        }else if (dataType.contains("DECIMAL")){
+            return Var.DataType.FLOAT;
+        } else if (dataType.contains("MONEY")
                 || dataType.contains("NUMERIC")) {
             return Var.DataType.DOUBLE;
         } else {
@@ -3328,8 +3330,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         /*logicNode.setNodeType(TreeNode.Type.WHEN)*/
         ;
         sql.append(logicNode.toString());
-        popStatement();
         addNode(swichStatement);
+        popStatement();
         sql.append(ctx.THEN().getText()).append(Common.SPACE);
         TreeNode sqlStatement = (TreeNode) visit(ctx.expression());
         sqlStatement.setNodeType(TreeNode.Type.THEN);
