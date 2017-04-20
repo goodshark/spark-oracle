@@ -1041,7 +1041,7 @@ function_call
     | TSUBSTRING '(' expression ',' expression ',' expression ')'      #tsubstring_function
     | TRIM '(' (expression FROM)? expression ')'    #trim_function
     | LEN '(' expression ')'                       #len_function
-    | IIF '('expression ',' expression ',' expression ')'       #iif_function
+    | IIF '('predicate ',' expression ',' expression ')'       #iif_function
     ;
 
 
