@@ -567,7 +567,7 @@ primaryExpression
     | '(' expression (',' expression)+ ')'                                                     #rowConstructor
     | '(' query ')'                                                                            #subqueryExpression
     | qualifiedName '(' (setQuantifier? expression (',' expression)*)? ')' (OVER windowSpec)?  #functionCall
-    | primaryExpression '[' index=valueExpression ']'                                    #subscript
+    | value=primaryExpression '[' index=valueExpression ']'                                    #subscript
     | identifier                                                                               #columnReference
     | base=primaryExpression '.' fieldName=identifier                                          #dereference
     | '(' expression ')'                                                                       #parenthesizedExpression
