@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.execute;
 
+import org.apache.hive.plsql.block.BlockBorder;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.cfl.*;
@@ -76,10 +77,10 @@ public class Executor {
                     whileExecute(node);
                     break;
                 case BREAK:
-                    breakExecute();
+                    breakExecute(node);
                     break;
                 case CONTINUE:
-                    continueExecute();
+                    continueExecute(node);
                     break;
                 case GOTO:
                     gotoExecute(node);
@@ -238,6 +239,19 @@ public class Executor {
     }
 
     public void whileExecute(TreeNode node) throws Exception {
+        // add while block border
+        boolean initLoop = true;
+        if (!stack.empty()) {
+            TreeNode topNode = stack.peek();
+            if (topNode.getNodeType() == TreeNode.Type.BORDER && ((BlockBorder) topNode).isSame(node)) {
+                initLoop = false;
+            }
+        }
+        if (initLoop) {
+            stack.push(new BlockBorder(node));
+            ((WhileStatement) node).getCondtionNode().initIndex();
+        }
+
         WhileStatement whileStmt = (WhileStatement) node;
         List<TreeNode> list = whileStmt.getChildrenNodes();
         if (list.size() != 1)
@@ -249,22 +263,36 @@ public class Executor {
         }
     }
 
-    public void breakExecute() throws Exception {
+    public void breakExecute(TreeNode node) throws Exception {
+        // exit when x > y
+        node.execute();
+        BreakStatement breakStatement = (BreakStatement) node;
+        if (!breakStatement.isEnable()) {
+            return;
+        }
+
         TreeNode stmt = null;
         while (!stack.empty()) {
             stmt = stack.pop();
-            if (stmt.getNodeType() == TreeNode.Type.WHILE)
+            if (stmt.getNodeType() == TreeNode.Type.WHILE && breakStatement.isPair(stmt))
                 break;
         }
         if (stmt == null || stmt.getNodeType() != TreeNode.Type.WHILE)
             throw new UnsupportedException("BREAK stmt is not in WHILE block");
     }
 
-    public void continueExecute() throws Exception {
+    public void continueExecute(TreeNode node) throws Exception {
+        // continue when x > y
+        node.execute();
+        ContinueStatement continueStatement = (ContinueStatement) node;
+        if (!continueStatement.isEnable()) {
+            return;
+        }
+
         TreeNode stmt = null;
         while (!stack.empty()) {
             stmt = stack.pop();
-            if (stmt.getNodeType() == TreeNode.Type.WHILE) {
+            if (stmt.getNodeType() == TreeNode.Type.WHILE && continueStatement.isPair(stmt)) {
                 stack.push(stmt);
                 break;
             }
@@ -272,6 +300,7 @@ public class Executor {
         if (stmt == null || stmt.getNodeType() != TreeNode.Type.WHILE)
             throw new UnsupportedException("CONTINUE stmt is not in WHILE block");
     }
+
 
     public void gotoExecute(TreeNode node) throws Exception {
         GotoStatement gotoStmt = (GotoStatement) node;
