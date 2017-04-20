@@ -21,7 +21,7 @@ public class DropProcedureStatement extends SqlStatement {
             if(StringUtils.isBlank(f.getDatabase())){
                 f.setDatabase(getExecSession().getSparkSession().catalog().currentDatabase());
             }
-            procService.delProc(f.getFullFuncName());
+            procService.delProc(f.getRealFullFuncName());
         }
         return 0;
     }

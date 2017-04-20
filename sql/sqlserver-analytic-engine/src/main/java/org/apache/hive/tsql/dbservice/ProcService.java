@@ -54,10 +54,10 @@ public class ProcService {
                 .append("PROC_CONTENT,")
                 .append("PROC_OBJECT,")
                 .append("CREATE_TIME,")
-                .append("MD5")
-                .append("DB_NAME")
-                .append("USE_NAME")
-                .append("TYPE")
+                .append("MD5,")
+                .append("DB_NAME,")
+                .append("USE_NAME,")
+                .append("TYPE,")
                 .append("PROC_ORC_NAME");
 
 
@@ -101,7 +101,7 @@ public class ProcService {
         return rs;
     }
 
-    public int updateProc(Procedure procedure) throws Exception{
+    public int updateProc(Procedure procedure) throws Exception {
         StringBuffer sql = new StringBuffer();
         sql.append("  UPDATE ").append(TABLE_NAME);
         sql.append(" SET  ");
@@ -149,6 +149,7 @@ public class ProcService {
     }
 
     public int delProc(String procName) throws SQLException {
+        LOG.info(" del proc by procName:" + procName);
         StringBuffer sql = new StringBuffer();
         sql.append("  UPDATE ").append(TABLE_NAME);
         sql.append(" SET DEL_FLAG =-1 ");
@@ -174,6 +175,7 @@ public class ProcService {
     }
 
     public int getCountByName(String procName) throws SQLException {
+        LOG.info(" get count  proc by procName:" + procName);
         StringBuffer sql = new StringBuffer();
         sql.append("  SELECT COUNT(1)  FROM ").append(TABLE_NAME);
         sql.append(" WHERE ");
