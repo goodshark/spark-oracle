@@ -89,7 +89,7 @@ class SparkSession private(
   }
 
 
-  def sparkSessionUserName: String = ""
+  var sparkSessionUserName: String = ""
 
   /**
     * 用于保存sqlserver模式下的表名称
