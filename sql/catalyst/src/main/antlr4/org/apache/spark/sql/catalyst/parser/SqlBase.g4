@@ -228,6 +228,15 @@ query
     : ctes? queryNoWith
     ;
 
+
+insertColumns
+     :'('identifierSeq')'
+     ;
+
+insertIntoWithColumns
+     : INSERT OVERWRITE TABLE tableIdentifier insertColumns (partitionSpec (IF NOT EXISTS)?)?
+     | INSERT INTO TABLE? tableIdentifier insertColumns partitionSpec?
+        ;
 insertInto
     : INSERT OVERWRITE TABLE tableIdentifier (partitionSpec (IF NOT EXISTS)?)?
     | INSERT INTO TABLE? tableIdentifier partitionSpec?
@@ -316,22 +325,36 @@ resource
     ;
 
 queryNoWith
-    : insertInto? queryTerm queryOrganization                                              #singleInsertQuery
+    : (insertInto|insertIntoWithColumns)? queryTerm queryOrganization                                              #singleInsertQuery
     | fromClause multiInsertQueryBody+                                                     #multiInsertQuery
     | deleteStatement                                                                      #delete
     | updateStatement                                                                      #update
     ;
 
 deleteStatement
-    : DELETE FROM? tableIdentifier  fromTable?  joinRelation? (')')? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : DELETE FROM? tableIdentifier  fromTable?  (joinRelationUpate*)?  (')')? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
  fromTable
-    :FROM ('(')? tableIdentifier
+    :FROM ('(')? tableIdentifier strictIdentifier?
     ;
 
 updateStatement
-    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* fromClause? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* fromClauseForUpdate? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
+fromClauseForUpdate
+	: FROM relationUpate (',' relationUpate)*
+	;
+
+relationUpate
+	: tableNameUpdate joinRelationUpate*
+	;
+
+tableNameUpdate
+	: tableIdentifier sample? (AS? strictIdentifier)?
+	;
+joinRelationUpate
+	:(joinType) JOIN right=tableNameUpdate joinCriteria?
+	;
 
 assignExpression
     : (qualifiedName) EQ expression
@@ -347,7 +370,7 @@ queryOrganization
     ;
 
 multiInsertQueryBody
-    : insertInto?
+    : (insertInto|insertIntoWithColumns)?
       querySpecification
       queryOrganization
     ;

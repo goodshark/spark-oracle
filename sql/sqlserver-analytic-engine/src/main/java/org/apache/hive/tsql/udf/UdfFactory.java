@@ -49,6 +49,7 @@ public class UdfFactory {
             registFunction("DATEADD".toUpperCase(), "org.apache.hive.tsql.udf.date.DateAddCalculator");
             registFunction("DATEDIFF".toUpperCase(), "org.apache.hive.tsql.udf.date.DateDiffCalculator");
             registFunction("DATENAME".toUpperCase(), "org.apache.hive.tsql.udf.date.DateNameCalculator");
+            registFunction("DATEPART".toUpperCase(), "org.apache.hive.tsql.udf.date.DateNameCalculator");
             registFunction("year".toUpperCase(), "org.apache.hive.tsql.udf.date.YearCalculator");
             registFunction("month".toUpperCase(), "org.apache.hive.tsql.udf.date.MonthCalculator");
             registFunction("day".toUpperCase(), "org.apache.hive.tsql.udf.date.DayCalculator");

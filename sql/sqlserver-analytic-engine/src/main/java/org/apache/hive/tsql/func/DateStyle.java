@@ -10,7 +10,7 @@ final public class DateStyle {
     public final Map<String, String> dateStyles = new HashMap<>();
 
     private DateStyle() {
-        dateStyles.put("120", "yyyy-MM-dd HH:mm:ss.SSS");
+        dateStyles.put("120", "yyyy-MM-dd HH:mm:ss");
         dateStyles.put("100", "MM dd yyyy hh:mm a");
         dateStyles.put("101", "MM/dd/yyyy");
         dateStyles.put("102", "yyyy.MM.dd");

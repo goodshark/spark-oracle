@@ -76,7 +76,7 @@ merge_statement:
     source_not_matched*
 ;
 matched_statment:
-    WHEN MATCHED THEN (AND search_condition)? merge_matched
+    WHEN MATCHED  (AND search_condition)? THEN merge_matched
 ;
 
 target_not_matched:
@@ -274,7 +274,7 @@ create_index
     ';'?
     ;
 
-// https://msdn.microsoft.com/zh-cn/library/ms187926(v=sql.120).aspx
+// https://msdn.microsoft.com/zh-cn/library/ms187926(v=sqlF.120).aspx
 create_procedure
     : action=(CREATE | ALTER) proc=(PROC | PROCEDURE) func_proc_name (';' DECIMAL)?
       ('('? procedure_param (',' procedure_param)* ')'?)?
@@ -1064,7 +1064,7 @@ table_alias
 
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
 with_table_hints
-    : WITH? '(' table_hint (',' table_hint)* ')'
+    : WITH '(' table_hint (',' table_hint)* ')'
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx

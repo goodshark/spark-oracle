@@ -37,10 +37,10 @@ public abstract class BaseCalculator implements Calculator {
 
     public BaseCalculator setArguments(List<Var> arguments) {
 //        this.arguments = arguments;
-        if(null == arguments || arguments.size() == 0) {
+        if (null == arguments || arguments.size() == 0) {
             return this;
         }
-        for(Var var : arguments) {
+        for (Var var : arguments) {
             this.arguments.add(var.clone());
         }
         size = this.arguments.size();
@@ -117,7 +117,8 @@ public abstract class BaseCalculator implements Calculator {
     public int getDatePartValue(DateUnit dateUnit, Date date) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
-
+//        calendar.setFirstDayOfWeek(Calendar.MONDAY);
+//        calendar.setMinimalDaysInFirstWeek(4);
         int result = -1;
         switch (dateUnit) {
             case YEAR:
@@ -150,11 +151,15 @@ public abstract class BaseCalculator implements Calculator {
             case WEEKDAY:
                 result = calendar.get(Calendar.DAY_OF_WEEK);
                 break;
+            case MILLISECOND:
+                result = calendar.get(Calendar.MILLISECOND);
             default:
                 break;
 
         }
         return result;
     }
+
+
 
 }

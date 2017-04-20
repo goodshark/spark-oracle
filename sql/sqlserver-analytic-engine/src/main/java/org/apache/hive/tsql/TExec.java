@@ -412,7 +412,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 || dataType.contains("HIERARCHYID")) {
             addException(dataType, locate(ctx));
             return Var.DataType.NULL;
-        } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
+        }else if (dataType.contains("DECIMAL")){
+            return Var.DataType.FLOAT;
+        } else if (dataType.contains("MONEY")
                 || dataType.contains("NUMERIC")) {
             return Var.DataType.DOUBLE;
         } else {
@@ -2197,7 +2199,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         sql.append(queryExpressionBean.getSql());
         if (null != queryExpressionBean.getExceptions() && !queryExpressionBean.getExceptions().isEmpty()) {
-            for (String s:queryExpressionBean.getExceptions()) {
+            for (String s : queryExpressionBean.getExceptions()) {
                 addException(s, locate(ctx));
             }
         }
@@ -2768,6 +2770,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         visit(ctx.expression());
         function.setExpr(popStatement());
         function.setDataType(visitData_type(ctx.data_type()));
+        if (ctx.data_type().getChildCount() == 4) {
+            function.setLength(Integer.valueOf(ctx.data_type().getChild(2).getText().trim()));
+        }
         pushStatement(function);
         return function;
     }
@@ -2893,9 +2898,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public BaseFunction visitDatename_function(TSqlParser.Datename_functionContext ctx) {
         DateNameFunction function = new DateNameFunction(new FuncName(null, "DATENAME", null));
         String datePart = ctx.ID().getText();
-        if ("weekday".equals(datePart) || "dw".equals(datePart) || "w".equals(datePart)) {
-            addException("DatePart " + datePart, locate(ctx));
-        }
+//        if ("weekday".equals(datePart) || "dw".equals(datePart) || "w".equals(datePart)) {
+//            addException("DatePart " + datePart, locate(ctx));
+//        }
         DateUnit dateUnit = DateUnit.parse(datePart);
         if (null == dateUnit) {
             addException("datepart # " + datePart, locate(ctx));
@@ -2909,7 +2914,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public BaseFunction visitDatepart_function(TSqlParser.Datepart_functionContext ctx) {
-        DateNameFunction function = new DateNameFunction(new FuncName(null, "DATENAME", null));
+        DateNameFunction function = new DateNameFunction(new FuncName(null, "DATEPART", null));
         String datePart = ctx.ID().getText();
         DateUnit dateUnit = DateUnit.parse(datePart);
         if (null == dateUnit) {
@@ -2944,7 +2949,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitLeft_function(TSqlParser.Left_functionContext ctx) {
+    public TreeNode visitLeft_function(TSqlParser.Left_functionContext ctx) {
         LeftFunction function = new LeftFunction(new FuncName(null, "left", null));
         List<TreeNode> exprList = new ArrayList<TreeNode>();
         visit(ctx.expression().get(0));
@@ -2957,7 +2962,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitRight_function(TSqlParser.Right_functionContext ctx) {
+    public TreeNode visitRight_function(TSqlParser.Right_functionContext ctx) {
         RightFunction function = new RightFunction(new FuncName(null, "right", null));
         List<TreeNode> exprList = new ArrayList<TreeNode>();
         visit(ctx.expression().get(0));
@@ -2966,11 +2971,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         exprList.add(popStatement());
         function.setExprList(exprList);
         pushStatement(function);
-        return visitChildren(ctx);
+        return function;
     }
 
     @Override
-    public Object visitIsnull_function(TSqlParser.Isnull_functionContext ctx) {
+    public TreeNode visitIsnull_function(TSqlParser.Isnull_functionContext ctx) {
         IsNullFunction func = new IsNullFunction(new FuncName(null, "ISNULL", null));
         List<TSqlParser.ExpressionContext> list = ctx.expression();
         if (list.size() != 2) {
@@ -2986,13 +2991,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return func;
     }
 
-    @Override public Object visitIif_function(TSqlParser.Iif_functionContext ctx) {
+    @Override
+    public Object visitIif_function(TSqlParser.Iif_functionContext ctx) {
         IifFunction func = new IifFunction(new FuncName(null, "IIF", null));
         List<TSqlParser.ExpressionContext> exprList = ctx.expression();
         if (exprList.size() != 3)
             addException("IIF funciton need 3 args", locate(ctx));
         List<TreeNode> argList = new ArrayList<>();
-        for (TSqlParser.ExpressionContext expressionContext: exprList) {
+        for (TSqlParser.ExpressionContext expressionContext : exprList) {
             visit(expressionContext);
             argList.add(popStatement());
         }
@@ -3324,8 +3330,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         /*logicNode.setNodeType(TreeNode.Type.WHEN)*/
         ;
         sql.append(logicNode.toString());
-        popStatement();
         addNode(swichStatement);
+        popStatement();
         sql.append(ctx.THEN().getText()).append(Common.SPACE);
         TreeNode sqlStatement = (TreeNode) visit(ctx.expression());
         sqlStatement.setNodeType(TreeNode.Type.THEN);
@@ -3714,7 +3720,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitTable_hint(TSqlParser.Table_hintContext ctx) {
         //TODO LOCK TABLE
-        addException("table lock", locate(ctx));
+        addException("table hint " + ctx.getText(), locate(ctx));
         return "";
     }
 

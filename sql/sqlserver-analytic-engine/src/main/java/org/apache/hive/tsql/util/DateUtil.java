@@ -159,4 +159,14 @@ public class DateUtil {
 //                + (day.length() == 1 ? ("0 " + day) : day);
 //        return parse(result);
 //    }
+
+
+    private static final String[] weeks = {"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
+
+    public static String getWeekDay(Date date) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        int weekIndex = cal.get(Calendar.DAY_OF_WEEK) - 1;
+        return weeks[weekIndex];
+    }
 }  

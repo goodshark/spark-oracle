@@ -44,9 +44,8 @@ public class CreateProcedureStatement extends BaseStatement {
                 if(count==0){
                     throw  new Exception(procName + " is exist;");
                 }else{
-                    procService.delProc(procName);
+                    procService.updateProc(function);
                 }
-                procService.createProc(function);
                 break;
         }
         super.addFunc(function);

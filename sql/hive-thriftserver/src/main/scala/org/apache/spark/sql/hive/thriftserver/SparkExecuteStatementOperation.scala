@@ -224,28 +224,24 @@ private[hive] class SparkExecuteStatementOperation(
     var sqlServerPlans: java.util.List[LogicalPlan] = new util.ArrayList[LogicalPlan]()
     val sqlServerEngine = sqlContext.sessionState.
       conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
+    sqlContext.sparkSession.sparkSessionUserName = parentSession.getUsername
     try {
       // 执行sqlserver
       if (sqlServerEngine.equalsIgnoreCase("true")) {
-
         if (sqlContext.sessionState.
           conf.getConfString("spark.sql.add.jar.run", "false").equalsIgnoreCase("false")) {
-          val udfJarPath = sqlContext.sessionState.
-            conf.getConfString("spark.sql.sqlserver.udf.jar.path",
-            "hdfs://avatarcluster/tmp/udf/sqlserver-udf.jar")
-          val addDateDifSql = "create temporary function T_DATEDIFF" +
-            " as 'org.apache.hive.extra.udf.DateDiffUdf' " +
-            " using jar '" + udfJarPath + "'"
-          val addDateAddSql = "create temporary function DATE_ADD2" +
-            " as 'org.apache.hive.extra.udf.DateAddUdf' " +
-            " using jar '" + udfJarPath + "'"
-
-          val addDatefrompartsSql = "create temporary function DATEFROMPARTS" +
-            " as 'org.apache.hive.extra.udf.DateFromPartsUdf' " +
-            " using jar '" + udfJarPath + "'"
-          sqlContext.sparkSession.sql(addDatefrompartsSql)
-          sqlContext.sparkSession.sql(addDateDifSql)
-          sqlContext.sparkSession.sql(addDateAddSql)
+          val udfSql = sqlContext.sessionState.
+            conf.getConfString("spark.sql.sqlserver.udf.sql", "")
+          try {
+            if (!udfSql.isEmpty) {
+              udfSql.split(";").foreach(sql => {
+                sqlContext.sparkSession.sql(sql)
+              })
+            }
+          } catch {
+            case e: Throwable =>
+              logError(s"Error executing udf sql, currentState $udfSql, ", e)
+          }
           sqlContext.sessionState.
             conf.setConfString("spark.sql.add.jar.run", "true")
         }
@@ -258,16 +254,16 @@ private[hive] class SparkExecuteStatementOperation(
           import sqlContext.implicits._
           result = sqlContext.sparkSession.createDataset(Seq[String]()).toDF()
         } else {
-          result = sqlServerRs.get(sqlServerRs.size()-1).asInstanceOf[SparkResultSet].getDataset
+          result = sqlServerRs.get(sqlServerRs.size() - 1).asInstanceOf[SparkResultSet].getDataset
           // logInfo("sqlServer result is ==>" + result.queryExecution.toString())
         }
         val allTable = new util.HashSet[String]()
         val tmpTable = sqlContext.sparkSession.getTables(2)
         val globalTable = sqlContext.sparkSession.getTables(3)
-        if (null != tmpTable ) {
+        if (null != tmpTable) {
           allTable.addAll(tmpTable)
         }
-        if(null!=globalTable) {
+        if (null != globalTable) {
           allTable.addAll(globalTable)
         }
         HiveThriftServer2.sqlSessionListenr.addTable(
@@ -316,7 +312,7 @@ private[hive] class SparkExecuteStatementOperation(
           statementId, e.getMessage, SparkUtils.exceptionString(e))
         throw new HiveSQLException(e.toString)
     } finally {
-       clearCrudTableMap(plan)
+      clearCrudTableMap(plan)
       if (sqlServerEngine.equalsIgnoreCase("true")) {
         clearCrudTableMapForSqlServer(sqlServerPlans)
         dropSqlserverTables
@@ -331,7 +327,7 @@ private[hive] class SparkExecuteStatementOperation(
 
   private def dropSqlserverTables(): Unit = {
     val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
-    if (null!=tableVar) {
+    if (null != tableVar) {
       val iterator = tableVar.keySet().iterator()
       while (iterator.hasNext) {
         sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + tableVar.get(iterator.next()))
