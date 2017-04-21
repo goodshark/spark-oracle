@@ -57,7 +57,7 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
   def parseTableName(tbName: TableNameUpdateContext,
                      tableNames: mutable.HashMap[String, TableIdentifier]) = {
     if (null != tbName.strictIdentifier()) {
-      logDebug(s" tablealias name is " + tbName.strictIdentifier().getText)
+      logInfo(s" tablealias name is " + tbName.strictIdentifier().getText)
       tableNames += (tbName.strictIdentifier().getText
         -> visitTableIdentifier(tbName.tableIdentifier()))
     }
@@ -101,7 +101,7 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
     if (null != statement.fromClauseForUpdate()
       && null != statement.fromClauseForUpdate().relationUpate()) {
       tableNameAlias = statement.tableIdentifier().getText
-      logDebug(s" update table  name is " + tableNameAlias)
+      logInfo(s" update table  Alias name is " + tableNameAlias)
       tableNames = new mutable.HashMap[String, TableIdentifier]()
       val relation = statement.fromClauseForUpdate().relationUpate().asScala
       logDebug(" relation size is " + relation.size)
@@ -118,7 +118,7 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
         updateTable = tableNames.get(tableNameAlias).get
       }
     }
-
+    logInfo("tableNameAlias is ====>" + tableNameAlias)
     return AcidUpdateCommand(ctx, updateTable, tableNameAlias, tableNames)
   }
 

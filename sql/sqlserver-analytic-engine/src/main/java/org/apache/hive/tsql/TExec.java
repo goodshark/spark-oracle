@@ -3390,7 +3390,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(visitTable_name(ctx.table_name()).getRealFullFuncName());
             sql.append(".");
         }
-        sql.append(visitId(ctx.id())).append(Common.SPACE);
+        sql.append(StrUtils.replaceAllBracketToQuit(visitId(ctx.id()))).append(Common.SPACE);
         rs.setSql(sql.toString());
         return rs;
 

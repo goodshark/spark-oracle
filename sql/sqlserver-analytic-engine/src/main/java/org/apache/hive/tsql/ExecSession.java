@@ -50,11 +50,11 @@ public class ExecSession {
 //        exceptions = new ArrayList<Exception>();
         this.variableContainer = new VariableContainer();
         resultSets = new ArrayList<>();
-        this.sparkSession = sparkSession;
-        String sparkDb = sparkSession.catalog().currentDatabase();
+        this.sparkSession =sparkSession;
+       /* String sparkDb = sparkSession.catalog().currentDatabase();
         if (StringUtils.isNotBlank(sparkDb)) {
             this.database = sparkDb;
-        }
+        }*/
     }
 
 //    public static ExecSession getSession() {

@@ -206,7 +206,13 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
         colString.append(",")
       } else {
         if (!partitionSet.contains(column.name)) {
-          if (null == tableNameAlias) {
+          logInfo("tableNameAlias is " + tableNameAlias)
+
+          logInfo("db+tb  ==>" + db + "." + tb)
+
+          logInfo("tableNameAlias equals  ==>" + (tableNameAlias.equals(db + "." + tb)))
+
+          if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
             colString.append(tb)
           } else {
             colString.append(tableNameAlias)
@@ -218,7 +224,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
       }
     })
     sb.append(colString.substring(0, colString.length - 1))
-    if (null == tableNameAlias) {
+    if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
       sb.append(" ," + tb + "." + vid + " ")
     } else {
       sb.append(" ," + tableNameAlias + "." + vid + " ")
@@ -264,7 +270,7 @@ case class InsertIntoWithColumnsCommand(ctx: InsertIntoWithColumnsContext,
                                         insertColumns: Seq[String])
   extends RunnableCommand {
 
-  def rewrite(sessionState: SessionState) : String = {
+  def rewrite(sessionState: SessionState): String = {
     ""
   }
 
@@ -335,7 +341,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
     })
     sb.append(colString.toString())
     sb.append(" ")
-    if (null==tableNameAlias) {
+    if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
       sb.append(tb + "." + AcidUpdateCommand(null, identifier, null, null).vid).append(" ")
     } else {
       sb.append(tableNameAlias + "."
@@ -347,7 +353,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
         val fromTable = statement.fromTable
         sb.append(fromTable.start.getInputStream().getText(
           new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex()))
-          .replaceAll("\\(", "")  )
+          .replaceAll("\\(", ""))
         sb.append(", ")
         sb.append(db)
         sb.append(".")
@@ -374,7 +380,7 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
 
       val joinRelation = statement.joinRelationUpate()
       val iterator = joinRelation.iterator()
-      while(iterator.hasNext) {
+      while (iterator.hasNext) {
         val j = iterator.next()
         sb.append(j.start.getInputStream().getText(
           new Interval(j.start.getStartIndex(), j.stop.getStopIndex()))).append(" ")

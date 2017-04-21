@@ -179,6 +179,8 @@ public class ProcService {
         StringBuffer sql = new StringBuffer();
         sql.append("  SELECT COUNT(1)  FROM ").append(TABLE_NAME);
         sql.append(" WHERE ");
+        sql.append(" DEL_FLAG =1");
+        sql.append(" AND ");
         sql.append("PROC_NAME =");
         sql.append("?");
         Connection connection = null;
