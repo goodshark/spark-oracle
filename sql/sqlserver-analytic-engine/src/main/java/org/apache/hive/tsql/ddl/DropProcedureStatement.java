@@ -17,11 +17,16 @@ public class DropProcedureStatement extends SqlStatement {
     @Override
     public int execute() throws Exception {
         ProcService procService = new ProcService(getExecSession().getSparkSession());
-        for (FuncName f:funcNames) {
-            if(StringUtils.isBlank(f.getDatabase())){
-                f.setDatabase(getExecSession().getSparkSession().catalog().currentDatabase());
+        for (FuncName f : funcNames) {
+            if (StringUtils.isBlank(f.getDatabase())) {
+                f.setDatabase(getExecSession().getDatabase());
             }
-            procService.delProc(f.getRealFullFuncName());
+            if (procService.getCountByName(f.getRealFullFuncName()) > 0) {
+                procService.delProc(f.getRealFullFuncName());
+            } else {
+                throw new Exception("Proc: " + f.getRealFullFuncName() + " NOT FIND .");
+            }
+
         }
         return 0;
     }

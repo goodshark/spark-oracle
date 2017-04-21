@@ -45,11 +45,12 @@ public class ExecSession {
 //        private final static ExecSession session = new ExecSession();
 //    }
 
-    public ExecSession() {
+    public ExecSession(SparkSession sparkSession) {
         rootNode = new RootNode();
 //        exceptions = new ArrayList<Exception>();
         this.variableContainer = new VariableContainer();
         resultSets = new ArrayList<>();
+        this.sparkSession = sparkSession;
         String sparkDb = sparkSession.catalog().currentDatabase();
         if (StringUtils.isNotBlank(sparkDb)) {
             this.database = sparkDb;

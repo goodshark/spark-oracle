@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.another;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.dbservice.ProcService;
@@ -51,7 +52,9 @@ public class ExecuteStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
-        funcName.setDatabase(getExecSession().getDatabase());
+        if(StringUtils.isBlank(funcName.getDatabase())){
+            funcName.setDatabase(getExecSession().getDatabase());
+        }
         realFuncName = funcName.getRealFullFuncName();
         if (funcName.isVariable()) {
             Var v = findVar(funcName.getFuncName());

@@ -34,13 +34,10 @@ public class ProcedureCli {
 //        return sparkSession;
 //    }
 
-    public ProcedureCli(SparkSession ss) {
+    public ProcedureCli(SparkSession sparkSession) {
         listener = new ParserErrorListener();
-//        session = ExecSession.getSession();
-        session = new ExecSession();
-        //session.setSparkSession(sparkSession);
-        session.setSparkSession(ss);
-        sparkSession = ss;
+        session = new ExecSession(sparkSession);
+        this.sparkSession = sparkSession;
     }
 
     public ExecSession getExecSession() {
