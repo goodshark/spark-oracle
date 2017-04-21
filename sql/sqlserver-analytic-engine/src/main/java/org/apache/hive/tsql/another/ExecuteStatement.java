@@ -34,7 +34,7 @@ public class ExecuteStatement extends BaseStatement {
     public ExecuteStatement(FuncName funcName) {
         super(STATEMENT_NAME);
         this.funcName = funcName;
-        realFuncName = funcName.getRealFullFuncName();
+
     }
 
     public void setReturnVarName(String returnVarName) {
@@ -51,7 +51,8 @@ public class ExecuteStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
-
+        funcName.setDatabase(getExecSession().getDatabase());
+        realFuncName = funcName.getRealFullFuncName();
         if (funcName.isVariable()) {
             Var v = findVar(funcName.getFuncName());
             if (null == v) {
