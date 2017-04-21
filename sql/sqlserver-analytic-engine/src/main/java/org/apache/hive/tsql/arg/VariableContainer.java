@@ -117,7 +117,7 @@ public class VariableContainer {
 
 
     public void addProcFunc(Procedure function) {
-        this.functions.put(function.getName().getFullFuncName(), function);
+        this.functions.put(function.getName().getRealFullFuncName(), function);
     }
 
     public ConcurrentHashMap<String, Var> getVars() {

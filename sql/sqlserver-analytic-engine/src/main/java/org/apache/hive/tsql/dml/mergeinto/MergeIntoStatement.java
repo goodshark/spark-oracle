@@ -50,13 +50,13 @@ public class MergeIntoStatement extends SqlStatement {
                 case DEL:
                     StringBuffer sql = new StringBuffer();
                     sql.append(" delete ");
-                    sql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+                    sql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
                     sql.append(Common.SPACE);
 
                     sql.append(" from ");
 
                     sql.append(" left outer  join ");
-                    sql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+                    sql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
                     sql.append(Common.SPACE);
 
 
@@ -79,14 +79,14 @@ public class MergeIntoStatement extends SqlStatement {
                 case UPDATE:
                     StringBuffer updateSql = new StringBuffer();
                     updateSql.append(" update ");
-                    updateSql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+                    updateSql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
                     String setsql = bean.getMatchedBean().getUpdateSetSql();
                     updateSql.append(Common.SPACE);
                     updateSql.append(replaceTableAlias(setsql));
                     updateSql.append(Common.SPACE);
 
                     updateSql.append(" left outer  join ");
-                    updateSql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+                    updateSql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
                     updateSql.append(Common.SPACE);
 
                     updateSql.append(" where ");
@@ -126,16 +126,16 @@ public class MergeIntoStatement extends SqlStatement {
              */
 
             StringBuffer sql = new StringBuffer();
-            sql.append("insert into  ").append(getExecSession().getRealTableName(targetTableName.getFullFuncName())).append(Common.SPACE);
+            sql.append("insert into  ").append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName())).append(Common.SPACE);
 
             sql.append("select * from ");
             sql.append("( ");
             sql.append(" select ");
-            sql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
             sql.append(".* from ");
-            sql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
             sql.append(" right outer join ");
-            sql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
             sql.append(" on ");
             sql.append(replaceTableAlias(searchCondition));
 
@@ -147,21 +147,21 @@ public class MergeIntoStatement extends SqlStatement {
                 sql.append(replaceTableAlias(searchSql));
             }
             sql.append(" )");
-            sql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
             sql.append(" where not exists ");
             sql.append("( ");
             sql.append(" select * from ");
             sql.append("(");
             sql.append(" select ");
-            sql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
             sql.append(".* from ");
-            sql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
             sql.append(" inner join ");
-            sql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
             sql.append(" on ");
             sql.append(replaceTableAlias(searchCondition));
             sql.append(")");
-            sql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+            sql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
             sql.append( " where ");
             sql.append(replaceTableAlias(searchCondition));
             sql.append(")");
@@ -176,11 +176,11 @@ public class MergeIntoStatement extends SqlStatement {
                 case DEL:
                     StringBuffer sql = new StringBuffer();
                     sql.append(" delete ");
-                    sql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+                    sql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
                     sql.append(Common.SPACE);
 
                     sql.append(" from ");
-                    sql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+                    sql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
                     sql.append(Common.SPACE);
 
 
@@ -200,18 +200,18 @@ public class MergeIntoStatement extends SqlStatement {
                 case UPDATE:
                     StringBuffer updateSql = new StringBuffer();
                     updateSql.append(" update ");
-                    updateSql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+                    updateSql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
                     String setsql = bean.getMatchedBean().getUpdateSetSql();
                     updateSql.append(Common.SPACE);
                     updateSql.append(replaceTableAlias(setsql));
                     updateSql.append(Common.SPACE);
 
                     updateSql.append(" from ");
-                    updateSql.append(getExecSession().getRealTableName(targetTableName.getFullFuncName()));
+                    updateSql.append(getExecSession().getRealTableName(targetTableName.getRealFullFuncName()));
                     updateSql.append(" ");
 
                     updateSql.append(" inner join ");
-                    updateSql.append(getExecSession().getRealTableName(srcTableName.getFullFuncName()));
+                    updateSql.append(getExecSession().getRealTableName(srcTableName.getRealFullFuncName()));
                     updateSql.append(Common.SPACE);
 
                     updateSql.append(" on ");

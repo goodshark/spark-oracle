@@ -58,21 +58,44 @@ public class FuncName implements Serializable {
         this.schema = schema;
     }
 
+    /**
+     *  原始SP名称，[A].[B].[C] --> A.B.C
+     * @return
+     */
     public String getFullFuncName() {
         StringBuffer sb = new StringBuffer();
-        sb = StringUtils.isNotBlank(this.server) ? sb.append(this.server).append(".") : sb;
-       /* if (sb.length() > 0) {
+//        sb = StringUtils.isNotBlank(this.server) ? sb.append(this.server).append(".") : sb;
+       /* if (sb.length() > 0) {000
             sb.append(".");
         }*/
-        sb = StringUtils.isNotBlank(this.database) ? sb.append(this.database).append(".") : sb;
-        sb = StringUtils.isNotBlank(this.schema) ? sb.append(this.schema).append(".") : sb;
+//        sb = StringUtils.isNotBlank(this.database) ? sb.append(this.database).append(".") : sb;
+//        sb = StringUtils.isNotBlank(this.schema) ? sb.append(this.schema).append(".") : sb;
        /* if (funcName.startsWith("[") && funcName.endsWith("]")) {
             funcName = funcName.substring(1, funcName.length() - 1);
         }*/
-        sb.append(this.funcName);
+//        sb.append(this.funcName);
+        if(StringUtils.isNotBlank(server)) {
+            sb.append(server).append(".");
+        }
+        if(StringUtils.isNotBlank(database)) {
+            sb.append(database).append(".");
+        }
+        if(StringUtils.isNotBlank(schema)) {
+            sb.append(schema).append(".");
+        }
+        if(StringUtils.isNotBlank(funcName)) {
+            sb.append(funcName);
+        }
         return sb.toString().trim();
     }
 
+    /**
+     * SP存储在MYSQL中的名称：
+     * [A].[B].[C]-->A.C
+     * C-->A.C
+     * B.C -->A.C
+     * @return
+     */
     public String getRealFullFuncName() {
         StringBuffer sb = new StringBuffer();
         sb = StringUtils.isNotBlank(this.database) ? sb.append(bracketTrim(this.database)).append(".") : sb;

@@ -36,7 +36,7 @@ public class CreateProcedureStatement extends BaseStatement {
                 if(function.getProcSource()==0){
                     ProcService procService = new ProcService(getExecSession().getSparkSession());
                     if(StringUtils.isBlank(function.getName().getDatabase())){
-                        function.getName().setDatabase(getExecSession().getSparkSession().catalog().currentDatabase());
+                        function.getName().setDatabase(getExecSession().getDatabase());
                     }
                     procService.createProc(function);
                 }
@@ -44,7 +44,7 @@ public class CreateProcedureStatement extends BaseStatement {
             case ALTER:
                 ProcService procService = new ProcService(getExecSession().getSparkSession());
                 if(StringUtils.isBlank(function.getName().getDatabase())){
-                    function.getName().setDatabase(getExecSession().getSparkSession().catalog().currentDatabase());
+                    function.getName().setDatabase(getExecSession().getDatabase());
                 }
                 String procName=function.getName().getRealFullFuncName();
                 int count= procService.getCountByName(procName);

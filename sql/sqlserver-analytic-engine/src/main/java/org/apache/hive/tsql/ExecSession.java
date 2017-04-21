@@ -13,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
 
 /**
  * Created by zhongdg1 on 2016/11/29.
@@ -31,6 +33,8 @@ public class ExecSession {
     private AbstractParseTreeVisitor visitor;
     private boolean isReset = true;
     private String errorStr = "";
+    private String database = "default";
+
 
     // mark break/continue/goto/return/raise/throw cmd
     public enum Scope {
@@ -46,12 +50,25 @@ public class ExecSession {
 //        exceptions = new ArrayList<Exception>();
         this.variableContainer = new VariableContainer();
         resultSets = new ArrayList<>();
+        String sparkDb = sparkSession.catalog().currentDatabase();
+        if (StringUtils.isNotBlank(sparkDb)) {
+            this.database = sparkDb;
+        }
     }
 
 //    public static ExecSession getSession() {
 //        return SessionHolder.session;
 
 //    }
+
+
+    public String getDatabase() {
+        return database;
+    }
+
+    public void setDatabase(String database) {
+        this.database = database;
+    }
 
     public void addLogicalPlans(LogicalPlan plan) {
         logicalPlans.add(plan);

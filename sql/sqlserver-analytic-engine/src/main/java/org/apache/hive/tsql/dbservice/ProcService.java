@@ -85,7 +85,7 @@ public class ProcService {
             stmt.setString(5, procedure.getMd5());
 
 
-            stmt.setString(6, sparkSession.catalog().currentDatabase());
+            stmt.setString(6, procedure.getName().getDatabase());
             stmt.setString(7, sparkSession.sparkSessionUserName());
             stmt.setInt(8, PRO_TYPE);
             stmt.setString(9, procedure.getName().getFullFuncName());
@@ -130,7 +130,7 @@ public class ProcService {
             out.writeObject(procedure);
             stmt.setBytes(2, baos.toByteArray());
             stmt.setString(3, procedure.getMd5());
-            stmt.setString(4, sparkSession.catalog().currentDatabase());
+            stmt.setString(4, procedure.getName().getDatabase());
             stmt.setString(5, sparkSession.sparkSessionUserName());
             stmt.setInt(6, PRO_TYPE);
             stmt.setTimestamp(7, new Timestamp(System.currentTimeMillis()));

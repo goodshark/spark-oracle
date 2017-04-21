@@ -34,7 +34,7 @@ public class ExecuteStatement extends BaseStatement {
     public ExecuteStatement(FuncName funcName) {
         super(STATEMENT_NAME);
         this.funcName = funcName;
-        realFuncName = funcName.getFullFuncName();
+        realFuncName = funcName.getRealFullFuncName();
     }
 
     public void setReturnVarName(String returnVarName) {
