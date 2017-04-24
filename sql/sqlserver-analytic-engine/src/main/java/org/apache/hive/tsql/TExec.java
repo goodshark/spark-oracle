@@ -412,7 +412,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 || dataType.contains("HIERARCHYID")) {
             addException(dataType, locate(ctx));
             return Var.DataType.NULL;
-        }else if (dataType.contains("DECIMAL")){
+        } else if (dataType.contains("DECIMAL")) {
             return Var.DataType.FLOAT;
         } else if (dataType.contains("MONEY")
                 || dataType.contains("NUMERIC")) {
@@ -1247,7 +1247,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (ctx.schema != null) {
             schema = visitId(ctx.schema);
         }
-        funcName =visitId(ctx.table);
+        funcName = visitId(ctx.table);
         FuncName fn = new FuncName(database, funcName, schema);
         tableNameList.add(fn.getRealFullFuncName());
         return fn;
@@ -1359,9 +1359,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return "STRING";
         } else if (dataType.contains("NCHAR")) {
             dataType = dataType.replaceAll("NCHAR", "CHAR");
-            return  StrUtils.trimBracket(dataType);
+            return StrUtils.trimBracket(dataType);
         } else if (dataType.contains("NVARCHAR")) {
-            String d=dataType.replaceAll("NVARCHAR", "VARCHAR");
+            String d = dataType.replaceAll("NVARCHAR", "VARCHAR");
             return StrUtils.replaceAllBracket(d);
         } else {
             return StrUtils.replaceAllBracket(dataType);
@@ -2587,7 +2587,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitColumn_alias(TSqlParser.Column_aliasContext ctx) {
         //如果列名中含有空格和单引号，sparksql不支持，如 select name AS 'Time Range' from tb
         //需要转化为`Time Range`
-        String columnAliasName = ctx.getText().trim();
+        String columnAliasName = "";
+        if (null != ctx.id()) {
+            columnAliasName = visitId(ctx.id());
+        } else {
+            columnAliasName = ctx.getText().trim();
+        }
         StringBuffer stringBuffer = new StringBuffer();
         if (columnAliasName.indexOf("'") != -1 || columnAliasName.lastIndexOf("'") != -1) {
             stringBuffer.append("`").append(columnAliasName.substring(1, columnAliasName.length() - 1));
@@ -2598,7 +2603,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             stringBuffer.append("`");
             return stringBuffer.toString();
         }
-        return columnAliasName;
+        return stringBuffer.append("`").append(columnAliasName).append("`").toString();
     }
 
     @Override
@@ -3906,10 +3911,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
              * 解决 select a1.*, NULL as Billing_Month, 1+2 as ss from a1
              * 列为null
              */
-            if(StringUtils.isBlank(expression)|| StringUtils.equals(expression.toUpperCase().trim(),"NULL")){
+            if (StringUtils.isBlank(expression) || StringUtils.equals(expression.toUpperCase().trim(), "NULL")) {
                 columnBean.setCloumnName("'' ");
-                expression ="'' ";
-            }else{
+                expression = "'' ";
+            } else {
                 columnBean.setCloumnName(expression);
             }
             stringBuffer.append(expression);
