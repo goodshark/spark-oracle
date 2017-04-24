@@ -41,7 +41,7 @@ public class ProcService {
     }
 
     public int createProc(Procedure procedure) throws Exception {
-        String procName = procedure.getName().getFullFuncName();
+        String procName = procedure.getName().getRealFullFuncName();
         int count = getCountByName(procName);
         LOG.info("count is ===>" + count);
         if (count > 0) {
@@ -74,7 +74,7 @@ public class ProcService {
             DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
             connection = dbUtils.getConn();
             stmt = connection.prepareStatement(sql.toString());
-            stmt.setString(1, procedure.getName().getRealFullFuncName());
+            stmt.setString(1, procName);
             stmt.setString(2, procedure.getProcSql());
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -116,6 +116,7 @@ public class ProcService {
         sql.append(" WHERE ");
         sql.append("PROC_NAME =");
         sql.append("?");
+        sql.append(" AND  DEL_FLAG= 1");
         Connection connection = null;
         PreparedStatement stmt = null;
         int rs = 0;
@@ -221,6 +222,7 @@ public class ProcService {
         sql.append(" WHERE ");
         sql.append("PROC_NAME =");
         sql.append("?");
+        sql.append(" AND DEL_FLAG =1");
         Connection connection = null;
         PreparedStatement stmt = null;
         ResultSet rs;
