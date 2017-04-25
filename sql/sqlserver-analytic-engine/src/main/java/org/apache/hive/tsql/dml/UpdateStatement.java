@@ -48,6 +48,8 @@ public class UpdateStatement extends SqlStatement {
         for (String tableName: tableVariables) {
             execSql= replaceTableName(tableName,execSql);
         }
+        // 替换sql中的变量
+        execSql = replaceVariable(execSql, localIdVariableName);
         setRs(commitStatement(execSql));
         return 0;
     }

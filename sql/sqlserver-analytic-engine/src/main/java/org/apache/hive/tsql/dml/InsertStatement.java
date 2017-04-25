@@ -113,15 +113,6 @@ public class InsertStatement extends SqlStatement {
     }
 
 
-    /**
-     * 保存sql中的变量名字
-     * 如 insert into test_person values(@a,20+9,55.5,'1945-3-5','');
-     */
-    private Set<String> localIdVariableName = new HashSet<String>();
-
-    public void addVariables(Set<String> variables) {
-        localIdVariableName.addAll(variables);
-    }
 
 
     public void addInsertValuesNode(TreeNode node) {

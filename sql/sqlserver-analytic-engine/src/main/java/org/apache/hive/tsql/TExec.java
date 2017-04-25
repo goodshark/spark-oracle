@@ -34,6 +34,16 @@ import java.util.*;
  * Created by zhongdg1 on 2016/11/23.
  */
 public class TExec extends TSqlBaseVisitor<Object> {
+
+
+    /**
+     * for acid table
+     */
+    private boolean procFlag = false;
+    private String crudStr = "  CLUSTERED BY (%s) INTO 1 BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\")";
+
+
+
     private LinkedList<TreeNode> curNodeStack = new LinkedList<TreeNode>();
 
     private TreeNode rootNode; //解析编译过程的目标就是构造这个treenode
@@ -238,6 +248,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public BaseStatement visitCreate_procedure(TSqlParser.Create_procedureContext ctx) {
+        procFlag = true;
         String sourceSql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         FuncName funcName = visitFunc_proc_name(ctx.func_proc_name());
@@ -1261,14 +1272,20 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
 
+
     @Override
     public SqlStatement visitCreate_table(TSqlParser.Create_tableContext ctx) {
         String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
         checkLength(tableName, 128, "table name ");
         CreateTableStatement createTableStatement = new CreateTableStatement(tableName);
-        createTableStatement.setColumnDefs(visitColumn_def_table_constraints(ctx.column_def_table_constraints()));
+        String columnDefs = visitColumn_def_table_constraints(ctx.column_def_table_constraints());
+        createTableStatement.setColumnDefs(columnDefs);
         if (ctx.crud_table() != null) {
             createTableStatement.setCrudStr(visitCrud_table(ctx.crud_table()));
+        }
+        if(procFlag&&ctx.crud_table()==null){
+            String column = columnDefs.contains(",") ? columnDefs.split(",")[0]:columnDefs;
+            createTableStatement.setCrudStr(String.format(crudStr, column ));
         }
         if (null != ctx.ON() || null != ctx.TEXTIMAGE_ON()) {
             addException(" filegroup", locate(ctx));
@@ -1363,6 +1380,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else if (dataType.contains("NVARCHAR")) {
             String d = dataType.replaceAll("NVARCHAR", "VARCHAR");
             return StrUtils.replaceAllBracket(d);
+        } else if (dataType.contains("INT")) {
+            return "INT";
         } else {
             return StrUtils.replaceAllBracket(dataType);
         }
@@ -1449,7 +1468,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitAlter_table(TSqlParser.Alter_tableContext ctx) {
-        SqlStatement rs = new SqlStatement(Common.ALTER_TABLE);
+        AlterTableStatement alterTableStatement = new AlterTableStatement();
         StringBuffer sql = new StringBuffer();
         sql.append(ctx.ALTER(0).getText()).append(Common.SPACE);
         sql.append(ctx.TABLE(0).getText()).append(Common.SPACE);
@@ -1495,9 +1514,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(ctx.column_def_table_constraint().column_definition().id(0).getText()).append(Common.SPACE);
             sql.append(visitColumn_def_table_constraint(ctx.column_def_table_constraint()));
         }
-        rs.setSql(sql.toString());
-        pushStatement(rs);
-        return rs;
+        alterTableStatement.setSql(sql.toString());
+        alterTableStatement.addTables(tableNameList);
+
+        pushStatement(alterTableStatement);
+        return alterTableStatement;
     }
 
     @Override
@@ -1873,6 +1894,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         cleanTableVariable();
         updateStatement.setSql(sql.toString());
         updateStatement.addTableNames(tableNameList);
+        updateStatement.addVariables(localIdVariable);
         pushStatement(updateStatement);
         return updateStatement;
 
@@ -1998,6 +2020,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         pushStatement(deleteStatement);
         deleteStatement.setSql(sql.toString());
         deleteStatement.addTableNames(tableNameList);
+        deleteStatement.addVariables(localIdVariable);
         return deleteStatement;
     }
 
@@ -2415,8 +2438,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             SelectIntoBean selectIntoBean = new SelectIntoBean();
             selectIntoBean.setTableNanme(tableName);
             querySpecificationBean.setSelectIntoBean(selectIntoBean);
-            intoTableSql = "create table " + tableName + " as ";
-
+            if(procFlag&& !columns.isEmpty() && null!=columns.get(0)){
+                intoTableSql = "create table " + tableName + String.format(crudStr,columns.get(0).getCloumnName() ) +  " as ";
+            }else{
+                intoTableSql = "create table " + tableName + " as ";
+            }
         }
         if (null != ctx.FROM()) {
             rs.append(ctx.FROM().getText()).append(Common.SPACE);

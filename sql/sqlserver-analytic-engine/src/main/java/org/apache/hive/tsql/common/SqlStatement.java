@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -32,6 +33,17 @@ public class SqlStatement extends BaseStatement implements Serializable {
     @Override
     public BaseStatement createStatement() {
         return null;
+    }
+
+
+    /**
+     * 保存sql中的变量名字
+     * 如 insert into test_person values(@a,20+9,55.5,'1945-3-5','');
+     */
+    public Set<String> localIdVariableName = new HashSet<String>();
+
+    public void addVariables(Set<String> variables) {
+        localIdVariableName.addAll(variables);
     }
 
     /**

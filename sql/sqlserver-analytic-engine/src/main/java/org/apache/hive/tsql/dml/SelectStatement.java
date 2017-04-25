@@ -23,13 +23,6 @@ public class SelectStatement extends SqlStatement {
     }
 
     /**
-     * 保存sql中的变量名字,对应于g4文件中的localId
-     * 如 WHERE OrganizationLevel > @cond AND OrganizationLevel < @cond sql中的@cond
-     */
-    private Set<String> localIdVariableName = new HashSet<String>();
-
-
-    /**
      * 将执行sql的结果 赋于一个变量
      * 如select  @aa=string2  from boolean_ana where string1 ='code'
      */
@@ -66,11 +59,7 @@ public class SelectStatement extends SqlStatement {
         setRs(commitStatement(execSQL));
         //TODO 如果select中的含有结果,将改变变量的值
         if (resultSetVariable.size() > 0) {
-            if (getRs().getRow() <= 0) {
-                throw new Exception(" it has not resultSet in select statement");
-            } else {
-                updateResultVar((SparkResultSet) getRs());
-            }
+            updateResultVar((SparkResultSet) getRs());
         }
         return 1;
     }
@@ -92,6 +81,13 @@ public class SelectStatement extends SqlStatement {
         if (resultSetVariable.size() != filedNames.size()) {
             throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
         }
+        if(resultSet.getRow()<0){
+            //结果集中没有结果，将对变量赋值为null
+            for (int i = 0; i < resultSetVariable.size(); i++) {
+                getExecSession().getVariableContainer().setVarValue(resultSetVariable.get(i), null);
+            }
+        }
+
         Row row = null;
         while (resultSet.next()) {
             row = resultSet.fetchRow();
@@ -136,9 +132,7 @@ public class SelectStatement extends SqlStatement {
         }
     }
 
-    public void addVariables(Set<String> variables) {
-        localIdVariableName.addAll(variables);
-    }
+
 
     public void addResultSetVariables(List<String> variables) {
         resultSetVariable.addAll(variables);
