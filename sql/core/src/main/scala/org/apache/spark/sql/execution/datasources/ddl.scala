@@ -187,12 +187,20 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
         columnMap += (array(0).toLowerCase -> array(1))
       }
     }
-    tableMetadata.bucketSpec
-      .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.foreach(bucketColumnName => {
-      if (columnMap.contains(bucketColumnName)) {
-        throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
-      }
-    })
+
+    /**
+      * bucket number =1 时可以更新桶字段
+      */
+    if (tableMetadata.bucketSpec
+      .getOrElse(new BucketSpec(-1, Seq(), Seq())).numBuckets > 1) {
+      tableMetadata.bucketSpec
+        .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.foreach(bucketColumnName => {
+        if (columnMap.contains(bucketColumnName)) {
+          throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
+        }
+      })
+    }
+
 
     tableMetadata.partitionColumnNames.foreach(p => {
       if (columnMap.contains(p)) {
@@ -206,12 +214,6 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
         colString.append(",")
       } else {
         if (!partitionSet.contains(column.name)) {
-          logInfo("tableNameAlias is " + tableNameAlias)
-
-          logInfo("db+tb  ==>" + db + "." + tb)
-
-          logInfo("tableNameAlias equals  ==>" + (tableNameAlias.equals(db + "." + tb)))
-
           if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
             colString.append(tb)
           } else {
