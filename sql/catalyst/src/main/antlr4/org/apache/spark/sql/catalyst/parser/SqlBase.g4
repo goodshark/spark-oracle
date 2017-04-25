@@ -349,11 +349,15 @@ relationUpate
 	: tableNameUpdate joinRelationUpate*
 	;
 
+sub_query
+    :'(' queryNoWith ')'  query_table=strictIdentifier (AS? table_alias=strictIdentifier)?
+    ;
+
 tableNameUpdate
 	: tableIdentifier sample? (AS? strictIdentifier)?
 	;
 joinRelationUpate
-	:(joinType) JOIN right=tableNameUpdate joinCriteria?
+	:(joinType) JOIN (right=tableNameUpdate | query_join=sub_query) joinCriteria?
 	;
 
 assignExpression

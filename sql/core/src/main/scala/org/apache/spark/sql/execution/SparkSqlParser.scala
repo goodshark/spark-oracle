@@ -78,7 +78,9 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
       val join = ctx.deleteStatement().joinRelationUpate()
       if (null != join) {
         join.asScala.foreach(j => {
-          parseTableName(j.tableNameUpdate(), tableNames)
+          if (null!=j.right) {
+            parseTableName(j.tableNameUpdate(), tableNames)
+          }
         }
         )
       }
@@ -110,8 +112,9 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
         parseTableName(tbName, tableNames)
         val joinRelation = r.joinRelationUpate().asScala
         joinRelation.foreach(j => {
-          val tbName = j.tableNameUpdate()
-          parseTableName(tbName, tableNames)
+          if (null!=j.right) {
+            parseTableName(j.tableNameUpdate(), tableNames)
+          }
         })
       })
       if (tableNames.contains(tableNameAlias)) {

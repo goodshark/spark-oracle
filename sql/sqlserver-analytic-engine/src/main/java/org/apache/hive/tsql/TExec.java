@@ -3697,7 +3697,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (withExpressionSqlMap.containsKey(tableName) && withFlag) {
             rs.append("( ");
             rs.append(withExpressionSqlMap.get(tableName));
-            rs.append(") " + tableName);
+            rs.append(") ");
+            // rs.append(tableName);
         } else {
             rs.append(tableName);
         }
