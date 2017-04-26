@@ -91,6 +91,8 @@ public class UdfFactory {
             registFunction("Coalesce".toUpperCase(), "org.apache.hive.tsql.udf.CoalesceCalculator");
             registFunction("error_message".toUpperCase(), "org.apache.hive.tsql.udf.ErrorMessageCalculator");
             registFunction("iif".toUpperCase(), "org.apache.hive.tsql.udf.IifCalculator");
+            registFunction("ERROR_NUMBER".toUpperCase(), "org.apache.hive.tsql.udf.ErrorNumberCalculator");
+            registFunction("USER_NAME".toUpperCase(), "org.apache.hive.tsql.udf.UserNameCalculator");
         } catch (Exception e) {
             e.printStackTrace();
         }

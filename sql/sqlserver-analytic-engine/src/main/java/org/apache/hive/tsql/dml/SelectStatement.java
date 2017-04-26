@@ -81,11 +81,12 @@ public class SelectStatement extends SqlStatement {
         if (resultSetVariable.size() != filedNames.size()) {
             throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
         }
-        if(resultSet.getRow()<0){
+        if(resultSet.getRow()<=0){
             //结果集中没有结果，将对变量赋值为null
             for (int i = 0; i < resultSetVariable.size(); i++) {
                 getExecSession().getVariableContainer().setVarValue(resultSetVariable.get(i), null);
             }
+            return;
         }
 
         Row row = null;
