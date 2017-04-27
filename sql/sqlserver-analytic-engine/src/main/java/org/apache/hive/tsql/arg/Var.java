@@ -254,7 +254,7 @@ public class Var implements Serializable {
     }
 
     public Object getVarValue() throws ParseException {
-        if (null == varValue) {
+        if (null == varValue || null == varValue.toString()) {
             return null;
         }
         switch (dataType) {
@@ -282,6 +282,7 @@ public class Var implements Serializable {
         }
         return varValue;
     }
+
 
 
     public String getExecString() throws ParseException {
