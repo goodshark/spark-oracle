@@ -1,7 +1,10 @@
 package org.apache.hive.tsql.arg;
 
 import org.apache.hive.tsql.cursor.Cursor;
+import org.apache.hive.tsql.dml.SelectStatement;
 import org.apache.hive.tsql.func.Procedure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
 import java.util.Set;
@@ -27,7 +30,7 @@ public class VariableContainer {
     private ConcurrentHashMap<String, Cursor> globalCursors = new ConcurrentHashMap<>();//全局游标
     //系统变量
     private ConcurrentHashMap<String, Var> systemVariables = new ConcurrentHashMap<>();
-
+    private static final Logger LOG = LoggerFactory.getLogger(VariableContainer.class);
     public VariableContainer() {
         //init system variables
         addOrUpdateSys(new Var(SystemVName.FETCH_STATUS, 0, Var.DataType.INT));

@@ -1285,6 +1285,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if(procFlag&&ctx.crud_table()==null){
             String column = columnDefs.contains(",") ? columnDefs.split(",")[0]:columnDefs;
+            column = column.split(" ")[0];
             createTableStatement.setCrudStr(String.format(crudStr, column ));
         }
         if (null != ctx.ON() || null != ctx.TEXTIMAGE_ON()) {
@@ -1460,7 +1461,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public List<String> visitColumn_name_list(TSqlParser.Column_name_listContext ctx) {
         List<String> columns = new ArrayList<>();
         for (TSqlParser.IdContext idContext : ctx.id()) {
-            columns.add(visitId(idContext));
+            columns.add(StrUtils.replaceAllBracketToQuit(visitId(idContext)));
         }
         return columns;
     }
@@ -3924,7 +3925,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             String localIdVariableName = expressionContext.getChild(0).getText();
             if (localIdVariableName.contains("@")) {
                 resultSetVariable.add(localIdVariableName);
-                SqlStatement exprStatement = (SqlStatement) visit(expressionContext.getChild(2));
+                TreeNode exprStatement = (TreeNode) visit(expressionContext.getChild(2));
                 popStatement();
                 String expression = exprStatement.getSql();
                 columnBean.setCloumnName(expression);
@@ -3987,9 +3988,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public String visitCrud_table(TSqlParser.Crud_tableContext ctx) {
-        String crudSql = ctx.start.getInputStream().getText(
-                new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return crudSql;
+        StringBuffer crud = new StringBuffer();
+        crud.append ("CLUSTERED BY (");
+        crud.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
+        crud.append(")");
+        crud.append(" INTO ");
+        crud.append(ctx.DECIMAL().getText());
+        crud.append(" BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\") ");
+        return crud.toString();
     }
 
 
