@@ -13,6 +13,6 @@ public class ErrorMessageCalculator extends BaseCalculator {
 
     @Override
     public Var compute() throws Exception {
-        return new Var(getExecSession().getErrorStr(), Var.DataType.STRING);
+        return new Var(getExecSession().getErrorStr().replace("'", "\"").replace(";", " "), Var.DataType.STRING);
     }
 }
