@@ -972,7 +972,7 @@ join_part
     ;
 
 table_name_with_hint
-    : table_name with_table_hints?
+    : table_name with_table_hints_lock_table?
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms190312.aspx
@@ -1065,6 +1065,11 @@ table_alias
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
 with_table_hints
     : WITH '(' table_hint (',' table_hint)* ')'
+    ;
+
+// https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
+with_table_hints_lock_table
+    : WITH? '(' table_hint (',' table_hint)* ')'
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
