@@ -186,7 +186,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     sb.append("(")
     columnMap.keySet.foreach( k => {
       sb.append(k)
-      sb.find(",")
+      sb.append(",")
     }
     )
     sb.append(vid)
