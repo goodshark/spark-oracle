@@ -163,12 +163,29 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       optionalMap(ctx.insertInto())(withInsertInto)
   }
 
+
+  /**
+    * {@inheritDoc }
+    *
+    * <p>The default implementation returns the result of calling
+    * {@link #visitChildren} on {@code ctx}.</p>
+    */
+  override def visitInsertColumns(ctx: InsertColumnsContext): Seq[String] = {
+
+    if (null == ctx || ctx.identifierSeq() == null) {
+      return Seq.empty[String]
+    }
+    visitIdentifierSeq(ctx.identifierSeq()).map(_ trim).map(_ toLowerCase)
+  }
+
+
   /**
    * Add an INSERT INTO [TABLE]/INSERT OVERWRITE TABLE operation to the logical plan.
    */
   private def withInsertInto(
       ctx: InsertIntoContext,
       query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
+
     val tableIdent = visitTableIdentifier(ctx.tableIdentifier)
     val partitionKeys = Option(ctx.partitionSpec).map(visitPartitionSpec).getOrElse(Map.empty)
 
@@ -181,6 +198,12 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     val staticPartitionKeys: Map[String, String] =
       partitionKeys.filter(_._2.nonEmpty).map(t => (t._1, t._2.get))
 
+    var insertColumns : Seq[String] = null;
+    if (null != ctx.insertColumns()) {
+      insertColumns = visitInsertColumns(ctx.insertColumns())
+    }
+
+
     InsertIntoTable(
       UnresolvedRelation(tableIdent, None),
       partitionKeys,
@@ -188,7 +211,8 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       OverwriteOptions(overwrite, if (overwrite) staticPartitionKeys else Map.empty),
       ctx.EXISTS != null,
       ctx.tableIdentifier().table.getText,
-      Option(ctx.tableIdentifier().db).map(_.getText))
+      Option(ctx.tableIdentifier().db).map(_.getText),
+      Option(insertColumns))
   }
 
   /**

@@ -17,9 +17,9 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
-import scala.collection.mutable.ArrayBuffer
-
 import org.apache.spark.sql.catalyst.TableIdentifier
+
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes
 import org.apache.spark.sql.catalyst.expressions._
@@ -386,7 +386,8 @@ case class InsertIntoTable(
     overwrite: OverwriteOptions,
     ifNotExists: Boolean,
     tableName: String = null,
-    dbName: Option[String] = null)
+    dbName: Option[String] = null,
+    insertColumns: Option[Seq[String]] = null)
   extends LogicalPlan {
 
   override def children: Seq[LogicalPlan] = child :: Nil
@@ -396,6 +397,21 @@ case class InsertIntoTable(
   assert(partition.values.forall(_.nonEmpty) || !ifNotExists)
 
   override lazy val resolved: Boolean = childrenResolved && table.resolved
+
+
+
+  def insertColumnLength(): Int = {
+    if (null == insertColumns) {
+      0
+    }
+    insertColumns match {
+      case Some(columns) => columns.length
+      case None => 0
+    }
+
+  }
+
+
 }
 
 /**

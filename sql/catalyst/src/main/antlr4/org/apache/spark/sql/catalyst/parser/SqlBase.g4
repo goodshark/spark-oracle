@@ -233,13 +233,9 @@ insertColumns
      :'('identifierSeq')'
      ;
 
-insertIntoWithColumns
-     : INSERT OVERWRITE TABLE tableIdentifier insertColumns (partitionSpec (IF NOT EXISTS)?)?
-     | INSERT INTO TABLE? tableIdentifier insertColumns partitionSpec?
-        ;
 insertInto
-    : INSERT OVERWRITE TABLE tableIdentifier (partitionSpec (IF NOT EXISTS)?)?
-    | INSERT INTO TABLE? tableIdentifier partitionSpec?
+    : INSERT OVERWRITE TABLE tableIdentifier insertColumns? (partitionSpec (IF NOT EXISTS)?)?
+    | INSERT INTO TABLE? tableIdentifier insertColumns? partitionSpec?
     ;
 
 partitionSpecLocation
@@ -325,7 +321,7 @@ resource
     ;
 
 queryNoWith
-    : (insertInto|insertIntoWithColumns)? queryTerm queryOrganization                                              #singleInsertQuery
+    : insertInto? queryTerm queryOrganization                                              #singleInsertQuery
     | fromClause multiInsertQueryBody+                                                     #multiInsertQuery
     | deleteStatement                                                                      #delete
     | updateStatement                                                                      #update
@@ -374,7 +370,7 @@ queryOrganization
     ;
 
 multiInsertQueryBody
-    : (insertInto|insertIntoWithColumns)?
+    : insertInto?
       querySpecification
       queryOrganization
     ;
