@@ -1,7 +1,10 @@
 package org.apache.hive.tsql.dbservice;
 
 
+import org.apache.hive.tsql.ProcedureCli;
 import org.apache.hive.tsql.common.Common;
+import org.apache.hive.tsql.common.MD5Util;
+import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
@@ -27,6 +30,7 @@ public class ProcService {
     private String dbUrl;
     private String userName;
     private String password;
+    private ProcedureCli procedureCli;
 
 
     public ProcService(SparkSession sparkSession) {
@@ -38,6 +42,7 @@ public class ProcService {
         dbUrl = sparkSession.sparkContext().hadoopConfiguration().get(Common.DBURL);
         userName = sparkSession.sparkContext().hadoopConfiguration().get(Common.USER_NAME);
         password = sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD);
+        procedureCli = new ProcedureCli(sparkSession);
     }
 
     public int createProc(Procedure procedure) throws Exception {
@@ -149,6 +154,42 @@ public class ProcService {
 
     }
 
+
+    public int updateProcObject(Procedure procedure) throws Exception {
+        StringBuffer sql = new StringBuffer();
+        sql.append("  UPDATE ").append(TABLE_NAME);
+        sql.append(" SET  ");
+        sql.append(" PROC_OBJECT = ?");
+        sql.append(" WHERE ");
+        sql.append("PROC_NAME =");
+        sql.append("?");
+        sql.append(" AND  DEL_FLAG= 1");
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        int rs = 0;
+        ObjectOutputStream out = null;
+        try {
+            DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
+            connection = dbUtils.getConn();
+            stmt = connection.prepareStatement(sql.toString());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            out = new ObjectOutputStream(baos);
+            out.writeObject(procedure);
+            stmt.setBytes(1, baos.toByteArray());
+            stmt.setString(2, procedure.getName().getFullFuncName());
+            rs = stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOG.error(" update Proc sql : " + sql.toString() + " error.", e);
+            throw e;
+        } finally {
+            close(connection, stmt);
+            out.close();
+        }
+        return rs;
+
+    }
+
+
     public int delProc(String procName) throws SQLException {
         LOG.info(" del proc by procName:" + procName);
         StringBuffer sql = new StringBuffer();
@@ -227,7 +268,7 @@ public class ProcService {
         PreparedStatement stmt = null;
         ResultSet rs;
         Procedure procedure = null;
-        ObjectInputStream in = null;
+        FakeObjectInputStream in = null;
         try {
             DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
             connection = dbUtils.getConn();
@@ -237,8 +278,19 @@ public class ProcService {
             if (rs.next()) {
                 byte[] procedureObject = rs.getBytes("PROC_OBJECT");
                 ByteArrayInputStream bais = new ByteArrayInputStream(procedureObject);
-                in = new ObjectInputStream(bais);
-                procedure = (Procedure) in.readObject();//从流中读取对象
+                in = new FakeObjectInputStream(bais);
+                if (in.checkSerialVersionUIDIsRight()) {
+                    procedure = (Procedure) in.readObject();//从流中读取对象
+                } else {
+                    try {
+                        delProc(procName);
+                        String sqlContent = rs.getString("PROC_CONTENT");
+                        procedureCli.callProcedure(sqlContent);
+                    } catch (Throwable e) {
+                        LOG.error("SerialVersionUID is change, run proc again .", e);
+                        throw new Exception(e.getMessage());
+                    }
+                }
             }
         } catch (Exception e) {
             LOG.error(" execute getCountByName sql : " + sql.toString() + " error.", e);

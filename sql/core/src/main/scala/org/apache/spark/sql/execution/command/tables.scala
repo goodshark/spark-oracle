@@ -144,6 +144,23 @@ case class AlterTableChangeColumnsCommand(tableName: TableIdentifier,
   }
 }
 
+case class CreateIndexCommand(tableName: String, indexName: String, indexHandlerClass: String,
+                              indexedCols: java.util.List[String],
+                              indexTblName: String, deferredRebuild: Boolean,
+                              indexCommentContext: String) extends RunnableCommand{
+
+  override def run(sparkSession: SparkSession): Seq[Row] =  {
+    val catalog = sparkSession.sqlContext.sharedState.externalCatalog
+    catalog.createIndex(tableName, indexName, indexHandlerClass,
+      indexedCols, indexTblName, deferredRebuild,
+      null, null, null, null, null, null, null,
+      null, null, null, null, null, null, indexCommentContext)
+    Seq.empty[Row]
+  }
+
+
+}
+
 
 
 

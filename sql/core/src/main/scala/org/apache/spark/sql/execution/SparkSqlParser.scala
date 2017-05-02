@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.execution
 
+import java.util
+
 import scala.collection.JavaConverters._
 import scala.util.Try
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
@@ -910,6 +912,36 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
     val changNewCol = visitColType(ctx.colType())
     val oldColName = ctx.identifier().getText
     AlterTableChangeColumnsCommand(tableName, oldColName, changNewCol)
+  }
+
+  /**
+    * fro create index
+    *
+    * @param ctx the parse tree
+    */
+  override def visitCreateIndex(ctx: CreateIndexContext): LogicalPlan = withOrigin(ctx) {
+    val tableName = visitTableIdentifier(ctx.tab).table
+    val indexName = ctx.indexName.getText
+    val indexHandlerClass = ctx.typeName.getText
+    val indexedCols: java.util.List[String] = new util.ArrayList[String]()
+    val cols = ctx.indexedCols.columnName().asScala
+    cols.foreach(c => {
+      indexedCols.add(c.getText)
+    })
+    var indexTblName:String = null
+    if (null!=ctx.indexTblName()) {
+      indexTblName = ctx.indexTblName().indexTbl.getText
+    }
+    var deferredRebuild: Boolean = false
+    if (null != ctx.autoRebuild()) {
+      deferredRebuild = true
+    }
+    var indexCommentContext:String = null
+    if (null!= ctx.indexComment()) {
+      indexCommentContext = ctx.indexComment().getText
+    }
+    CreateIndexCommand(tableName, indexName, indexHandlerClass,
+      indexedCols, indexTblName, deferredRebuild, indexCommentContext)
   }
 
   /**
