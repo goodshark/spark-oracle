@@ -17,11 +17,6 @@
 
 package org.apache.spark.sql.execution.datasources
 
-import java.util.regex.Pattern
-
-import scala.util.control.NonFatal
-
-import org.apache.spark.sql.{AnalysisException, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis._
 import org.apache.spark.sql.catalyst.catalog.{BucketSpec, CatalogRelation, CatalogTable, SessionCatalog}
@@ -33,6 +28,10 @@ import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources.{BaseRelation, InsertableRelation}
 import org.apache.spark.sql.types.{AtomicType, StructType}
+import org.apache.spark.sql.{AnalysisException, SaveMode, SparkSession}
+
+import scala.collection.mutable.ListBuffer
+import scala.util.control.NonFatal
 
 /**
  * Try to replaces [[UnresolvedRelation]]s with [[ResolveDataSource]].
@@ -205,18 +204,90 @@ case class AnalyzeCreateTable(sparkSession: SparkSession) extends Rule[LogicalPl
  * inserted have the correct data type and fields have the correct names.
  */
 case class PreprocessTableInsertion(conf: SQLConf) extends Rule[LogicalPlan] {
+
+  def locateColumns(insert: InsertIntoTable): Seq[Int] = {
+    val buf: ListBuffer[Int] = new ListBuffer[Int]
+    val iColumns = insert.insertColumns.get
+    val allColumns = insert.table.output.map(_.name.toLowerCase)
+    for (i <- 0 to (iColumns.length - 1)) {
+      val index = allColumns.indexOf(iColumns(i))
+      if (index > -1) {
+        buf += index
+      }
+    }
+    buf
+  }
+
+  private def checkColumnExisting(columnName: String,
+                          attributes: Seq[Attribute], tblName: String): Boolean = {
+    var i = 0
+    var flag = false
+    while(!flag && i < attributes.length) {
+      if (columnName.equalsIgnoreCase(attributes(i).name)) {
+        flag = true
+      }
+      i+=1
+    }
+    if (!flag) {
+      throw new AnalysisException(
+        s"Cannot insert into table $tblName because the column not found in table: " +
+          s"need column $columnName")
+    }
+
+    flag
+  }
+
+  private def recordInsertColumnPosition(insert: InsertIntoTable): Unit = {
+    val positions = locateColumns(insert).mkString(",")
+    logInfo(s"set spark.exe.insert.positions=$positions")
+    //      conf.setConfString("spark.exe.insert.columns", insertColumnsStr)
+    conf.setConfString("spark.exe.insert.positions", positions)
+  }
+
+  private def filterExceptedColumns(expectColumns: Seq[Attribute],
+                                    positions: Seq[Int]): Seq[Attribute] = {
+    val buf: ListBuffer[Attribute] = new ListBuffer[Attribute]
+    for (i <- 0 to (positions.length - 1)) {
+        buf += expectColumns(positions(i))
+    }
+    buf
+  }
+
+
+  private def checkDuplicateColumns(columns: Seq[String], tblName: String ): Unit = {
+    if (columns.length > columns.toSet.size) {
+      throw new AnalysisException(
+        s"Cannot insert into table $tblName because the insert columns include Duplicate columns")
+    }
+  }
+
   private def preprocess(
       insert: InsertIntoTable,
       tblName: String,
       partColNames: Seq[String]): InsertIntoTable = {
 
+
     val normalizedPartSpec = PartitioningUtils.normalizePartitionSpec(
       insert.partition, partColNames, tblName, conf.resolver)
 
-    val expectedColumns = {
+    val specialColumnsLength = insert.insertColumnLength()
+
+    var expectedColumns = {
       val staticPartCols = normalizedPartSpec.filter(_._2.isDefined).keySet
       insert.table.output.filterNot(a => staticPartCols.contains(a.name))
     }
+
+    if (specialColumnsLength > 0) {
+      insert.insertColumns.get.map(columnName =>
+                                    checkColumnExisting(columnName, insert.table.output, tblName))
+      checkDuplicateColumns(insert.insertColumns.get, tblName)
+
+      expectedColumns = filterExceptedColumns(expectedColumns, locateColumns(insert))
+      recordInsertColumnPosition(insert)
+    } else {
+      conf.setConfString("spark.exe.insert.positions", "")
+    }
+
 
     if (expectedColumns.length != insert.child.schema.length) {
       throw new AnalysisException(
@@ -224,6 +295,10 @@ case class PreprocessTableInsertion(conf: SQLConf) extends Rule[LogicalPlan] {
           s"need ${expectedColumns.length} columns, " +
           s"but query has ${insert.child.schema.length} columns.")
     }
+
+//    logError("spark.exe.insert.columns = " + conf.getConfString("spark.exe.insert.columns"))
+//    logError("spark.exe.insert.positions = " + conf.getConfString("spark.exe.insert.positions"))
+
 
     if (normalizedPartSpec.nonEmpty) {
       if (normalizedPartSpec.size != partColNames.length) {
@@ -270,7 +345,7 @@ case class PreprocessTableInsertion(conf: SQLConf) extends Rule[LogicalPlan] {
   }
 
   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
-    case i @ InsertIntoTable(table, partition, child, _, _, _, _) if table.resolved && child.resolved =>
+    case i @ InsertIntoTable(table, partition, child, _, _, _, _, _) if table.resolved && child.resolved =>
       table match {
         case relation: CatalogRelation =>
           val metadata = relation.catalogTable
@@ -333,7 +408,7 @@ case class PreWriteCheck(conf: SQLConf, catalog: SessionCatalog)
         }
 
       case logical.InsertIntoTable(
-          l @ LogicalRelation(t: InsertableRelation, _, _), partition, query, _, _, _, _) =>
+          l @ LogicalRelation(t: InsertableRelation, _, _), partition, query, _, _, _, _, _) =>
         // Right now, we do not support insert into a data source table with partition specs.
         if (partition.nonEmpty) {
           failAnalysis(s"Insert into a partition is not allowed because $l is not partitioned.")
@@ -351,7 +426,7 @@ case class PreWriteCheck(conf: SQLConf, catalog: SessionCatalog)
         }
 
       case logical.InsertIntoTable(
-        LogicalRelation(r: HadoopFsRelation, _, _), part, query, _, _, _, _) =>
+        LogicalRelation(r: HadoopFsRelation, _, _), part, query, _, _, _, _, _) =>
         // We need to make sure the partition columns specified by users do match partition
         // columns of the relation.
         val existingPartitionColumns = r.partitionSchema.fieldNames.toSet
@@ -379,7 +454,7 @@ case class PreWriteCheck(conf: SQLConf, catalog: SessionCatalog)
           // OK
         }
 
-      case logical.InsertIntoTable(l: LogicalRelation, _, _, _, _, _, _) =>
+      case logical.InsertIntoTable(l: LogicalRelation, _, _, _, _, _, _, _) =>
         // The relation in l is not an InsertableRelation.
         failAnalysis(s"$l does not allow insertion.")
 

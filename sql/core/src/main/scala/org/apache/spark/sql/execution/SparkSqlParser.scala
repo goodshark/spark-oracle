@@ -127,30 +127,6 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
     return AcidUpdateCommand(ctx, updateTable, tableNameAlias, tableNames)
   }
 
-
-  /**
-    * {@inheritDoc }
-    *
-    * <p>The default implementation returns the result of calling
-    * {@link #visitChildren} on {@code ctx}.</p>
-    */
-  override def visitInsertIntoWithColumns(ctx: InsertIntoWithColumnsContext):
-      LogicalPlan = withOrigin(ctx) {
-    val insertColumns = visitInsertColumns(ctx.insertColumns());
-    InsertIntoWithColumnsCommand(ctx, insertColumns)
-  }
-
-
-  /**
-    * {@inheritDoc }
-    *
-    * <p>The default implementation returns the result of calling
-    * {@link #visitChildren} on {@code ctx}.</p>
-    */
-  override def visitInsertColumns(ctx: InsertColumnsContext): Seq[String] = {
-    visitIdentifierSeq(ctx.identifierSeq())
-  }
-
   /**
     * Create a [[SetCommand]] logical plan.
     *

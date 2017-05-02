@@ -21,13 +21,10 @@ import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTree
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.catalog.{BucketSpec, CatalogTable, CatalogUtils}
+import org.apache.spark.sql.catalyst.parser.SqlBaseParser._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan}
-import org.apache.spark.sql.catalyst.parser.SqlBaseParser._
-import org.apache.spark.sql.catalyst.plans.logical
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.internal.SessionState
 import org.apache.spark.sql.types._
@@ -267,20 +264,6 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     Seq.empty[Row]
   }
 }
-
-case class InsertIntoWithColumnsCommand(ctx: InsertIntoWithColumnsContext,
-                                        insertColumns: Seq[String])
-  extends RunnableCommand {
-
-  def rewrite(sessionState: SessionState): String = {
-    ""
-  }
-
-  override def run(sparkSession: SparkSession): Seq[Row] = {
-    Seq.empty[Row]
-  }
-}
-
 
 case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
                           tableNameAlias: String)
