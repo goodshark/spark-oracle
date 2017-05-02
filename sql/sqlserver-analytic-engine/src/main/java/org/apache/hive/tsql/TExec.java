@@ -2566,7 +2566,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             visitChange_table(ctx.change_table());
         }
         if (null != ctx.function_call()) {
-//            rs.append(visitFunction_call_expression(ctx.function_call()));
+            //rs.append(visitFunction_call_expression(ctx.function_call()));
             if (null != ctx.as_table_alias()) {
                 rs.append(visitAs_table_alias(ctx.as_table_alias()));
             }
@@ -3729,8 +3729,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else {
             rs.append(tableName);
         }
-        if (null != ctx.with_table_hints()) {
-            rs.append(visitWith_table_hints(ctx.with_table_hints()));
+        if (null != ctx.with_table_hints_lock_table()) {
+            rs.append(visitWith_table_hints_lock_table(ctx.with_table_hints_lock_table()));
         }
         return rs.toString();
     }
@@ -3757,10 +3757,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitTable_hint(TSqlParser.Table_hintContext ctx) {
         //TODO LOCK TABLE
-        addException("table hint " + ctx.getText(), locate(ctx));
+        //addException("table hint " + ctx.getText(), locate(ctx));
         return "";
     }
 
+    @Override
+    public String visitWith_table_hints_lock_table(TSqlParser.With_table_hints_lock_tableContext ctx) {
+        //addException("table hint " + ctx.getText(), locate(ctx));
+        return "";
+    }
 
     @Override
     public String visitAs_table_alias(TSqlParser.As_table_aliasContext ctx) {
