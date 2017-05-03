@@ -1736,12 +1736,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.insert_with_table_hints()) {
             visitInsert_with_table_hints(ctx.insert_with_table_hints());
         }
-        //spark sql 不支持insert into table (name ,age) valuse(ss,ss)
-        /*if (null != ctx.column_name_list()) {
+
+        if (null != ctx.column_name_list()) {
             sql.append("(");
             sql.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
             sql.append(")");
-        }*/
+        }
         if (null != ctx.output_clause()) {
             visitOutput_clause(ctx.output_clause());
         }
