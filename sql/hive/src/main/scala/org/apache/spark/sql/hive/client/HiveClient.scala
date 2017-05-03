@@ -270,4 +270,15 @@ private[hive] trait HiveClient {
   /** Used for testing only.  Removes all metadata from this instance of Hive. */
   def reset(): Unit
 
+  /** create index**/
+  def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
+                  indexedCols: java.util.List[String], indexTblName: String, deferredRebuild: Boolean,
+                  inputFormat: String, outputFormat: String, serde: String,
+                  storageHandler: String, location: String,
+                  idxProps: java.util.Map[String, String],
+                  tblProps: java.util.Map[String, String],
+                  serdeProps: java.util.Map[String, String],
+                  collItemDelim: String, fieldDelim: String, fieldEscape: String, lineDelim: String,
+                  mapKeyDelim: String, indexComment: String): Unit
+
 }

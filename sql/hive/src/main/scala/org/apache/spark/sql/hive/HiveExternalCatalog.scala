@@ -1052,6 +1052,21 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     client.listFunctions(db, pattern)
   }
 
+  override def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
+                           indexedCols: util.List[String], indexTblName: String,
+                           deferredRebuild: Boolean, inputFormat: String,
+                           outputFormat: String, serde: String,
+                           storageHandler: String, location: String,
+                           idxProps: util.Map[String, String],
+                           tblProps: util.Map[String, String],
+                           serdeProps: util.Map[String, String],
+                           collItemDelim: String, fieldDelim: String,
+                           fieldEscape: String, lineDelim: String,
+                           mapKeyDelim: String, indexComment: String): Unit = withClient{
+    client.createIndex(tableName, indexName, 	indexHandlerClass ,  indexedCols ,indexTblName ,deferredRebuild, inputFormat ,outputFormat,  serde,storageHandler,location,
+      idxProps, tblProps,serdeProps,collItemDelim,fieldDelim,fieldEscape,lineDelim,mapKeyDelim,indexComment)
+  }
+
 }
 
 object HiveExternalCatalog {

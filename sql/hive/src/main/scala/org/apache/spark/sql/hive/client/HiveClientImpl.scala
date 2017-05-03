@@ -19,6 +19,7 @@ package org.apache.spark.sql.hive.client
 
 import java.io.{File, PrintStream}
 import java.net.URL
+import java.util
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -437,6 +438,24 @@ private[hive] class HiveClientImpl(
     // Do not use `table.qualifiedName` here because this may be a rename
     val qualifiedTableName = s"${table.database}.$tableName"
     client.alterTable(qualifiedTableName, hiveTable)
+  }
+
+  override def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
+                           indexedCols: util.List[String], indexTblName: String,
+                           deferredRebuild: Boolean, inputFormat: String, outputFormat: String,
+                           serde: String, storageHandler: String, location: String,
+                           idxProps: util.Map[String, String],
+                           tblProps: util.Map[String, String],
+                           serdeProps: util.Map[String, String],
+                           collItemDelim: String, fieldDelim: String,
+                           fieldEscape: String, lineDelim: String,
+                           mapKeyDelim: String, indexComment: String): Unit = withHiveState{
+    client.createIndex(tableName, indexName, indexHandlerClass, indexedCols,
+      indexTblName,deferredRebuild, inputFormat,outputFormat,
+      serde,storageHandler,location,idxProps,
+      tblProps,serdeProps,collItemDelim,
+      fieldDelim,fieldEscape,lineDelim,
+      mapKeyDelim,indexComment)
   }
 
   override def createPartitions(
@@ -889,4 +908,6 @@ private[hive] class HiveClientImpl(
         parameters =
           if (hp.getParameters() != null) hp.getParameters().asScala.toMap else Map.empty)
   }
+
+
 }
