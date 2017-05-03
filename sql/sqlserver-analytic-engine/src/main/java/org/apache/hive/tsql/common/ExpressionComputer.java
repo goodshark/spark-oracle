@@ -220,7 +220,7 @@ public class ExpressionComputer {
             return 0;
         } else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
             return var1.getVarValue().toString().compareTo(var2.getVarValue().toString());
-        } else if (var1.getDataType().equals(Var.DataType.DATE) || var2.getDataType().equals(Var.DataType.DATE)) {
+        } else if (var1.isDate() || var2.isDate()) {
 //            return Long.compare(getDateTime(var1), getDateTime(var2));
             return Long.compare(var1.getTime(), var2.getTime());
         } else if (checkVarIsNumber(var1, var2)) {
