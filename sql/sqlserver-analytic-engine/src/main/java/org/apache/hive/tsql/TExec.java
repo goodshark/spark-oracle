@@ -1170,8 +1170,41 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitCreate_index(TSqlParser.Create_indexContext ctx) {
-        addException("CREATE INDEX", locate(ctx));
-        return null;
+        /**
+         *  : CREATE UNIQUE? clustered? INDEX id ON table_name_with_hint '(' column_name_list (ASC | DESC)? ')'
+         (index_options)?
+         (ON id)?
+         ';'?
+         */
+        SqlStatement sqlStatement = new SqlStatement("CREATE INDEX");
+        if(null!=ctx.UNIQUE()){
+            addException("CREATE UNIQUE INDEX", locate(ctx));
+        }
+        if(null!=ctx.clustered()){
+            addException("CREATE clustered INDEX", locate(ctx));
+        }
+        if(null!=ctx.ASC()|| null!=ctx.DESC()){
+            addException("CREATE  INDEX  ON ASC,DESC", locate(ctx));
+        }
+        if(null!=ctx.index_options()){
+            addException("CREATE  INDEX  with [ "+ ctx.index_options().getText()+"]", locate(ctx));
+        }
+
+        /*CREATE INDEX X ON TABLE T(J)
+                AS 'ORG.APACHE.HADOOP.HIVE.QL.INDEX.COMPACT.COMPACTINDEXHANDLER'*/
+        StringBuffer sql = new StringBuffer();
+        sql.append("CREATE INDEX ");
+        sql.append(visitId(ctx.id(0)));
+        sql.append(Common.SPACE);
+        sql.append(" ON ");
+        sql.append(visitTable_name_with_hint(ctx.table_name_with_hint()));
+        sql.append("(");
+        sql.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
+        sql.append(")");
+        sql.append("  AS 'ORG.APACHE.HADOOP.HIVE.QL.INDEX.COMPACT.COMPACTINDEXHANDLER' ");
+        sqlStatement.setSql(sql.toString());
+        pushStatement(sqlStatement);
+        return sqlStatement;
     }
 
     @Override
