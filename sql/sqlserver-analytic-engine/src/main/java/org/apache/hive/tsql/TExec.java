@@ -2828,7 +2828,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.HOURS()) {
             unitStr = ctx.HOURS().getText();
         }
-        TimeUnit unit = TimeUnit.valueOf(unitStr.toUpperCase());
+
+        TimeUnit unit = TimeUnit.DAYS;
+
+        if (StringUtils.isNotBlank(unitStr)) {
+            unit = TimeUnit.valueOf(unitStr.toUpperCase());
+        }
         if (unit != TimeUnit.DAYS) {
             addException("Only support DAYS", locate(ctx));
         }
