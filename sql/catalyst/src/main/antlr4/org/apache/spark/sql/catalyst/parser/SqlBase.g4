@@ -151,8 +151,59 @@ statement
     | SET ROLE .*?                                                     #failNativeCommand
     | SET .*?                                                          #setConfiguration
     | RESET                                                            #resetConfiguration
+    | CREATE INDEX indexName=identifier ON TABLE tab=tableIdentifier  '(' indexedCols=columnNameList ')'
+    	AS typeName=STRING
+    	autoRebuild?
+        indexPropertiesPrefixed?
+        indexTblName?
+        rowFormat?
+        fileFormat?
+        locationSpec?
+        tablePropertiesPrefixed?
+        indexComment?                                                  #createIndex
     | unsupportedHiveNativeCommands .*?                                #failNativeCommand
     ;
+indexComment:
+    |COMMENT comment=STRING
+    ;
+tablePropertiesPrefixed:
+    | TBLPROPERTIES tableProperties
+    ;
+tableProperties:
+    |'(' tablePropertiesList ')'
+    ;
+tablePropertiesList:
+    | keyValueProperty (',' keyValueProperty)*
+    | keyProperty (',' keyProperty)*
+    ;
+indexTblName:
+    |IN TABLE indexTbl=STRING
+    ;
+columnNameList:
+    | columnName ( ',' columnName)*
+    ;
+columnName:
+    | identifier
+    ;
+autoRebuild:
+    |WITH DEFERRED REBUILD
+    ;
+indexPropertiesPrefixed:
+    |IDXPROPERTIES indexProperties
+    ;
+indexProperties:
+    |'(' indexPropertiesList ')'
+    ;
+indexPropertiesList:
+    |keyValueProperty (',' keyValueProperty)*
+    ;
+keyValueProperty:
+    |key=STRING EQ value=STRING
+    ;
+keyProperty:
+    |key=STRING
+    ;
+
 
 unsupportedHiveNativeCommands
     : kw1=CREATE kw2=ROLE
@@ -171,7 +222,7 @@ unsupportedHiveNativeCommands
     | kw1=SHOW kw2=TRANSACTIONS
     | kw1=SHOW kw2=INDEXES
     | kw1=SHOW kw2=LOCKS
-    | kw1=CREATE kw2=INDEX
+    /*| kw1=CREATE kw2=INDEX*/
     | kw1=DROP kw2=INDEX
     | kw1=ALTER kw2=INDEX
     | kw1=LOCK kw2=TABLE
@@ -233,13 +284,9 @@ insertColumns
      :'('identifierSeq')'
      ;
 
-insertIntoWithColumns
-     : INSERT OVERWRITE TABLE tableIdentifier insertColumns (partitionSpec (IF NOT EXISTS)?)?
-     | INSERT INTO TABLE? tableIdentifier insertColumns partitionSpec?
-        ;
 insertInto
-    : INSERT OVERWRITE TABLE tableIdentifier (partitionSpec (IF NOT EXISTS)?)?
-    | INSERT INTO TABLE? tableIdentifier partitionSpec?
+    : INSERT OVERWRITE TABLE tableIdentifier insertColumns? (partitionSpec (IF NOT EXISTS)?)?
+    | INSERT INTO TABLE? tableIdentifier insertColumns? partitionSpec?
     ;
 
 partitionSpecLocation
@@ -325,7 +372,7 @@ resource
     ;
 
 queryNoWith
-    : (insertInto|insertIntoWithColumns)? queryTerm queryOrganization                                              #singleInsertQuery
+    : insertInto? queryTerm queryOrganization                                              #singleInsertQuery
     | fromClause multiInsertQueryBody+                                                     #multiInsertQuery
     | deleteStatement                                                                      #delete
     | updateStatement                                                                      #update
@@ -374,7 +421,7 @@ queryOrganization
     ;
 
 multiInsertQueryBody
-    : (insertInto|insertIntoWithColumns)?
+    : insertInto?
       querySpecification
       queryOrganization
     ;
@@ -970,6 +1017,9 @@ LOCAL: 'LOCAL';
 INPATH: 'INPATH';
 CURRENT_DATE: 'CURRENT_DATE';
 CURRENT_TIMESTAMP: 'CURRENT_TIMESTAMP';
+DEFERRED: 'DEFERRED ';
+REBUILD:'REBUILD';
+IDXPROPERTIES:'IDXPROPERTIES';
 
 STRING
     : '\'' ( ~('\''|'\\') | ('\\' .) )* '\''

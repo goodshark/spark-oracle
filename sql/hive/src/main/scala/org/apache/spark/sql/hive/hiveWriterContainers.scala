@@ -53,6 +53,7 @@ import org.apache.spark.util.SerializableJobConf
 import org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
  * Internal helper class that saves an RDD using a Hive OutputFormat.
@@ -179,7 +180,16 @@ private[hive] class SparkHiveWriterContainer(
       .asInstanceOf[StructObjectInspector]
 
     val fieldOIs = standardOI.getAllStructFieldRefs.asScala.map(_.getFieldObjectInspector).toArray
-    val dataTypes = inputSchema.map(_.dataType)
+    val fieldsLen = fieldOIs.length
+    val allDataTypes = table.catalogTable.schema.map(_.dataType)
+    val dataTypes: ListBuffer[DataType] = new ListBuffer[DataType]
+    for(index <- 0 to (fieldsLen - 1)) {
+      dataTypes += allDataTypes(index)
+    }
+//    val dataTypes = buf.toSeq
+//    val dataTypes = allDataTypes.filter({ index+=1; index < fieldsLen })
+//    val dataTypes = inputSchema.map(_.dataType)
+//    val dataTypes = fieldOIs.map(in => DataType.nameToType(in.getTypeName))
     val wrappers = fieldOIs.zip(dataTypes).map { case (f, dt) => wrapperFor(f, dt) }
     val outputData = new Array[Any](fieldOIs.length)
     (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData)
@@ -332,6 +342,11 @@ private[hive] class SparkHiveWriterContainer(
 
   // this function is executed on executor side
   def writeToFile(context: TaskContext, iterator: Iterator[InternalRow]): Unit = {
+    // for insert with column test
+    val insertPositions = conf.value.getInts("spark.exe.insert.positions")
+//    logError(s"read from conf: insert positions " + insertPositions.mkString(","));
+    // end for insert column test
+
     val transaction_acid_flg = conf.value.get(SPARK_TRANSACTION_ACID, "false")
     if (transaction_acid_flg.equalsIgnoreCase("true")) {
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
@@ -340,8 +355,10 @@ private[hive] class SparkHiveWriterContainer(
         table.tableDesc.getProperties.getProperty("partition_columns").nonEmpty) {
         partitionPath = conf.value.get("spark.partition.value")
       }
+//      val outPutPath = new Path(
+//           FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
       val outPutPath = new Path(
-           FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
+        FileOutputFormat.getOutputPath(conf.value).toString
       )
 
       val bucketColumnNames = table.catalogTable.
@@ -362,7 +379,10 @@ private[hive] class SparkHiveWriterContainer(
             standardOI, fieldOIs, rows, row)
           var i = 0
           while (i < fieldOIs.length) {
-            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+//            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+            outputData(i) = {
+              buildOutputData(insertPositions, dataTypes, wrappers, row, i)
+            }
             rows.add(outputData(i))
             i += 1
           }
@@ -394,13 +414,39 @@ private[hive] class SparkHiveWriterContainer(
       iterator.foreach { row =>
         var i = 0
         while (i < fieldOIs.length) {
-          outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+          outputData(i) = {
+            buildOutputData(insertPositions, dataTypes, wrappers, row, i)
+          }
           i += 1
         }
         writer.write(serializer.serialize(outputData, standardOI))
       }
       close()
     }
+  }
+
+  private def buildOutputData(insertPositions: Array[Int],
+                              dataTypes: ListBuffer[DataType],
+                              wrappers: Array[(Any) => Any], row: InternalRow, i: Int) = {
+    if (row.isNullAt(i)) {
+      null
+    } else {
+      if (insertPositions.isEmpty) {
+        wrappers(i)(row.get(i, dataTypes(i)))
+      } else {
+        val columnIndex = getInsertIndex(i, insertPositions)
+        if (-1 == columnIndex) {
+          null
+        } else {
+          wrappers(i)(row.get(columnIndex, dataTypes(i)))
+        }
+      }
+    }
+  }
+
+  def getInsertIndex(index: Int, positions: Array[Int]): Int = {
+    return positions.indexOf(index)
+
   }
 
   def closeUpdateRecord(updateRecordMap: mutable.Map[Integer, RecordUpdater]): Unit = {

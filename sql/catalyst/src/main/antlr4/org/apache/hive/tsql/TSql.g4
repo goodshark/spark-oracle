@@ -972,7 +972,7 @@ join_part
     ;
 
 table_name_with_hint
-    : table_name with_table_hints?
+    : table_name with_table_hints_lock_table?
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms190312.aspx
@@ -1008,7 +1008,7 @@ function_call
     // https://msdn.microsoft.com/zh-cn/library/hh231076.aspx
     // https://msdn.microsoft.com/zh-cn/library/ms187928.aspx
     | CAST '(' expression AS data_type ')'      #cast_function
-    | function_call sign DECIMAL (DAYS|HOURS|YEARS|MINUTES)              #cast_and_add
+    | function_call sign DECIMAL (DAYS|HOURS|YEARS|MINUTES)?              #cast_and_add
     | CONVERT '(' data_type ',' expression (',' style=expression)? ')'      #convert_function
     // https://msdn.microsoft.com/zh-cn/library/ms189788.aspx
     | CHECKSUM '(' '*' ')'          #checksum_function
@@ -1065,6 +1065,11 @@ table_alias
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
 with_table_hints
     : WITH '(' table_hint (',' table_hint)* ')'
+    ;
+
+// https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
+with_table_hints_lock_table
+    : WITH? '(' table_hint (',' table_hint)* ')'
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx

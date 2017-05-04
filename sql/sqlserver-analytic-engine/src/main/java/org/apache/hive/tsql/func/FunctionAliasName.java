@@ -22,7 +22,7 @@ public class FunctionAliasName {
         functionAliasNames.put("atn2".toUpperCase(), "atan2".toUpperCase());
         functionAliasNames.put("tsubstring".toUpperCase(), "substring".toUpperCase());
         functionAliasNames.put("left".toUpperCase(), "substring".toUpperCase());
-        functionAliasNames.put("right".toUpperCase(), "substring".toUpperCase());
+//        functionAliasNames.put("right".toUpperCase(), "substring".toUpperCase());
 
     }
 

@@ -306,7 +306,8 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
 
       plan transformUp {
         // Write path
-        case InsertIntoTable(r: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _)
+        case InsertIntoTable(r: MetastoreRelation, partition, child,
+              overwrite, ifNotExists, _, _, _)
           // Inserting into partitioned table is not supported in Parquet data source (yet).
           if !r.hiveQlTable.isPartitioned && shouldConvertMetastoreParquet(r) =>
           InsertIntoTable(convertToParquetRelation(r), partition, child, overwrite, ifNotExists)
@@ -344,7 +345,8 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
 
       plan transformUp {
         // Write path
-        case InsertIntoTable(r: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _)
+        case InsertIntoTable(r: MetastoreRelation, partition, child,
+              overwrite, ifNotExists, _, _, _)
           // Inserting into partitioned table is not supported in Orc data source (yet).
           if !r.hiveQlTable.isPartitioned && shouldConvertMetastoreOrc(r) =>
           InsertIntoTable(convertToOrcRelation(r), partition, child, overwrite, ifNotExists)

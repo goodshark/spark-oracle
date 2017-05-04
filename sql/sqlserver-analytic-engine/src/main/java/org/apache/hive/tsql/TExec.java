@@ -1285,6 +1285,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         if(procFlag&&ctx.crud_table()==null){
             String column = columnDefs.contains(",") ? columnDefs.split(",")[0]:columnDefs;
+            column = column.split(" ")[0];
             createTableStatement.setCrudStr(String.format(crudStr, column ));
         }
         if (null != ctx.ON() || null != ctx.TEXTIMAGE_ON()) {
@@ -1460,7 +1461,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public List<String> visitColumn_name_list(TSqlParser.Column_name_listContext ctx) {
         List<String> columns = new ArrayList<>();
         for (TSqlParser.IdContext idContext : ctx.id()) {
-            columns.add(visitId(idContext));
+            columns.add(StrUtils.replaceAllBracketToQuit(visitId(idContext)));
         }
         return columns;
     }
@@ -1735,12 +1736,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.insert_with_table_hints()) {
             visitInsert_with_table_hints(ctx.insert_with_table_hints());
         }
-        //spark sql 不支持insert into table (name ,age) valuse(ss,ss)
-        /*if (null != ctx.column_name_list()) {
+
+        if (null != ctx.column_name_list()) {
             sql.append("(");
             sql.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
             sql.append(")");
-        }*/
+        }
         if (null != ctx.output_clause()) {
             visitOutput_clause(ctx.output_clause());
         }
@@ -2565,7 +2566,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             visitChange_table(ctx.change_table());
         }
         if (null != ctx.function_call()) {
-//            rs.append(visitFunction_call_expression(ctx.function_call()));
+            //rs.append(visitFunction_call_expression(ctx.function_call()));
             if (null != ctx.as_table_alias()) {
                 rs.append(visitAs_table_alias(ctx.as_table_alias()));
             }
@@ -2827,7 +2828,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.HOURS()) {
             unitStr = ctx.HOURS().getText();
         }
-        TimeUnit unit = TimeUnit.valueOf(unitStr.toUpperCase());
+
+        TimeUnit unit = TimeUnit.DAYS;
+
+        if (StringUtils.isNotBlank(unitStr)) {
+            unit = TimeUnit.valueOf(unitStr.toUpperCase());
+        }
         if (unit != TimeUnit.DAYS) {
             addException("Only support DAYS", locate(ctx));
         }
@@ -3728,8 +3734,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else {
             rs.append(tableName);
         }
-        if (null != ctx.with_table_hints()) {
-            rs.append(visitWith_table_hints(ctx.with_table_hints()));
+        if (null != ctx.with_table_hints_lock_table()) {
+            rs.append(visitWith_table_hints_lock_table(ctx.with_table_hints_lock_table()));
         }
         return rs.toString();
     }
@@ -3756,10 +3762,15 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitTable_hint(TSqlParser.Table_hintContext ctx) {
         //TODO LOCK TABLE
-        addException("table hint " + ctx.getText(), locate(ctx));
+        //addException("table hint " + ctx.getText(), locate(ctx));
         return "";
     }
 
+    @Override
+    public String visitWith_table_hints_lock_table(TSqlParser.With_table_hints_lock_tableContext ctx) {
+        //addException("table hint " + ctx.getText(), locate(ctx));
+        return "";
+    }
 
     @Override
     public String visitAs_table_alias(TSqlParser.As_table_aliasContext ctx) {
@@ -3924,7 +3935,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             String localIdVariableName = expressionContext.getChild(0).getText();
             if (localIdVariableName.contains("@")) {
                 resultSetVariable.add(localIdVariableName);
-                SqlStatement exprStatement = (SqlStatement) visit(expressionContext.getChild(2));
+                TreeNode exprStatement = (TreeNode) visit(expressionContext.getChild(2));
                 popStatement();
                 String expression = exprStatement.getSql();
                 columnBean.setCloumnName(expression);
@@ -3987,9 +3998,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public String visitCrud_table(TSqlParser.Crud_tableContext ctx) {
-        String crudSql = ctx.start.getInputStream().getText(
-                new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return crudSql;
+        StringBuffer crud = new StringBuffer();
+        crud.append ("CLUSTERED BY (");
+        crud.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
+        crud.append(")");
+        crud.append(" INTO ");
+        crud.append(ctx.DECIMAL().getText());
+        crud.append(" BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\") ");
+        return crud.toString();
     }
 
 
