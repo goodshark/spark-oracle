@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -28,17 +29,6 @@ public class ObjectIdCalculator extends BaseCalculator {
 
     public ObjectIdCalculator() {
     }
-
-    /*private String trimName(String objName) {
-        objName = objName.trim();
-        if (!objName.isEmpty() && objName.startsWith("\'") && objName.endsWith("\'"))
-            objName = objName.substring(1, objName.length() - 1);
-        int index = objName.lastIndexOf(".");
-        if (index == -1)
-            return objName;
-        else
-            return objName.substring(index + 1);
-    }*/
 
     /**
      * AF = 聚合函数 (CLR)
@@ -139,41 +129,50 @@ public class ObjectIdCalculator extends BaseCalculator {
         return false;
     }
 
+    /**
+     * transform full table name: server.database.schema.table -> database.table
+     * transform full proc name: database.schema.proc -> database.proc
+     */
+    private String getSimpleObjName(String fullName, String type) throws Exception {
+        if (fullName.isEmpty())
+            return "";
+        String[] nameArray = fullName.split("\\.");
+        String objName = nameArray[nameArray.length-1];
+        String dbName = "";
+        if (nameArray.length >= 3) {
+            dbName = nameArray[nameArray.length-3];
+        } else {
+            dbName = getExecSession().getSparkSession().sessionState().catalog().getCurrentDatabase();
+        }
+        // all tmp table store in tmp DB
+        if (objName.startsWith("#") || objName.startsWith("##")) {
+            dbName = TEMP_TBL_DB;
+            objName = getExecSession().getRealTableName(objName);
+        }
+        return dbName + "." + objName;
+    }
+
     private boolean procedureCheck(String procName) throws Exception {
-        LOG.info("ObjectId check procedure");
         ProcService dbConn = createProcDbConn();
-        int cnt = dbConn.getCountByName(procName);
+        String simpleProcName = getSimpleObjName(procName, "P");
+        LOG.info("ObjectId check procedure, simple name: " + simpleProcName);
+        int cnt = dbConn.getCountByName(simpleProcName);
         return cnt >= 1 ? true : false;
     }
 
     private boolean objCheck(String objName, String type) throws Exception {
         LOG.info("ObjectId check obj in database, type: " + type);
-        // transform table name into real table name
-        boolean tempTblFlag = true;
-        String tmpTbl = getExecSession().getRealTableName(objName);
-        LOG.info("ObjectId check obj in database, get real table: " + tmpTbl);
-        if (tmpTbl.equalsIgnoreCase(objName))
-            tempTblFlag = false;
-        objName = tmpTbl;
-
         // generate sql
         String sqlStr = genSql(type);
-        String[] objArray = objName.split("\\.");
         String curDb = "";
         String obj = "";
-        // objname has more than 1 dot, only take first two element
-        if (objArray.length >= 2) {
-            curDb = objArray[0];
-            obj = objArray[1];
-        } else if (objArray.length == 1) {
-            SparkSession ss = getExecSession().getSparkSession();
-            if (tempTblFlag) {
-                curDb = TEMP_TBL_DB;
-            } else {
-                curDb = ss.sessionState().catalog().getCurrentDatabase();
-            }
-            obj = objArray[0];
+        String simpleTableName = getSimpleObjName(objName, type);
+        if (!simpleTableName.isEmpty()) {
+            String[] nameArray = simpleTableName.split("\\.");
+            curDb = nameArray[0];
+            obj = nameArray[1];
         }
+        LOG.info("ObjectId check obj(not proc), simple name: " + simpleTableName + ", db: " + curDb + ", obj: " + obj);
         LOG.info("ObjectId check obj in database, sql: " + sqlStr + ", table: " + obj.toLowerCase() + ", db: " + curDb.toLowerCase());
 
         Connection conn = createDbConn();
