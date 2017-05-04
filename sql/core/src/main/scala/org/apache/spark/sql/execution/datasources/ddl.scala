@@ -207,17 +207,22 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
 
     tableMetadata.schema.foreach(column => {
       if (columnMap.contains(column.name.toLowerCase)) {
+        colString.append("`")
         colString.append(columnMap.get(column.name.toLowerCase).get)
+        colString.append("`")
         colString.append(",")
       } else {
         if (!partitionSet.contains(column.name)) {
+
           if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
             colString.append(tb)
           } else {
             colString.append(tableNameAlias)
           }
           colString.append(".")
+          colString.append("`")
           colString.append(column.name.toLowerCase)
+          colString.append("`")
           colString.append(",")
         }
       }
