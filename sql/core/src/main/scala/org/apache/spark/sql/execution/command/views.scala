@@ -189,7 +189,7 @@ case class CreateViewCommand(
       // added/generated from a temporary view.
       // 2) The temp functions are represented by multiple classes. Most are inaccessible from this
       // package (e.g., HiveGenericUDF).
-      val isSqlServer = sparkSession.sessionState.conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
+      val isSqlServer = "true".equalsIgnoreCase(sparkSession.sessionState.conf.getConfString("spark.sql.analytical.engine.sqlserver", "false"))
 
       child.collect {
         // Disallow creating permanent views based on temporary views.
@@ -201,7 +201,7 @@ case class CreateViewCommand(
           // Disallow creating permanent views based on temporary UDFs.
           case e: UnresolvedFunction
           if (!isSqlServer &&
-              sparkSession.sparkSession.sessionState.catalog.isTemporaryFunction(e.name)) =>
+              sparkSession.sessionState.catalog.isTemporaryFunction(e.name)) =>
             throw new AnalysisException(s"Not allowed to create a permanent view $name by " +
               s"referencing a temporary function `${e.name}`")
         })
