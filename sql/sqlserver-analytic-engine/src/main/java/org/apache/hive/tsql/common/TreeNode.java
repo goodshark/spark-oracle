@@ -38,6 +38,8 @@ public abstract class TreeNode implements Serializable {
         TABEL_DEFAULT_VALUES, EXECUTE_STATEMENT, LIMIT_NUMBER, LIMIT_PERCENT, CURSOR, DEFAULT
     }
 
+    private ForClause forClause;
+
     public boolean isCollectRs() {
         return isCollectRs;
     }
@@ -120,6 +122,14 @@ public abstract class TreeNode implements Serializable {
             child.setExecSession(execSession);
         }
         return childrenNodes;
+    }
+
+    public ForClause getForClause() {
+        return forClause;
+    }
+
+    public void setForClause(ForClause forClause) {
+        this.forClause = forClause;
     }
 
     public void setNodeId(int nodeId) {

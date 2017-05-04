@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.SystemVName;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.spark.sql.Dataset;
@@ -7,6 +8,7 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 
 import java.sql.ResultSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,14 +44,11 @@ public abstract class BaseStatement extends TreeNode {
 //        SparkResultSet sparkResultSet = new SparkResultSet();
 //        sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
 //        sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
-//        sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
+////        sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
 //        for (int i = 0; i < 10; i++) {
-//            sparkResultSet.addRow(new Object[]{i * 3, "TEST_" + i, i * 11});
+//            sparkResultSet.addRow(new Object[]{i * 3, "TEST_" + i});
 //        }
-//        if (isAddResult()) {
-//            getExecSession().addRs(sparkResultSet);
-//        }
-//        updateRowcount(sparkResultSet);
+
 //        return sparkResultSet;
         //For testing end
         SparkSession sparkSession = getExecSession().getSparkSession();
@@ -57,11 +56,55 @@ public abstract class BaseStatement extends TreeNode {
         getExecSession().addLogicalPlans(plan);
         Dataset dataset = sparkSession.sql(exeSql);
         SparkResultSet sparkResultSet = new SparkResultSet(dataset);
-        if(isAddResult()) {
+        updateRowcount(sparkResultSet);
+        if (isAddResult()) {
+            if (null != getForClause()) {
+                ResultSet newRs = formatResultSet(sparkResultSet);
+                getExecSession().addRs(newRs);
+                return newRs;
+            }
             getExecSession().addRs(sparkResultSet);
         }
-        updateRowcount(sparkResultSet);
+
         return sparkResultSet;
+    }
+
+    private ResultSet formatResultSet(SparkResultSet sparkResultSet) {
+        SparkResultSet newResult = new SparkResultSet();
+        try {
+            StringBuffer sb = new StringBuffer();
+            ForClause forClause = getForClause();
+            if (forClause.getDirectives() == ForClause.DIRECTIVES.ROOT) {
+                sb.append("<root>");
+            }
+            int columnSize = sparkResultSet.getColumnSize();
+            List<Column> columns = sparkResultSet.getColumns();
+            while (sparkResultSet.next()) {
+                Row row = sparkResultSet.fetchRow();
+                if (StringUtils.isNotBlank(forClause.getRow())) {
+                    sb.append("<").append(forClause.getRow()).append(">");
+                }
+
+                for (int i = 0; i < columnSize; i++) {
+                    sb.append("<").append(columns.get(i).getColumnName()).append(">")
+                            .append(row.getColumnVal(i)).append("</").append(columns.get(i).getColumnName()).append(">");
+                }
+                if (StringUtils.isNotBlank(forClause.getRow())) {
+                    sb.append("</").append(forClause.getRow()).append(">");
+                }
+            }
+            if (forClause.getDirectives() == ForClause.DIRECTIVES.ROOT) {
+                sb.append("</root>");
+            }
+
+
+            newResult.addColumn(new Column("xml", ColumnDataType.STRING));
+            newResult.addRow(new Object[]{sb.toString()});
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return newResult;
     }
 
     public void updateRowcount(SparkResultSet rs) {

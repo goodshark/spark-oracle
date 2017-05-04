@@ -43,7 +43,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
     private String crudStr = "  CLUSTERED BY (%s) INTO 1 BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\")";
 
 
-
     private LinkedList<TreeNode> curNodeStack = new LinkedList<TreeNode>();
 
     private TreeNode rootNode; //解析编译过程的目标就是构造这个treenode
@@ -1177,17 +1176,17 @@ public class TExec extends TSqlBaseVisitor<Object> {
          ';'?
          */
         SqlStatement sqlStatement = new SqlStatement("CREATE INDEX");
-        if(null!=ctx.UNIQUE()){
+        if (null != ctx.UNIQUE()) {
             addException("CREATE UNIQUE INDEX", locate(ctx));
         }
-        if(null!=ctx.clustered()){
+        if (null != ctx.clustered()) {
             addException("CREATE clustered INDEX", locate(ctx));
         }
-        if(null!=ctx.ASC()|| null!=ctx.DESC()){
+        if (null != ctx.ASC() || null != ctx.DESC()) {
             addException("CREATE  INDEX  ON ASC,DESC", locate(ctx));
         }
-        if(null!=ctx.index_options()){
-            addException("CREATE  INDEX  with [ "+ ctx.index_options().getText()+"]", locate(ctx));
+        if (null != ctx.index_options()) {
+            addException("CREATE  INDEX  with [ " + ctx.index_options().getText() + "]", locate(ctx));
         }
 
         /*CREATE INDEX X ON TABLE T(J)
@@ -1305,7 +1304,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
 
-
     @Override
     public SqlStatement visitCreate_table(TSqlParser.Create_tableContext ctx) {
         String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
@@ -1316,10 +1314,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (ctx.crud_table() != null) {
             createTableStatement.setCrudStr(visitCrud_table(ctx.crud_table()));
         }
-        if(procFlag&&ctx.crud_table()==null){
-            String column = columnDefs.contains(",") ? columnDefs.split(",")[0]:columnDefs;
+        if (procFlag && ctx.crud_table() == null) {
+            String column = columnDefs.contains(",") ? columnDefs.split(",")[0] : columnDefs;
             column = column.split(" ")[0];
-            createTableStatement.setCrudStr(String.format(crudStr, column ));
+            createTableStatement.setCrudStr(String.format(crudStr, column));
         }
         if (null != ctx.ON() || null != ctx.TEXTIMAGE_ON()) {
             addException(" filegroup", locate(ctx));
@@ -1780,7 +1778,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         TreeNode insertValuesNode = visitInsert_statement_value(ctx.insert_statement_value());
         if (null != ctx.for_clause()) {
-            visitFor_clause(ctx.for_clause());
+            insertStatement.setForClause(visitFor_clause(ctx.for_clause()));
         }
         if (null != ctx.option_clause()) {
             visitOption_clause(ctx.option_clause());
@@ -1919,8 +1917,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             //TODO 在updatastatment上挂游标statement
             addException("cursor", locate(ctx));
         }
-        if (null != ctx.output_clause()) {
-            visitFor_clause(ctx.for_clause());
+        if (null != ctx.for_clause()) {
+            updateStatement.setForClause(visitFor_clause(ctx.for_clause()));
         }
         if (null != ctx.option_clause()) {
             visitOption_clause(ctx.option_clause());
@@ -2045,7 +2043,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException(" cursor", locate(ctx));
         }
         if (null != ctx.for_clause()) {
-            visitFor_clause(ctx.for_clause());
+            deleteStatement.setForClause(visitFor_clause(ctx.for_clause()));
         }
         if (null != ctx.option_clause()) {
             visitOption_clause(ctx.option_clause());
@@ -2264,9 +2262,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.order_by_clause()) {
             sql.append(visitOrder_by_clause(ctx.order_by_clause()));
         }
-        if (null != ctx.for_clause()) {
-            sql.append(visitFor_clause(ctx.for_clause()));
-        }
+
         if (null != ctx.option_clause()) {
             sql.append(visitOrder_by_clause(ctx.order_by_clause()));
         }
@@ -2282,6 +2278,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         selectStatement.addResultSetVariables(resultSetVariable);
         selectStatement.addTableNames(tableNameList);
         clearVariable();
+
+        if (null != ctx.for_clause()) {
+            selectStatement.setForClause(visitFor_clause(ctx.for_clause()));
+        }
+
         addNode(selectStatement);
         pushStatement(selectStatement);
         return selectStatement;
@@ -2289,10 +2290,39 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
 
     @Override
-    public String visitFor_clause(TSqlParser.For_clauseContext ctx) {
+    public ForClause visitFor_clause(TSqlParser.For_clauseContext ctx) {
         //SqlStatement rs = new SqlStatement();
-        addException(" for clause ", locate(ctx));
-        return "";
+//        addException(" for clause ", locate(ctx));
+        ForClause forClause = new ForClause();
+        if (null != ctx.XML()) {
+            forClause.setXformat(ForClause.XFORMAT.XML);
+        }
+        if (null != ctx.AUTO()) {
+            forClause.setXmlMode(ForClause.XMLMODE.AUTO);
+        }
+        if (null != ctx.xml_common_directives()) {
+            forClause.setDirectives(visitXml_common_directives(ctx.xml_common_directives()));
+        }
+
+        if (null != ctx.STRING()) {
+            forClause.setRow(StrUtils.trimQuot(ctx.STRING().getText()));
+        }
+
+        return forClause;
+    }
+
+
+    @Override
+    public ForClause.DIRECTIVES visitXml_common_directives(TSqlParser.Xml_common_directivesContext ctx) {
+        ForClause.DIRECTIVES directives = ForClause.DIRECTIVES.BINARY;
+        if (null != ctx.ROOT()) {
+            directives = ForClause.DIRECTIVES.ROOT;
+        }
+        if (null != ctx.TYPE()) {
+            directives = ForClause.DIRECTIVES.TYPE;
+        }
+        return directives;
+
     }
 
     @Override
@@ -2472,9 +2502,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             SelectIntoBean selectIntoBean = new SelectIntoBean();
             selectIntoBean.setTableNanme(tableName);
             querySpecificationBean.setSelectIntoBean(selectIntoBean);
-            if(procFlag&& !columns.isEmpty() && null!=columns.get(0)){
-                intoTableSql = "create table " + tableName + String.format(crudStr,columns.get(0).getCloumnName() ) +  " as ";
-            }else{
+            if (procFlag && !columns.isEmpty() && null != columns.get(0)) {
+                intoTableSql = "create table " + tableName + String.format(crudStr, columns.get(0).getCloumnName()) + " as ";
+            } else {
                 intoTableSql = "create table " + tableName + " as ";
             }
         }
@@ -4032,7 +4062,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitCrud_table(TSqlParser.Crud_tableContext ctx) {
         StringBuffer crud = new StringBuffer();
-        crud.append ("CLUSTERED BY (");
+        crud.append("CLUSTERED BY (");
         crud.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
         crud.append(")");
         crud.append(" INTO ");
