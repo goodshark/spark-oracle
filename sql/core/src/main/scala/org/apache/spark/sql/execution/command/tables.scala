@@ -25,9 +25,7 @@ import java.util.Date
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 import scala.util.Try
-
 import org.apache.hadoop.fs.Path
-
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.NoSuchPartitionException
@@ -144,17 +142,11 @@ case class AlterTableChangeColumnsCommand(tableName: TableIdentifier,
   }
 }
 
-case class CreateIndexCommand(tableName: String, indexName: String, indexHandlerClass: String,
-                              indexedCols: java.util.List[String],
-                              indexTblName: String, deferredRebuild: Boolean,
-                              indexCommentContext: String) extends RunnableCommand{
+case class CreateIndexCommand(sql: String) extends RunnableCommand{
 
-  override def run(sparkSession: SparkSession): Seq[Row] =  {
+  override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sqlContext.sharedState.externalCatalog
-    catalog.createIndex(tableName, indexName, indexHandlerClass,
-      indexedCols, indexTblName, deferredRebuild,
-      null, null, null, null, null, null, null,
-      null, null, null, null, null, null, indexCommentContext)
+    catalog.runSqlHive(sql)
     Seq.empty[Row]
   }
 

@@ -575,7 +575,7 @@ class InMemoryCatalog(
     StringUtils.filterPattern(catalog(db).functions.keysIterator.toSeq, pattern)
   }
 
-  override def createIndex(tableName: String, indexName: String,
+/*  override def createIndex(tableName: String, indexName: String,
                            indexHandlerClass: String, indexedCols: util.List[String],
                            indexTblName: String, deferredRebuild: Boolean, inputFormat: String,
                            outputFormat: String, serde: String, storageHandler: String,
@@ -586,6 +586,11 @@ class InMemoryCatalog(
                            fieldEscape: String, lineDelim: String, mapKeyDelim:
                            String, indexComment: String): Unit = synchronized {
 
+  } */
+
+
+  override def runSqlHive(sql: String): Seq[String] = synchronized {
+    null
   }
 
 }
