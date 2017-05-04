@@ -282,8 +282,13 @@ case class PreprocessTableInsertion(conf: SQLConf) extends Rule[LogicalPlan] {
                                     checkColumnExisting(columnName, insert.table.output, tblName))
       checkDuplicateColumns(insert.insertColumns.get, tblName)
 
-      expectedColumns = filterExceptedColumns(expectedColumns, locateColumns(insert))
-      recordInsertColumnPosition(insert)
+      if (expectedColumns.length == specialColumnsLength) {
+        logInfo("All column join the insert action.")
+        conf.setConfString("spark.exe.insert.positions", "")
+      } else {
+        expectedColumns = filterExceptedColumns(expectedColumns, locateColumns(insert))
+        recordInsertColumnPosition(insert)
+      }
     } else {
       conf.setConfString("spark.exe.insert.positions", "")
     }
