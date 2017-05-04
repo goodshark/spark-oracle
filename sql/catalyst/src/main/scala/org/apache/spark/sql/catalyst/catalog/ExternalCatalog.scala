@@ -255,7 +255,7 @@ abstract class ExternalCatalog {
 
   def listFunctions(db: String, pattern: String): Seq[String]
 
-
+/*
   /** create index**/
   def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
                   indexedCols: java.util.List[String], indexTblName: String, deferredRebuild: Boolean,
@@ -265,6 +265,8 @@ abstract class ExternalCatalog {
                   tblProps: java.util.Map[String, String],
                   serdeProps: java.util.Map[String, String],
                   collItemDelim: String, fieldDelim: String, fieldEscape: String, lineDelim: String,
-                  mapKeyDelim: String, indexComment: String): Unit
+                  mapKeyDelim: String, indexComment: String): Unit */
+
+  def runSqlHive(sql: String): Seq[String]
 
 }

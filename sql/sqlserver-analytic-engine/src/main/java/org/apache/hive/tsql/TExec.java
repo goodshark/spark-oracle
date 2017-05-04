@@ -1201,6 +1201,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
         sql.append(")");
         sql.append("  AS 'ORG.APACHE.HADOOP.HIVE.QL.INDEX.COMPACT.COMPACTINDEXHANDLER' ");
+        sql.append(" WITH DEFERRED REBUILD ");
         sqlStatement.setSql(sql.toString());
         pushStatement(sqlStatement);
         return sqlStatement;
