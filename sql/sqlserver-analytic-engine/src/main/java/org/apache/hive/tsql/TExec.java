@@ -1195,7 +1195,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         sql.append("CREATE INDEX ");
         sql.append(visitId(ctx.id(0)));
         sql.append(Common.SPACE);
-        sql.append(" ON ");
+        sql.append(" ON TABLE ");
         sql.append(visitTable_name_with_hint(ctx.table_name_with_hint()));
         sql.append("(");
         sql.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
@@ -1485,6 +1485,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException("WITH CHECK OPTION", locate(ctx));
         }
         createViewStatement.setSql(sql.toString());
+        createViewStatement.addTableNames(tableNameList);
         pushStatement(createViewStatement);
         return createViewStatement;
     }
