@@ -207,9 +207,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
 
     tableMetadata.schema.foreach(column => {
       if (columnMap.contains(column.name.toLowerCase)) {
-        colString.append("`")
         colString.append(columnMap.get(column.name.toLowerCase).get)
-        colString.append("`")
         colString.append(",")
       } else {
         if (!partitionSet.contains(column.name)) {
