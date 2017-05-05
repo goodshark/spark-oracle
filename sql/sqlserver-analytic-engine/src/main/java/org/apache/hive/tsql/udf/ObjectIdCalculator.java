@@ -145,9 +145,9 @@ public class ObjectIdCalculator extends BaseCalculator {
             dbName = getExecSession().getSparkSession().sessionState().catalog().getCurrentDatabase();
         }
         // all tmp table store in tmp DB
-        if (objName.startsWith("#") || objName.startsWith("##")) {
-            dbName = TEMP_TBL_DB;
+        if (objName.startsWith("#")) {
             objName = getExecSession().getRealTableName(objName);
+            return objName;
         }
         return dbName + "." + objName;
     }
