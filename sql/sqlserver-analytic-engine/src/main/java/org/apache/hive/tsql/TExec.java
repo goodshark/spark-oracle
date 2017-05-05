@@ -1460,7 +1460,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     @Override
     public SqlStatement visitCreate_view(TSqlParser.Create_viewContext ctx) {
-        SqlStatement rs = new SqlStatement(Common.CREATE_VIEW);
+        CreateViewStatement createViewStatement = new CreateViewStatement(Common.CREATE_VIEW);
         StringBuffer sql = new StringBuffer();
         sql.append(ctx.CREATE().getText());
         sql.append(Common.SPACE);
@@ -1484,9 +1484,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.OPTION()) {
             addException("WITH CHECK OPTION", locate(ctx));
         }
-        rs.setSql(sql.toString());
-        pushStatement(rs);
-        return rs;
+        createViewStatement.setSql(sql.toString());
+        pushStatement(createViewStatement);
+        return createViewStatement;
     }
 
     @Override
