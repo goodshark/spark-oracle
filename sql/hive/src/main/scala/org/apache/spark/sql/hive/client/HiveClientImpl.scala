@@ -440,7 +440,7 @@ private[hive] class HiveClientImpl(
     client.alterTable(qualifiedTableName, hiveTable)
   }
 
-  override def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
+ /* override def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
                            indexedCols: util.List[String], indexTblName: String,
                            deferredRebuild: Boolean, inputFormat: String, outputFormat: String,
                            serde: String, storageHandler: String, location: String,
@@ -456,7 +456,7 @@ private[hive] class HiveClientImpl(
       tblProps,serdeProps,collItemDelim,
       fieldDelim,fieldEscape,lineDelim,
       mapKeyDelim,indexComment)
-  }
+  } */
 
   override def createPartitions(
       db: String,
