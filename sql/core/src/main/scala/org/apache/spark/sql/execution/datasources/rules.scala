@@ -271,7 +271,7 @@ case class PreprocessTableInsertion(conf: SQLConf) extends Rule[LogicalPlan] {
       insert.partition, partColNames, tblName, conf.resolver)
 
     val specialColumnsLength = insert.insertColumnLength()
-
+    logInfo(s"Special Columns Length # $specialColumnsLength")
     var expectedColumns = {
       val staticPartCols = normalizedPartSpec.filter(_._2.isDefined).keySet
       insert.table.output.filterNot(a => staticPartCols.contains(a.name))
