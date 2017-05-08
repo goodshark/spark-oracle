@@ -1008,7 +1008,7 @@ function_call
     // https://msdn.microsoft.com/zh-cn/library/hh231076.aspx
     // https://msdn.microsoft.com/zh-cn/library/ms187928.aspx
     | CAST '(' expression AS data_type ')'      #cast_function
-    | function_call sign DECIMAL (DAYS|HOURS|YEARS|MINUTES)?              #cast_and_add
+    | function_call sign DECIMAL (DAYS|HOURS|YEARS|MINUTES)              #cast_and_add
     | CONVERT '(' data_type ',' expression (',' style=expression)? ')'      #convert_function
     // https://msdn.microsoft.com/zh-cn/library/ms189788.aspx
     | CHECKSUM '(' '*' ')'          #checksum_function
