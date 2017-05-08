@@ -1175,7 +1175,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
          (ON id)?
          ';'?
          */
-        SqlStatement sqlStatement = new SqlStatement("CREATE INDEX");
+        CreateIndexStatement createIndexStatement = new CreateIndexStatement("CREATE INDEX");
         if (null != ctx.UNIQUE()) {
             addException("CREATE UNIQUE INDEX", locate(ctx));
         }
@@ -1188,23 +1188,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.index_options()) {
             addException("CREATE  INDEX  with [ " + ctx.index_options().getText() + "]", locate(ctx));
         }
-
-        /*CREATE INDEX X ON TABLE T(J)
-                AS 'ORG.APACHE.HADOOP.HIVE.QL.INDEX.COMPACT.COMPACTINDEXHANDLER'*/
-        StringBuffer sql = new StringBuffer();
-        sql.append("CREATE INDEX ");
-        sql.append(visitId(ctx.id(0)));
-        sql.append(Common.SPACE);
-        sql.append(" ON ");
-        sql.append(visitTable_name_with_hint(ctx.table_name_with_hint()));
-        sql.append("(");
-        sql.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
-        sql.append(")");
-        sql.append("  AS 'org.apache.hadoop.hive.ql.index.compact.CompactIndexHandler' ");
-        sql.append(" WITH DEFERRED REBUILD ");
-        sqlStatement.setSql(sql.toString());
-        pushStatement(sqlStatement);
-        return sqlStatement;
+        createIndexStatement.setCols(visitColumn_name_list(ctx.column_name_list()));
+        createIndexStatement.setIndexName(visitId(ctx.id(0)));
+        createIndexStatement.setTableName(visitTable_name_with_hint(ctx.table_name_with_hint()));
+        pushStatement(createIndexStatement);
+        return createIndexStatement;
     }
 
     @Override
@@ -1485,6 +1473,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException("WITH CHECK OPTION", locate(ctx));
         }
         createViewStatement.setSql(sql.toString());
+        createViewStatement.addTableNames(tableNameList);
         pushStatement(createViewStatement);
         return createViewStatement;
     }
