@@ -340,11 +340,14 @@ private[hive] class SparkHiveWriterContainer(
   val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
   val OPTION_TYPE: String = "OPTION_TYPE"
 
-  private def eliminateVidColumn(originPositions: Array[Int]) : Array[Int] = {
+  private def eliminateVidColumn(originPositions: Array[Int], vidPosition: Int) : Array[Int] = {
     val ret: ListBuffer[Int] = new ListBuffer[Int]
     if (originPositions.isEmpty) {
-      for (i <- 0 to (originPositions.length - 2)) {
-        ret += originPositions(i)
+      for (i <- 0 to (originPositions.length - 1)) {
+        if (vidPosition == i) {
+          ret += originPositions(i)
+        }
+
       }
     }
     ret.toArray
@@ -359,9 +362,10 @@ private[hive] class SparkHiveWriterContainer(
 
     val transaction_acid_flg = conf.value.get(SPARK_TRANSACTION_ACID, "false")
     if (transaction_acid_flg.equalsIgnoreCase("true")) {
-      val positions = eliminateVidColumn(insertPositions)
-      logInfo("Final positions: " + positions.mkString(","))
+
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
+      val positions = eliminateVidColumn(insertPositions, fieldOIs.length - 1)
+      logInfo("Final positions: " + positions.mkString(","))
       var partitionPath = ""
       if (null != table.tableDesc.getProperties.getProperty("partition_columns") &&
         table.tableDesc.getProperties.getProperty("partition_columns").nonEmpty) {
