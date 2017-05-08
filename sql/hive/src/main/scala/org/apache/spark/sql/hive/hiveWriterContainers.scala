@@ -342,7 +342,7 @@ private[hive] class SparkHiveWriterContainer(
 
   private def eliminateVidColumn(originPositions: Array[Int], vidPosition: Int) : Array[Int] = {
     val ret: ListBuffer[Int] = new ListBuffer[Int]
-    if (originPositions.isEmpty) {
+    if (!originPositions.isEmpty) {
       for (i <- 0 to (originPositions.length - 1)) {
         if (vidPosition == i) {
           ret += originPositions(i)
