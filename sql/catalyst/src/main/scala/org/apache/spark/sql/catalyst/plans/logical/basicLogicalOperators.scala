@@ -403,12 +403,12 @@ case class InsertIntoTable(
   def insertColumnLength(): Int = {
     if (null == insertColumns) {
       0
+    } else {
+      insertColumns match {
+        case Some(columns) => columns.length
+        case None => 0
+      }
     }
-    insertColumns match {
-      case Some(columns) => columns.length
-      case None => 0
-    }
-
   }
 
 
