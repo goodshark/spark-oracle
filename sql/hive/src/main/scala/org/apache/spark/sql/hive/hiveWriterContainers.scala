@@ -353,6 +353,9 @@ private[hive] class SparkHiveWriterContainer(
     ret.toArray
   }
 
+
+
+
   // this function is executed on executor side
   def writeToFile(context: TaskContext, iterator: Iterator[InternalRow]): Unit = {
     // for insert with column test
@@ -364,7 +367,13 @@ private[hive] class SparkHiveWriterContainer(
     if (transaction_acid_flg.equalsIgnoreCase("true")) {
 
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
-      val positions = insertPositions.slice(-1, insertPositions.length -1 )
+      val positions = {
+        conf.value.get(OPTION_TYPE) match {
+          case "1" => insertPositions.slice(-1, insertPositions.length - 1)
+          case "2" => insertPositions.slice(-1, insertPositions.length - 1)
+          case _ => insertPositions
+        }
+      }
       logInfo("Final positions: " + positions.mkString(","))
       conf.value.set("spark.exe.insert.positions", positions.mkString(","))
       var partitionPath = ""
