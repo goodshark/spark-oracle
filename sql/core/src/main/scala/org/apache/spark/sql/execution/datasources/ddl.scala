@@ -145,11 +145,52 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     val sb: StringBuilder = new StringBuilder()
     val colString: StringBuilder = new StringBuilder()
     var partitionSet: Set[String] = Set()
+
+    var columnMap: Map[String, String] = Map()
+    for (i <- 0 until statement.assignlist.size()) {
+      val array = statement.assignExpression(i).getText.split("=")
+      if (array(0).contains(".")) {
+        columnMap += (array(0).split("\\.")(1).toLowerCase -> array(1))
+      } else {
+        columnMap += (array(0).toLowerCase -> array(1))
+      }
+    }
+
+    /**
+      * bucket number =1 时可以更新桶字段
+      */
+    if (tableMetadata.bucketSpec
+      .getOrElse(new BucketSpec(-1, Seq(), Seq())).numBuckets > 1) {
+      tableMetadata.bucketSpec
+        .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.foreach(bucketColumnName => {
+        if (columnMap.contains(bucketColumnName.toLowerCase())) {
+          throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
+        }
+      })
+    }
+
+
+    tableMetadata.partitionColumnNames.foreach(p => {
+      if (columnMap.contains(p)) {
+        throw new Exception(s" Cannot update partitionColumnName: ${p}")
+      }
+    })
+
+
+
+
     sb.append(" insert into ")
     sb.append(db)
     sb.append(".")
     sb.append(tb)
-
+    sb.append("(")
+    columnMap.keySet.foreach( k => {
+      sb.append(k)
+      sb.append(",")
+    }
+    )
+    sb.append(vid)
+    sb.append(")")
     if (tableMetadata.partitionColumnNames.nonEmpty) {
       if (null == statement.where || statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
@@ -175,61 +216,30 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     }
 
     sb.append(" select ")
-    var columnMap: Map[String, String] = Map()
-    for (i <- 0 until statement.assignlist.size()) {
-      val array = statement.assignExpression(i).getText.split("=")
-      if (array(0).contains(".")) {
-        columnMap += (array(0).split("\\.")(1).toLowerCase -> array(1))
-      } else {
-        columnMap += (array(0).toLowerCase -> array(1))
-      }
-    }
 
-    /**
-      * bucket number =1 时可以更新桶字段
-      */
-    if (tableMetadata.bucketSpec
-      .getOrElse(new BucketSpec(-1, Seq(), Seq())).numBuckets > 1) {
-      tableMetadata.bucketSpec
-        .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.foreach(bucketColumnName => {
-        if (columnMap.contains(bucketColumnName)) {
-          throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
-        }
-      })
-    }
-
-
-    tableMetadata.partitionColumnNames.foreach(p => {
-      if (columnMap.contains(p)) {
-        throw new Exception(s" Cannot update partitionColumnName: ${p}")
-      }
-    })
 
     tableMetadata.schema.foreach(column => {
       if (columnMap.contains(column.name.toLowerCase)) {
-        colString.append(columnMap.get(column.name.toLowerCase).get)
-        colString.append(",")
-      } else {
+        sb.append(columnMap.get(column.name.toLowerCase).get)
+        sb.append(",")
+      }
+      /* else {
         if (!partitionSet.contains(column.name)) {
-
           if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
             colString.append(tb)
           } else {
             colString.append(tableNameAlias)
           }
           colString.append(".")
-          colString.append("`")
           colString.append(column.name.toLowerCase)
-          colString.append("`")
           colString.append(",")
         }
-      }
+      } */
     })
-    sb.append(colString.substring(0, colString.length - 1))
     if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
-      sb.append(" ," + tb + "." + vid + " ")
+      sb.append( tb + "." + vid + " ")
     } else {
-      sb.append(" ," + tableNameAlias + "." + vid + " ")
+      sb.append( tableNameAlias + "." + vid + " ")
     }
     if (null != statement.fromClauseForUpdate()) {
       val fromClause = statement.fromClauseForUpdate()

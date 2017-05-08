@@ -343,8 +343,8 @@ private[hive] class SparkHiveWriterContainer(
   private def eliminateVidColumn(originPositions: Array[Int], vidPosition: Int) : Array[Int] = {
     val ret: ListBuffer[Int] = new ListBuffer[Int]
     if (!originPositions.isEmpty) {
-      for (i <- 0 to (originPositions.length - 1)) {
-        if (vidPosition == i) {
+      for (i <- 0 to originPositions.length) {
+        if (vidPosition != i) {
           ret += originPositions(i)
         }
 
@@ -364,8 +364,9 @@ private[hive] class SparkHiveWriterContainer(
     if (transaction_acid_flg.equalsIgnoreCase("true")) {
 
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
-      val positions = eliminateVidColumn(insertPositions, fieldOIs.length - 1)
+      val positions = insertPositions.slice(-1, insertPositions.length -1 )
       logInfo("Final positions: " + positions.mkString(","))
+      conf.value.set("spark.exe.insert.positions", positions.mkString(","))
       var partitionPath = ""
       if (null != table.tableDesc.getProperties.getProperty("partition_columns") &&
         table.tableDesc.getProperties.getProperty("partition_columns").nonEmpty) {
@@ -485,7 +486,8 @@ private[hive] class SparkHiveWriterContainer(
     var bucketId: Int = 0
     if (conf.value.get(OPTION_TYPE).equalsIgnoreCase("1")
       || conf.value.get(OPTION_TYPE).equalsIgnoreCase("2")) {
-      val vidValue = row.getString(fieldOIs.length).toString
+      // val vidValue = row.getString(fieldOIs.length).toString
+      val vidValue = row.getString(inputSchema.length-1).toString
       val vidInfo = new util.ArrayList[Object]
       val txnBucketRowId: Array[String] = vidValue.split('^')
       val txnId = new LongWritable(txnBucketRowId(0).trim.toLong)

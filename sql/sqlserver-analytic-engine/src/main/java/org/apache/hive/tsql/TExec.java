@@ -1435,8 +1435,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (!ctx.id().isEmpty()) {
             int size = ctx.id().size();
             if (size > 1) {
-                sb.append(visitId(ctx.id(0)));
-                sb.append(".");
+                /*sb.append(visitId(ctx.id(0)));
+                sb.append(".");*/
                 sb.append(visitId(ctx.id(1)));
             } else {
                 sb.append(visitId(ctx.id(0)));
