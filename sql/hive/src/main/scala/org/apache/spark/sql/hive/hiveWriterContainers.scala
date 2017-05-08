@@ -340,6 +340,16 @@ private[hive] class SparkHiveWriterContainer(
   val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
   val OPTION_TYPE: String = "OPTION_TYPE"
 
+  private def eliminateVidColumn(originPositions: Array[Int]) : Array[Int] = {
+    val ret: ListBuffer[Int] = new ListBuffer[Int]
+    if (originPositions.isEmpty) {
+      for (i <- 0 to (originPositions.length - 2)) {
+        ret += originPositions(i)
+      }
+    }
+    ret.toArray
+  }
+
   // this function is executed on executor side
   def writeToFile(context: TaskContext, iterator: Iterator[InternalRow]): Unit = {
     // for insert with column test
@@ -349,6 +359,8 @@ private[hive] class SparkHiveWriterContainer(
 
     val transaction_acid_flg = conf.value.get(SPARK_TRANSACTION_ACID, "false")
     if (transaction_acid_flg.equalsIgnoreCase("true")) {
+      val positions = eliminateVidColumn(insertPositions)
+      logInfo("Final positions: " + positions.mkString(","))
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
       var partitionPath = ""
       if (null != table.tableDesc.getProperties.getProperty("partition_columns") &&
@@ -381,7 +393,7 @@ private[hive] class SparkHiveWriterContainer(
           while (i < fieldOIs.length) {
 //            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
             outputData(i) = {
-              buildOutputData(insertPositions, dataTypes, wrappers, row, i)
+              buildOutputData(positions, dataTypes, wrappers, row, i)
             }
             rows.add(outputData(i))
             i += 1
