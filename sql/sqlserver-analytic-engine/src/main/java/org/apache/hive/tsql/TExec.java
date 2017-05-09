@@ -2600,6 +2600,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public String visitTable_source_item(TSqlParser.Table_source_itemContext ctx) {
         StringBuffer rs = new StringBuffer();
+        if (null != ctx.column_alias_list()) {
+            List<String> list = visitColumn_alias_list(ctx.column_alias_list());
+            for (String c : list) {
+                withColmnNameAlias.add(c);
+            }
+        }
         if (null != ctx.table_name_with_hint()) {
             rs.append(visitTable_name_with_hint(ctx.table_name_with_hint()));
             if (null != ctx.as_table_alias()) {
@@ -2634,7 +2640,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 if (null != ctx.as_table_alias()) {
                     rs.append(visitAs_table_alias(ctx.as_table_alias()));
                     if (null != ctx.column_alias_list()) {
-                        rs.append(visitColumn_alias_list(ctx.column_alias_list()));
+                        rs.append(StrUtils.concat(visitColumn_alias_list(ctx.column_alias_list())));
                     }
                 }
             } else {
@@ -2645,22 +2651,26 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 }
             }
         }
+
         return rs.toString();
     }
 
 
     @Override
-    public String visitColumn_alias_list(TSqlParser.Column_alias_listContext ctx) {
+    public  List<String> visitColumn_alias_list(TSqlParser.Column_alias_listContext ctx) {
+        List<String> columnAliasList = new ArrayList<>();
+
         StringBuffer rs = new StringBuffer();
         if (!ctx.column_alias().isEmpty()) {
             for (int i = 0; i < ctx.column_alias().size(); i++) {
-                if (i != 0) {
+               /* if (i != 0) {
                     rs.append(",").append(Common.SPACE);
                 }
-                rs.append(visitColumn_alias(ctx.column_alias(i)));
+                rs.append(visitColumn_alias(ctx.column_alias(i)));*/
+                columnAliasList.add(visitColumn_alias(ctx.column_alias(i)));
             }
         }
-        return rs.toString();
+        return columnAliasList;
     }
 
     @Override
@@ -3776,6 +3786,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public String visitTable_name_with_hint(TSqlParser.Table_name_with_hintContext ctx) {
         StringBuffer rs = new StringBuffer();
         String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
+
+
         /**
          * 如果写了with表达式，将替换为子查询，如果没有则直接写表名
          */
@@ -3786,6 +3798,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
             // rs.append(tableName);
         } else {
             rs.append(tableName);
+        }
+        if(null!=ctx.AS()){
+            rs.append(" AS ");
+        }
+        if(null!=ctx.id()){
+            rs.append(visitId(ctx.id())).append(Common.SPACE);
         }
         if (null != ctx.with_table_hints_lock_table()) {
             rs.append(visitWith_table_hints_lock_table(ctx.with_table_hints_lock_table()));
