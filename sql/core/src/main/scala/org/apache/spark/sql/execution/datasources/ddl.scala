@@ -221,7 +221,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
 
 
     columnMap.keySet.foreach( k => {
-      sb.append(columnMap.get(k))
+      sb.append(columnMap.get(k).get)
       sb.append(",")
     }
     )
