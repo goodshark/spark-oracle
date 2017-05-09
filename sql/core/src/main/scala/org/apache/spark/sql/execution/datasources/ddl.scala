@@ -230,7 +230,7 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
       if (columnMap.contains(column.name.toLowerCase)) {
         sb.append(columnMap.get(column.name.toLowerCase).get)
         sb.append(",")
-      }*/
+      } */
       /* else {
         if (!partitionSet.contains(column.name)) {
           if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
@@ -242,8 +242,8 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
           colString.append(column.name.toLowerCase)
           colString.append(",")
         }
-      } */
-    })
+      }
+       }) */
     if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
       sb.append( tb + "." + vid + " ")
     } else {

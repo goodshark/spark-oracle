@@ -3803,6 +3803,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             rs.append(" AS ");
         }
         if(null!=ctx.id()){
+            rs.append(Common.SPACE);
             rs.append(visitId(ctx.id())).append(Common.SPACE);
         }
         if (null != ctx.with_table_hints_lock_table()) {
