@@ -45,10 +45,15 @@ public class NullIfFunction extends BaseFunction {
 
     @Override
     public String getSql() {
-
-        StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
+        // nullif has bug in spark, so transform to CASE ... WHEN temporarily
+        StringBuilder sb = new StringBuilder();
+        sb.append(" CASE WHEN ");
+        sb.append(leftExpr.getSql()).append(" = ").append(rightExpr.getSql());
+        sb.append(" THEN NULL ELSE ").append(leftExpr.getSql());
+        return sb.toString();
+        /*StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
         sb.append("(").append(leftExpr.getSql()).append(", ").append(rightExpr.getSql()).append(")");
-        return sb.toString();
+        return sb.toString();*/
     }
 }
