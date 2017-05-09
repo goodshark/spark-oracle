@@ -374,7 +374,7 @@ private[hive] class SparkHiveWriterContainer(
           case _ => insertPositions
         }
       }
-      logInfo("Final positions: " + positions.mkString(","))
+      logDebug("Final positions: " + positions.mkString(","))
       conf.value.set("spark.exe.insert.positions", positions.mkString(","))
       var partitionPath = ""
       if (null != table.tableDesc.getProperties.getProperty("partition_columns") &&
