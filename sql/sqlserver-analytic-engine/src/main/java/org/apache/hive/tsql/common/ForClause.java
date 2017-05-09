@@ -8,11 +8,11 @@ public class ForClause {
 
     public enum XMLMODE {AUTO, PATH, RAW, EXPLICIT}
 
-    public enum DIRECTIVES {BINARY, TYPE, ROOT}
+    public enum DIRECTIVES {BINARY, TYPE, ROOT, NONE}
 
     private XFORMAT xformat = XFORMAT.BROWSE;
     private XMLMODE xmlMode = XMLMODE.PATH;
-    private DIRECTIVES directives = DIRECTIVES.ROOT;
+    private DIRECTIVES directives = DIRECTIVES.NONE;
     private String row = "row";
 
     public XFORMAT getXformat() {
