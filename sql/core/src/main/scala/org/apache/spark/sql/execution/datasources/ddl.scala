@@ -185,7 +185,9 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     sb.append(tb)
     sb.append("(")
     columnMap.keySet.foreach( k => {
+      sb.append("`")
       sb.append(k)
+      sb.append("`")
       sb.append(",")
     }
     )
@@ -218,11 +220,17 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     sb.append(" select ")
 
 
-    tableMetadata.schema.foreach(column => {
+    columnMap.keySet.foreach( k => {
+      sb.append(columnMap.get(k))
+      sb.append(",")
+    }
+    )
+
+   /* tableMetadata.schema.foreach(column => {
       if (columnMap.contains(column.name.toLowerCase)) {
         sb.append(columnMap.get(column.name.toLowerCase).get)
         sb.append(",")
-      }
+      }*/
       /* else {
         if (!partitionSet.contains(column.name)) {
           if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
