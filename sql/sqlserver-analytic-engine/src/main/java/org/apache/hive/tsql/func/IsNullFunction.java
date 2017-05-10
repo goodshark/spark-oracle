@@ -36,20 +36,10 @@ public class IsNullFunction extends BaseFunction {
     @Override
     public String getSql() {
         // transform isnull -> ifnull (spark ifnull equal sqlserver isnull)
-        // ifnull has some bug in spark, so transform to CASE ... WHEN temporarily
-        StringBuilder sb = new StringBuilder();
-        sb.append(" CASE WHEN ");
-        sb.append(exprList.get(0).getSql());
-        sb.append(" IS NULL THEN ");
-        sb.append(exprList.get(1).getSql());
-        sb.append(" ELSE ");
-        sb.append(exprList.get(0).getSql());
-        sb.append(" END ");
-        return sb.toString();
-        /*StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
+        StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
         sb.append("(").append(exprList.get(0).getSql()).append(",")
         .append(exprList.get(1).getSql()).append(")");
-        return sb.toString();*/
+        return sb.toString();
     }
 }
