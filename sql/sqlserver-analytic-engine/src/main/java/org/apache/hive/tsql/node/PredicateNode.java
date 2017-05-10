@@ -682,4 +682,9 @@ public class PredicateNode extends LogicNode {
         }
         return predicateStr;
     }
+
+    @Override
+    public String getSql() {
+        return toString();
+    }
 }
