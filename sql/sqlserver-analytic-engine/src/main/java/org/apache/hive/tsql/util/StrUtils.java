@@ -90,7 +90,7 @@ public class StrUtils {
 
 
     public static String addBackQuote(String s) {
-        return "`" + s.replaceAll("`","") + "`";
+        return "`" + s.trim().replaceAll("`","") + "`";
     }
 
 
