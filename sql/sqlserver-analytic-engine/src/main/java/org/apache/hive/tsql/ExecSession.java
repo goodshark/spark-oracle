@@ -133,6 +133,9 @@ public class ExecSession {
 
 
     public String getRealTableName(String tableName) throws Exception {
+        if(tableName.contains(".")){
+            tableName = tableName.split("\\.")[1];
+        }
         TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
         String realTableName = "";
         if (tableName.indexOf("@") != -1) {
