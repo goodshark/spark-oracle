@@ -496,6 +496,12 @@ private[hive] class SparkHiveWriterContainer(
     if (conf.value.get(OPTION_TYPE).equalsIgnoreCase("1")
       || conf.value.get(OPTION_TYPE).equalsIgnoreCase("2")) {
       // val vidValue = row.getString(fieldOIs.length).toString
+      var i: Integer = 0
+      inputSchema.foreach( s => {
+        logInfo(s"inputschema==>: ${s.name}")
+        logInfo(s"i is $i ,values  ===> ${row.getString(i)}")
+        i = i + 1
+      })
       val vidValue = row.getString(inputSchema.length-1).toString
       val vidInfo = new util.ArrayList[Object]
       val txnBucketRowId: Array[String] = vidValue.split('^')

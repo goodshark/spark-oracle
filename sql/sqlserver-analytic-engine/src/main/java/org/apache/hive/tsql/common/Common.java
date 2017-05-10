@@ -50,4 +50,7 @@ public class Common {
     public static final String PASSWORD="javax.jdo.option.ConnectionPassword";
 
     public static final String SHOW_TABLES ="showTables" ;
+
+
+    public static final String crudStr = "  CLUSTERED BY (%s) INTO 1 BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\")";
 }

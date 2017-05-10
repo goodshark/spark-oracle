@@ -5,11 +5,14 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.dml.select.SelectIntoBean;
 
+import org.apache.hive.tsql.util.StrUtils;
+import org.apache.spark.sql.catalyst.TableIdentifier;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Predef;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -81,7 +84,7 @@ public class SelectStatement extends SqlStatement {
         if (resultSetVariable.size() != filedNames.size()) {
             throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
         }
-        if(resultSet.getRow()<=0){
+        if (resultSet.getRow() <= 0) {
             //结果集中没有结果，将对变量赋值为null
             for (int i = 0; i < resultSetVariable.size(); i++) {
                 getExecSession().getVariableContainer().setVarValue(resultSetVariable.get(i), null);
@@ -104,12 +107,13 @@ public class SelectStatement extends SqlStatement {
         execSQL = getSql();
         execSQL = replaceVariable(execSQL, localIdVariableName);
         replaceTableNames();
+        replaceCrudClusterByColumn();
     }
 
 
     private void selectIntoExec() throws Exception {
-        if (null != selectIntoBean && !StringUtils.isBlank(selectIntoBean.getTableNanme())) {
-            String tableName = selectIntoBean.getTableNanme();
+        if (null != selectIntoBean && !StringUtils.isBlank(selectIntoBean.getIntoTableName())) {
+            String tableName = selectIntoBean.getIntoTableName();
             TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
             String sql = "DROP TABLE IF EXISTS " + tableName;
             //如果是局部临时表，需要删除
@@ -133,6 +137,30 @@ public class SelectStatement extends SqlStatement {
         }
     }
 
+
+    private void replaceCrudClusterByColumn() throws Exception {
+        if (null != selectIntoBean && StringUtils.isBlank(selectIntoBean.getClusterByColumnName())) {
+            String clusterByColumn = "";
+            String fromTableName = selectIntoBean.getSourceTableName();
+            if (fromTableName.contains(".")) {
+                fromTableName = fromTableName.split("\\.")[1];
+            }
+            try {
+                TableIdentifier tableIdeentifier = new TableIdentifier(fromTableName);
+                CatalogTable tableMetadata = getExecSession().getSparkSession().sessionState().catalog().getTableMetadata(tableIdeentifier);
+                if (null != tableMetadata) {
+                    clusterByColumn = tableMetadata.schema().fieldNames()[0];
+                }
+            } catch (Exception e) {
+                LOG.error(" create crud table:" + selectIntoBean.getIntoTableName() + " cluster by cloumn name error.", e);
+            }
+
+            if (StringUtils.isBlank(clusterByColumn)) {
+                throw new Exception(" the cluster by column name is null in crud table: " + selectIntoBean.getIntoTableName() + " .");
+            }
+            execSQL = String.format(execSQL, StrUtils.addBackQuote(clusterByColumn));
+        }
+    }
 
 
     public void addResultSetVariables(List<String> variables) {
