@@ -29,7 +29,7 @@ public class DropViewStatement extends SqlStatement {
         ObjectIdCalculator objectIdCalculator = new ObjectIdCalculator();
         objectIdCalculator.setExecSession(getExecSession());
         for (String tableName : tableNames) {
-            boolean b1=objectIdCalculator.databaseFind(getExecSession().getRealTableName(tableName),"V");
+            boolean b1=objectIdCalculator.databaseFind(tableName,"V");
             if(!b1){
                 throw new Exception("Table or view :"+tableName +" is not exist.");
             }
