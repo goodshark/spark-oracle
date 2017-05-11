@@ -3093,7 +3093,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     @Override
     public Object visitIif_function(TSqlParser.Iif_functionContext ctx) {
         IifFunction func = new IifFunction(new FuncName(null, "IIF", null));
-        visit(ctx.predicate());
+        visit(ctx.search_condition());
         TreeNode condition = popStatement();
         List<TSqlParser.ExpressionContext> exprList = ctx.expression();
         if (exprList.size() != 2)
