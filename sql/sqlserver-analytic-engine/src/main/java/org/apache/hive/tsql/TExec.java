@@ -404,7 +404,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else if (dataType.contains("BINARY")) {
             return Var.DataType.BINARY;
         } else if (dataType.contains("DATETIME") || dataType.contains("TIMESTAMP")) {
-            return Var.DataType.DATETIME;
+            return Var.DataType.TIMESTAMP;
         } else if (dataType.equalsIgnoreCase("TIME")) {
             return Var.DataType.TIME;
         } else if (dataType.contains("DATE")) {
@@ -1387,7 +1387,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return "DOUBLE";
         } else if (dataType.contains("NUMERIC")) {
             return "DOUBLE";
-        } else if (dataType.contains("TIMESTAMP")) {
+        } else if (dataType.contains("TIMESTAMP") || dataType.contains("DATETIME")) {
             return "TIMESTAMP";
         } else if (dataType.contains("DATE") || dataType.contains("TIME")) {
             return "DATE";
