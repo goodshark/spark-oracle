@@ -146,4 +146,9 @@ public class LogicNode extends TreeNode {
             return logicStr;*/
         return logicStr;
     }
+
+    @Override
+    public String getSql() {
+        return toString();
+    }
 }
