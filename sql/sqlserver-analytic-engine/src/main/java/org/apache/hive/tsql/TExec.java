@@ -293,6 +293,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         Var var = new Var(varName, null, dataType);
         if (null != ctx.default_value()) {
             try {
+                Var v = (Var) visitDefault_value(ctx.default_value()).getVarValue();
+                if (v.getDataType().equals(Var.DataType.STRING)) {
+                    v.setVarValue(StrUtils.trimQuot(v.getVarValue().toString()));
+                }
                 var.setVarValue(visitDefault_value(ctx.default_value()).getVarValue());
                 var.setDefault(true);
             } catch (ParseException e) {
@@ -2220,7 +2224,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
     private Set<String> tableNameList = new HashSet<>();
 
 
-
     private String limitSql = "";
 
     private void clearVariable() {
@@ -2232,11 +2235,28 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SelectStatement selectStatement = new SelectStatement(Common.SELECT);
         StringBuffer sql = new StringBuffer();
         clearVariable();
+        boolean withExpression = false;
+        String fromTableName = "";
+        String clusterByColumnName = "";
         if (null != ctx.with_expression()) {
             sql.append(visitWith_expression(ctx.with_expression()).getSql());
+            withExpression = true;
+            clusterByColumnName = getOutPutColumnFromWithExpress(ctx.with_expression());
+            if (StringUtils.isBlank(clusterByColumnName)) {
+                fromTableName = getTableNameFromWitheExpression(ctx.with_expression());
+            }
         }
         QueryExpressionBean queryExpressionBean = visitQuery_expression(ctx.query_expression());
         if (null != queryExpressionBean.getQuerySpecificationBean()) {
+            SelectIntoBean selectIntoBean = queryExpressionBean.getQuerySpecificationBean().getSelectIntoBean();
+            if (withExpression) {
+                if (StringUtils.isNotBlank(clusterByColumnName)) {
+                    selectIntoBean.setClusterByColumnName(clusterByColumnName);
+                } else {
+                    selectIntoBean.setSourceTableName(fromTableName);
+                }
+            }
+
             selectStatement.setSelectIntoBean(queryExpressionBean.getQuerySpecificationBean().getSelectIntoBean());
         }
         sql.append(queryExpressionBean.getSql());
@@ -2257,6 +2277,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         selectStatement.addVariables(localIdVariable);
         selectStatement.addResultSetVariables(resultSetVariable);
         selectStatement.addTableNames(tableNameList);
+        SelectIntoBean finalSelectIntoBean = selectStatement.getSelectIntoBean();
+        if (null != finalSelectIntoBean && StringUtils.isBlank(finalSelectIntoBean.getSourceTableName())) {
+            TSqlParser.Query_specificationContext query = ctx.query_expression().query_specification();
+            finalSelectIntoBean.setClusterByColumnName(getOutPutColumnFromQuery(query));
+            finalSelectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(query.table_sources()));
+        }
+
         clearVariable();
 
         if (null != ctx.for_clause()) {
@@ -2460,6 +2487,81 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     }
 
+    private String getOutPutColumnFromQuery(TSqlParser.Query_specificationContext ctx) {
+        ArrayList<ColumnBean> columns = visitSelect_list(ctx.select_list());
+        String columnName = "";
+        if (null != columns && !columns.isEmpty()) {
+            ColumnBean columnBean = columns.get(0);
+            if (null != columnBean && StringUtils.isNotBlank(columnBean.getRealColumnName())) {
+                columnName = columnBean.getRealColumnName();
+            } else {
+                columnName = getOutPutColumnFromTable(ctx.table_sources());
+            }
+        }
+        return columnName;
+    }
+
+    private String getOutPutColumnFromWithExpress(TSqlParser.With_expressionContext ctx) {
+        String columnName = "";
+        if (null != ctx.common_table_expression(0)) {
+            TSqlParser.Common_table_expressionContext comTbEx = ctx.common_table_expression(0);
+            if (null != comTbEx.column_name_list()) {
+                columnName = visitColumn_name_list(comTbEx.column_name_list()).get(0);
+                return columnName;
+            }
+            TSqlParser.Query_specificationContext querySp = comTbEx.select_statement().
+                    query_expression().query_specification();
+            columnName = getOutPutColumnFromQuery(querySp);
+        }
+        return columnName;
+    }
+
+    private String getTableNameFromWitheExpression(TSqlParser.With_expressionContext ctx) {
+        String tableName = "";
+        if (null != ctx.common_table_expression(0)) {
+            TSqlParser.Common_table_expressionContext comTbEx = ctx.common_table_expression(0);
+            TSqlParser.Query_specificationContext querySp = comTbEx.select_statement().
+                    query_expression().query_specification();
+            tableName = getTbNameFromTableSourceContext(querySp.table_sources());
+        }
+        return tableName;
+    }
+
+    private String getOutPutColumnFromTable(TSqlParser.Table_sourcesContext ctx) {
+        List<TSqlParser.Table_sourceContext> tbSources = ctx.table_source();
+        String columnName = "";
+        if (null != tbSources.get(0).table_source_item_joined().table_source_item().derived_table()) {
+            TSqlParser.Derived_tableContext derivedTable = tbSources.get(0).table_source_item_joined()
+                    .table_source_item().derived_table();
+            TSqlParser.Query_specificationContext qs = derivedTable.subquery().
+                    select_statement().query_expression().query_expression().query_specification();
+            if (null != qs) {
+                columnName = getOutPutColumnFromQuery(qs);
+            }
+        }
+        return columnName;
+    }
+
+    private String getTbNameFromTableSourceContext(TSqlParser.Table_sourcesContext ctx) {
+        List<TSqlParser.Table_sourceContext> tbSources = ctx.table_source();
+        String tableName = "";
+        TSqlParser.Table_name_with_hintContext tableNameWithHint = tbSources.get(0).table_source_item_joined()
+                .table_source_item().table_name_with_hint();
+        if (null != tableNameWithHint) {
+            tableName = visitTable_name(tableNameWithHint.table_name()).getRealFullFuncName();
+        } else {
+            TSqlParser.Derived_tableContext derivedTable = tbSources.get(0).table_source_item_joined()
+                    .table_source_item().derived_table();
+            if (null != derivedTable) {
+                TSqlParser.Table_sourcesContext tableSources = derivedTable.subquery().select_statement()
+                        .query_expression().query_expression().query_specification().table_sources();
+                tableName = getTbNameFromTableSourceContext(tableSources);
+            }
+        }
+
+        return tableName;
+    }
+
 
     @Override
     public QuerySpecificationBean visitQuery_specification(TSqlParser.Query_specificationContext ctx) {
@@ -2485,9 +2587,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             if (procFlag && !columns.isEmpty() && null != columns.get(0)) {
                 String clusterByColumnName = columns.get(0).getRealColumnName();
                 selectIntoBean.setClusterByColumnName(clusterByColumnName);
-                if(StringUtils.isNotBlank(clusterByColumnName)){
+                if (StringUtils.isNotBlank(clusterByColumnName)) {
                     intoTableSql = "create table " + tableName + String.format(Common.crudStr, StrUtils.addBackQuote(clusterByColumnName)) + " as ";
-                }else{
+                } else {
                     intoTableSql = "create table " + tableName + Common.SPACE + Common.crudStr + " as ";
                 }
             } else {
@@ -2497,7 +2599,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.FROM()) {
             rs.append(ctx.FROM().getText()).append(Common.SPACE);
             String fromTb = visitTable_sources(ctx.table_sources());
-            selectIntoBean.setSourceTableName(fromTb);
+            selectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(ctx.table_sources()));
             rs.append(fromTb).append(Common.SPACE);
         }
         if (null != ctx.WHERE()) {
@@ -2655,7 +2757,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
 
     @Override
-    public  List<String> visitColumn_alias_list(TSqlParser.Column_alias_listContext ctx) {
+    public List<String> visitColumn_alias_list(TSqlParser.Column_alias_listContext ctx) {
         List<String> columnAliasList = new ArrayList<>();
 
         StringBuffer rs = new StringBuffer();
@@ -3797,10 +3899,10 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else {
             rs.append(tableName);
         }
-        if(null!=ctx.AS()){
+        if (null != ctx.AS()) {
             rs.append(" AS ");
         }
-        if(null!=ctx.id()){
+        if (null != ctx.id()) {
             rs.append(Common.SPACE);
             rs.append(visitId(ctx.id())).append(Common.SPACE);
         }

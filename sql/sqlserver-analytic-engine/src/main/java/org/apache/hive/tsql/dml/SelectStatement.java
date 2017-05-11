@@ -139,8 +139,10 @@ public class SelectStatement extends SqlStatement {
 
 
     private void replaceCrudClusterByColumn() throws Exception {
+        LOG.info("create crud table : clusterbyColumnName:" +  selectIntoBean.getClusterByColumnName());
+        LOG.info("create crud table : fromTb:" +  selectIntoBean.getSourceTableName());
+        String clusterByColumn = "";
         if (null != selectIntoBean && StringUtils.isBlank(selectIntoBean.getClusterByColumnName())) {
-            String clusterByColumn = "";
             String fromTableName = selectIntoBean.getSourceTableName();
             if (fromTableName.contains(".")) {
                 fromTableName = fromTableName.split("\\.")[1];
@@ -158,8 +160,8 @@ public class SelectStatement extends SqlStatement {
             if (StringUtils.isBlank(clusterByColumn)) {
                 throw new Exception(" the cluster by column name is null in crud table: " + selectIntoBean.getIntoTableName() + " .");
             }
-            execSQL = String.format(execSQL, StrUtils.addBackQuote(clusterByColumn));
         }
+        execSQL = String.format(execSQL, StrUtils.addBackQuote(clusterByColumn));
     }
 
 
