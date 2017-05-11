@@ -1,6 +1,7 @@
 package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.arg.Var;
+import org.apache.hive.tsql.util.StrUtils;
 
 import java.text.ParseException;
 import java.util.Calendar;
@@ -177,7 +178,7 @@ public class ExpressionComputer {
         if (v1.getVarValue() == null || v2.getVarValue() == null) {
             return Var.Null;
         } else if (v1.getDataType() == Var.DataType.STRING && v2.getDataType() == Var.DataType.STRING) {
-            String values = v1.getVarValue().toString() + v2.getVarValue().toString();
+            String values = StrUtils.trimQuot(v1.getVarValue().toString()) + StrUtils.trimQuot(v2.getVarValue().toString());
             return new Var(values, Var.DataType.STRING);
         } else if (checkVarIsNumber(v1, v2)) {
             Number number = new Number();
@@ -266,6 +267,10 @@ public class ExpressionComputer {
         if (var1 == null && var2 == null) {
             return true;
         } else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
+            if (var1.getVarValue().toString().equalsIgnoreCase("null")&&
+                    var2.getVarValue().toString().equalsIgnoreCase("null")){
+                return true;
+            }
             if (var1.getVarValue().toString().equals(var2.getVarValue().toString())) {
                 return true;
             }
