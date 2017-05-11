@@ -7,13 +7,38 @@ import org.apache.hive.tsql.dml.mergeinto.BaseBean;
  */
 public class SelectIntoBean extends BaseBean {
 
-    private String tableNanme;
+    private String intoTableName;
 
-    public String getTableNanme() {
-        return tableNanme;
+
+    private String sourceTableName;
+
+    private String clusterByColumnName;
+
+
+
+
+
+    public String getIntoTableName() {
+        return intoTableName;
     }
 
-    public void setTableNanme(String tableNanme) {
-        this.tableNanme = tableNanme;
+    public void setIntoTableName(String intoTableName) {
+        this.intoTableName = intoTableName;
+    }
+
+    public String getSourceTableName() {
+        return sourceTableName;
+    }
+
+    public void setSourceTableName(String sourceTableName) {
+        this.sourceTableName = sourceTableName;
+    }
+
+    public String getClusterByColumnName() {
+        return clusterByColumnName;
+    }
+
+    public void setClusterByColumnName(String clusterByColumnName) {
+        this.clusterByColumnName = clusterByColumnName;
     }
 }

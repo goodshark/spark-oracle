@@ -87,4 +87,13 @@ public class StrUtils {
         }
         return rs;
     }
+
+
+    public static String addBackQuote(String s) {
+        return "`" + s.trim().replaceAll("`","") + "`";
+    }
+
+
+
+
 }

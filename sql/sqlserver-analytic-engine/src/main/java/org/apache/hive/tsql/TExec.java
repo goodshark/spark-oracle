@@ -40,7 +40,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
      * for acid table
      */
     private boolean procFlag = false;
-    private String crudStr = "  CLUSTERED BY (%s) INTO 1 BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\")";
+
 
 
     private LinkedList<TreeNode> curNodeStack = new LinkedList<TreeNode>();
@@ -404,7 +404,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else if (dataType.contains("BINARY")) {
             return Var.DataType.BINARY;
         } else if (dataType.contains("DATETIME") || dataType.contains("TIMESTAMP")) {
-            return Var.DataType.DATETIME;
+            return Var.DataType.TIMESTAMP;
         } else if (dataType.equalsIgnoreCase("TIME")) {
             return Var.DataType.TIME;
         } else if (dataType.contains("DATE")) {
@@ -1306,7 +1306,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (procFlag && ctx.crud_table() == null) {
             String column = columnDefs.contains(",") ? columnDefs.split(",")[0] : columnDefs;
             column = column.split(" ")[0];
-            createTableStatement.setCrudStr(String.format(crudStr, column));
+            createTableStatement.setCrudStr(String.format(Common.crudStr, column));
         }
         if (null != ctx.ON() || null != ctx.TEXTIMAGE_ON()) {
             addException(" filegroup", locate(ctx));
@@ -1387,7 +1387,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return "DOUBLE";
         } else if (dataType.contains("NUMERIC")) {
             return "DOUBLE";
-        } else if (dataType.contains("TIMESTAMP")) {
+        } else if (dataType.contains("TIMESTAMP") || dataType.contains("DATETIME")) {
             return "TIMESTAMP";
         } else if (dataType.contains("DATE") || dataType.contains("TIME")) {
             return "DATE";
@@ -2219,15 +2219,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     private Set<String> tableNameList = new HashSet<>();
 
-    /**
-     * select 语句中含有insertInto table的sql
-     */
-    private String intoTableSql = "";
+
+
     private String limitSql = "";
 
-
     private void clearVariable() {
-        intoTableSql = "";
         limitSql = "";
     }
 
@@ -2257,13 +2253,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(visitOrder_by_clause(ctx.order_by_clause()));
         }
         sql.append(limitSql);
-        StringBuffer selectSql = new StringBuffer();
-        if (StringUtils.isNotBlank(intoTableSql)) {
-            selectSql.append(intoTableSql).append(Common.SPACE);
-        }
-        selectSql.append(sql);
-        selectStatement.setSql(selectSql.toString());
-        //selectStatement.sql.append(";");
+        selectStatement.setSql(sql.toString());
         selectStatement.addVariables(localIdVariable);
         selectStatement.addResultSetVariables(resultSetVariable);
         selectStatement.addTableNames(tableNameList);
@@ -2486,21 +2476,29 @@ public class TExec extends TSqlBaseVisitor<Object> {
         ArrayList<ColumnBean> columns = visitSelect_list(ctx.select_list());
         querySpecificationBean.setSelectList(columns);
         rs.append(StringUtils.join(columns.toArray(), ","));
+        SelectIntoBean selectIntoBean = new SelectIntoBean();
         if (null != ctx.INTO()) {
             String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
             tableNameList.add(tableName);
-            SelectIntoBean selectIntoBean = new SelectIntoBean();
-            selectIntoBean.setTableNanme(tableName);
+            selectIntoBean.setIntoTableName(tableName);
             querySpecificationBean.setSelectIntoBean(selectIntoBean);
             if (procFlag && !columns.isEmpty() && null != columns.get(0)) {
-                intoTableSql = "create table " + tableName + String.format(crudStr, columns.get(0).getCloumnName()) + " as ";
+                String clusterByColumnName = columns.get(0).getRealColumnName();
+                selectIntoBean.setClusterByColumnName(clusterByColumnName);
+                if(StringUtils.isNotBlank(clusterByColumnName)){
+                    intoTableSql = "create table " + tableName + String.format(Common.crudStr, StrUtils.addBackQuote(clusterByColumnName)) + " as ";
+                }else{
+                    intoTableSql = "create table " + tableName + Common.SPACE + Common.crudStr + " as ";
+                }
             } else {
                 intoTableSql = "create table " + tableName + " as ";
             }
         }
         if (null != ctx.FROM()) {
             rs.append(ctx.FROM().getText()).append(Common.SPACE);
-            rs.append(visitTable_sources(ctx.table_sources())).append(Common.SPACE);
+            String fromTb = visitTable_sources(ctx.table_sources());
+            selectIntoBean.setSourceTableName(fromTb);
+            rs.append(fromTb).append(Common.SPACE);
         }
         if (null != ctx.WHERE()) {
             rs.append(ctx.WHERE().getText()).append(Common.SPACE);
@@ -3367,7 +3365,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
             if (null != ctx.ELSE()) {
                 sql.append(ctx.ELSE().getText()).append(Common.SPACE);
-                SqlStatement elseSqlStatement = (SqlStatement) visit(ctx.expression(0));
+                TreeNode elseSqlStatement = (TreeNode) visit(ctx.expression(0));
                 elseSqlStatement.setNodeType(TreeNode.Type.ELSE);
                 sql.append(elseSqlStatement.getSql());
                 addNode(caseWhenStatement);
@@ -3375,7 +3373,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else {
             //====type=0 简单表达式
             caseWhenStatement.setCaseWhenStatementType(0);
-            SqlStatement sqlStatement = (SqlStatement) visit(ctx.expression(0));
+            TreeNode sqlStatement = (TreeNode) visit(ctx.expression(0));
             sqlStatement.setNodeType(TreeNode.Type.CASE_INPUT);
             addNode(caseWhenStatement);
             sql.append(sqlStatement.getSql());
@@ -3387,7 +3385,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
             if (ctx.expression().size() > 1) {
                 sql.append(ctx.ELSE().getText()).append(Common.SPACE);
-                SqlStatement elseSqlStatement = (SqlStatement) visit(ctx.expression(1));
+                TreeNode elseSqlStatement = (TreeNode) visit(ctx.expression(1));
                 elseSqlStatement.setNodeType(TreeNode.Type.ELSE);
                 sql.append(elseSqlStatement.getSql());
                 addNode(caseWhenStatement);
