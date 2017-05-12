@@ -498,6 +498,7 @@ private[hive] class SparkHiveWriterContainer(
       // val vidValue = row.getString(fieldOIs.length).toString
       var i: Integer = 0
       inputSchema.foreach( s => {
+        logInfo(s"row.numFields is ==>${row.numFields}")
         logInfo(s"inputschema==>: ${s.name}")
         logInfo(s"i is $i ,values  ===> ${row.getString(i)}")
         i = i + 1

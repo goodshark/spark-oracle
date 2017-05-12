@@ -133,20 +133,24 @@ public class ExecSession {
 
 
     public String getRealTableName(String tableName) throws Exception {
-        if(tableName.contains(".")){
-            tableName = tableName.split("\\.")[1];
-        }
+
         TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
         String realTableName = "";
         if (tableName.indexOf("@") != -1) {
             realTableName = getVariableContainer().findTableVarAlias(tableName);
         } else if (tmpTableNameUtils.checkIsTmpTable(tableName)) {
+            if(tableName.contains(".")){
+                tableName = tableName.split("\\.")[1];
+            }
             realTableName = sparkSession.getRealTable(tableName);
             if (StringUtils.equals(tableName, realTableName)) {
                 realTableName = tmpTableNameUtils.createTableName(tableName);
                 sparkSession.addTableToSparkSeesion(tableName, realTableName, 2);
             }
         } else if (tmpTableNameUtils.checkIsGlobalTmpTable(tableName)) {
+            if(tableName.contains(".")){
+                tableName = tableName.split("\\.")[1];
+            }
             realTableName = tmpTableNameUtils.getGlobalTbName(tableName);
         } else {
             realTableName = tableName;

@@ -103,11 +103,16 @@ public class SelectStatement extends SqlStatement {
     }
 
     public void init() throws Exception {
-        selectIntoExec();
+         selectIntoExec();
+        LOG.info("11===>"+execSQL);
         execSQL = getSql();
+        LOG.info("22===>"+execSQL);
         execSQL = replaceVariable(execSQL, localIdVariableName);
+        LOG.info("33===>"+execSQL);
         replaceTableNames();
+        LOG.info("44===>"+execSQL);
         replaceCrudClusterByColumn();
+        LOG.info("55===>"+execSQL);
     }
 
 
@@ -140,30 +145,36 @@ public class SelectStatement extends SqlStatement {
 
     private void replaceCrudClusterByColumn() throws Exception {
 
+        boolean a = (null != selectIntoBean);
+        LOG.info("========>" + a);
         String clusterByColumn = "";
-        if (null != selectIntoBean && StringUtils.isBlank(selectIntoBean.getClusterByColumnName())) {
-            LOG.info("current sql is " +  execSQL);
-            LOG.info("create crud table : clusterbyColumnName:" +  selectIntoBean.getClusterByColumnName());
-            LOG.info("create crud table : fromTb:" +  selectIntoBean.getSourceTableName());
-            String fromTableName = selectIntoBean.getSourceTableName();
-            if (fromTableName.contains(".")) {
-                fromTableName = fromTableName.split("\\.")[1];
-            }
-            try {
-                TableIdentifier tableIdeentifier = new TableIdentifier(fromTableName);
-                CatalogTable tableMetadata = getExecSession().getSparkSession().sessionState().catalog().getTableMetadata(tableIdeentifier);
-                if (null != tableMetadata) {
-                    clusterByColumn = tableMetadata.schema().fieldNames()[0];
+        if (null != selectIntoBean) {
+            clusterByColumn = selectIntoBean.getClusterByColumnName();
+            if(StringUtils.isBlank(clusterByColumn)){
+                LOG.info("current sql is " +  execSQL);
+                LOG.info("create crud table : clusterbyColumnName:" +  selectIntoBean.getClusterByColumnName());
+                LOG.info("create crud table : fromTb:" +  selectIntoBean.getSourceTableName());
+                String fromTableName = selectIntoBean.getSourceTableName();
+                if (fromTableName.contains(".")) {
+                    fromTableName = fromTableName.split("\\.")[1];
                 }
-            } catch (Exception e) {
-                LOG.error(" create crud table:" + selectIntoBean.getIntoTableName() + " cluster by cloumn name error.", e);
-            }
+                try {
+                    TableIdentifier tableIdeentifier = new TableIdentifier(fromTableName);
+                    CatalogTable tableMetadata = getExecSession().getSparkSession().sessionState().catalog().getTableMetadata(tableIdeentifier);
+                    if (null != tableMetadata) {
+                        clusterByColumn = tableMetadata.schema().fieldNames()[0];
+                    }
+                } catch (Exception e) {
+                    LOG.error(" create crud table:" + selectIntoBean.getIntoTableName() + " cluster by cloumn name error.", e);
+                }
 
-            if (StringUtils.isBlank(clusterByColumn)) {
-                throw new Exception(" create  crud table: " + selectIntoBean.getIntoTableName() + " failed.");
+                if (StringUtils.isBlank(clusterByColumn)) {
+                    throw new Exception(" create  crud table: " + selectIntoBean.getIntoTableName() + " failed.");
+                }
+            }else{
+                execSQL = String.format(execSQL, StrUtils.addBackQuote(clusterByColumn));
             }
         }
-        execSQL = String.format(execSQL, StrUtils.addBackQuote(clusterByColumn));
     }
 
 

@@ -149,10 +149,13 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     var columnMap: Map[String, String] = Map()
     for (i <- 0 until statement.assignlist.size()) {
       val array = statement.assignExpression(i).getText.split("=")
+      val ex = statement.assignExpression(i).expression()
+      val values = ex.start.getInputStream().getText(
+        new Interval(ex.start.getStartIndex(), ex.stop.getStopIndex()))
       if (array(0).contains(".")) {
-        columnMap += (array(0).split("\\.")(1).toLowerCase -> array(1))
+        columnMap += (array(0).split("\\.")(1).toLowerCase -> values)
       } else {
-        columnMap += (array(0).toLowerCase -> array(1))
+        columnMap += (array(0).toLowerCase -> values)
       }
     }
 
@@ -249,12 +252,12 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     } else {
       sb.append( tableNameAlias + "." + vid + " ")
     }
+    sb.append(" from ")
     if (null != statement.fromClauseForUpdate()) {
       val fromClause = statement.fromClauseForUpdate()
       sb.append(fromClause.start.getInputStream().getText(
         new Interval(fromClause.start.getStartIndex(), fromClause.stop.getStopIndex())))
     } else {
-      sb.append(" from ")
       sb.append(db)
       sb.append(".")
       sb.append(tb)

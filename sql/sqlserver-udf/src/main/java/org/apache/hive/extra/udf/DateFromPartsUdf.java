@@ -10,8 +10,11 @@ public class DateFromPartsUdf extends UDF {
 
     private DateFromPartsCalculator calculator = new DateFromPartsCalculator();
 
-    public String evaluate(int year, int month, int day) {
+    public String evaluate(Integer year, Integer month, Integer day) {
         try {
+            year = year == null ? 1970 : year;
+            month = month == null ? 1 : month;
+            day = day == null ? 1 : day;
             return calculator.doEval(year, month, day);
         } catch (Exception e) {
             e.printStackTrace();

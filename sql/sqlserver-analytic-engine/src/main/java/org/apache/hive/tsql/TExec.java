@@ -2254,8 +2254,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 } else {
                     selectIntoBean.setSourceTableName(fromTableName);
                 }
-                selectStatement.setSelectIntoBean(selectIntoBean);
             }
+            selectStatement.setSelectIntoBean(selectIntoBean);
         }
         sql.append(queryExpressionBean.getSql());
         if (null != queryExpressionBean.getExceptions() && !queryExpressionBean.getExceptions().isEmpty()) {
@@ -2271,9 +2271,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             sql.append(visitOrder_by_clause(ctx.order_by_clause()));
         }
         SelectIntoBean finalSelectIntoBean = selectStatement.getSelectIntoBean();
-        if (null != finalSelectIntoBean && StringUtils.isBlank(finalSelectIntoBean.getSourceTableName())) {
+        if (null != finalSelectIntoBean) {
             TSqlParser.Query_specificationContext query = ctx.query_expression().query_specification();
-            finalSelectIntoBean.setClusterByColumnName(getOutPutColumnFromQuery(query));
+            if(StringUtils.isBlank(finalSelectIntoBean.getClusterByColumnName())){
+                finalSelectIntoBean.setClusterByColumnName(getOutPutColumnFromQuery(query));
+            }
             finalSelectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(query.table_sources()));
         }
         // with tmpShip as (select * from t11) select * into #tmp from tmpShip;
@@ -2287,8 +2289,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             Iterator<String> withkeyIt = withKeys.iterator();
             while (withkeyIt.hasNext()) {
                 String key = withkeyIt.next();
-                String replaceSql = "(" + withExpressionSqlMap.get(key) + ") " + key;
-                withCreateTableSql = withCreateTableSql.replaceAll(key, replaceSql);
+                String replaceSql = "  (" + withExpressionSqlMap.get(key) + ") " + key + " ";
+                withCreateTableSql = withCreateTableSql.replaceAll(" " + key, replaceSql);
             }
             sql.setLength(0);
             sql.append(withCreateTableSql);

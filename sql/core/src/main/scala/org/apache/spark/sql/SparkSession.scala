@@ -675,6 +675,9 @@ class SparkSession private(
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
     sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "false")
+    // for testing
+    // sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
+    // sessionState.conf.setConfString(OPTION_TYPE, "1")
     if (plan.isInstanceOf[AcidDelCommand]) {
       val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
       val tb: String = sessionState.catalog.getTableName(tableIdent)
