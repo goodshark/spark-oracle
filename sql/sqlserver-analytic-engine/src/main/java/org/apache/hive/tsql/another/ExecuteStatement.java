@@ -171,7 +171,13 @@ public class ExecuteStatement extends BaseStatement {
             funcVar.setVarValue(realVal.getVarValue());
         } else {
             if (argument.getValueType() != Var.ValueType.DEFAULT) {
-                funcVar.setVarValue(argument.getVarValue());
+                //如果参数为string类型，需要去掉左右两边的引号
+                Object v = argument.getVarValue();
+                if(argument.getDataType().equals(Var.DataType.COMMON)){
+                    v = StrUtils.trimQuot(argument.getVarValue().toString());
+                }
+                System.out.println(v.toString());
+                funcVar.setVarValue(v);
             }
         }
     }

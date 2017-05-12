@@ -2,11 +2,13 @@ package org.apache.hive.tsql.common;
 
 
 import org.apache.hive.tsql.arg.Var;
+import org.apache.hive.tsql.udf.ObjectIdCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -69,6 +71,26 @@ public class SqlStatement extends BaseStatement implements Serializable {
             }
         }
         return sql;
+    }
+
+    public String getSchemaTableName(String tableName){
+        if(tableName.contains(".")){
+            String[] tbs = tableName.split("\\.");
+            return tbs[0]+"."+"dbo."+tbs[1];
+        }
+        return  tableName;
+    }
+
+    public void checkTableIsExist(List<String> tableNames,String type) throws Exception{
+        ObjectIdCalculator objectIdCalculator = new ObjectIdCalculator();
+        objectIdCalculator.setExecSession(getExecSession());
+        for (String tableName : tableNames) {
+            String t = getSchemaTableName(tableName);
+            boolean b1=objectIdCalculator.databaseFind(t, type);
+            if(!b1){
+                throw new Exception("Table or view :"+tableName +" is not exist.");
+            }
+        }
     }
 
 }

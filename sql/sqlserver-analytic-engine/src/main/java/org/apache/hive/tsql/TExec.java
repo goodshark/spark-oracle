@@ -42,7 +42,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
     private boolean procFlag = false;
 
 
-
     private LinkedList<TreeNode> curNodeStack = new LinkedList<TreeNode>();
 
     private TreeNode rootNode; //解析编译过程的目标就是构造这个treenode
@@ -2249,15 +2248,14 @@ public class TExec extends TSqlBaseVisitor<Object> {
         QueryExpressionBean queryExpressionBean = visitQuery_expression(ctx.query_expression());
         if (null != queryExpressionBean.getQuerySpecificationBean()) {
             SelectIntoBean selectIntoBean = queryExpressionBean.getQuerySpecificationBean().getSelectIntoBean();
-            if (withExpression) {
+            if (withExpression && null != selectIntoBean) {
                 if (StringUtils.isNotBlank(clusterByColumnName)) {
                     selectIntoBean.setClusterByColumnName(clusterByColumnName);
                 } else {
                     selectIntoBean.setSourceTableName(fromTableName);
                 }
+                selectStatement.setSelectIntoBean(selectIntoBean);
             }
-
-            selectStatement.setSelectIntoBean(queryExpressionBean.getQuerySpecificationBean().getSelectIntoBean());
         }
         sql.append(queryExpressionBean.getSql());
         if (null != queryExpressionBean.getExceptions() && !queryExpressionBean.getExceptions().isEmpty()) {
@@ -2272,17 +2270,36 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (null != ctx.option_clause()) {
             sql.append(visitOrder_by_clause(ctx.order_by_clause()));
         }
-        sql.append(limitSql);
-        selectStatement.setSql(sql.toString());
-        selectStatement.addVariables(localIdVariable);
-        selectStatement.addResultSetVariables(resultSetVariable);
-        selectStatement.addTableNames(tableNameList);
         SelectIntoBean finalSelectIntoBean = selectStatement.getSelectIntoBean();
         if (null != finalSelectIntoBean && StringUtils.isBlank(finalSelectIntoBean.getSourceTableName())) {
             TSqlParser.Query_specificationContext query = ctx.query_expression().query_specification();
             finalSelectIntoBean.setClusterByColumnName(getOutPutColumnFromQuery(query));
             finalSelectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(query.table_sources()));
         }
+        // with tmpShip as (select * from t11) select * into #tmp from tmpShip;
+        // 由于spark不支持with tmpShip as (  select * from t1   ) create table tmp.tmp_tmp_1494555472055_691 as select * from tmpShip
+        // spark 支持with tmpShip as (  select * from t1   ) select * from tmpShip
+        // 需要修改为 create table tmp.tmp_tmp_1494555472055_691 as select * from  (  select * from t1   ) tmpShip
+
+        if (null != finalSelectIntoBean && withExpression) {
+            String withCreateTableSql = queryExpressionBean.getQuerySpecificationBean().getSql();
+            Set<String> withKeys = withExpressionSqlMap.keySet();
+            Iterator<String> withkeyIt = withKeys.iterator();
+            while (withkeyIt.hasNext()) {
+                String key = withkeyIt.next();
+                String replaceSql = "(" + withExpressionSqlMap.get(key) + ") " + key;
+                withCreateTableSql = withCreateTableSql.replaceAll(key, replaceSql);
+            }
+            sql.setLength(0);
+            sql.append(withCreateTableSql);
+        }
+
+        sql.append(limitSql);
+        selectStatement.setSql(sql.toString());
+        selectStatement.addVariables(localIdVariable);
+        selectStatement.addResultSetVariables(resultSetVariable);
+        selectStatement.addTableNames(tableNameList);
+
 
         clearVariable();
 

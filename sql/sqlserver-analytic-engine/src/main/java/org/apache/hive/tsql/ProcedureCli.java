@@ -95,7 +95,7 @@ public class ProcedureCli {
             throw e;
         } finally {
             //6. clean
-            clean();
+            //clean();
         }
     }
 
