@@ -386,7 +386,7 @@ deleteStatement
     ;
 
 updateStatement
-    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)*  FROM ('(')? fromClauseForUpdate? (WHERE where=booleanExpression)? (LIMIT limit=expression)? (')')?
+    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)*  FROM? ('(')? fromClauseForUpdate? (WHERE where=booleanExpression)? (LIMIT limit=expression)? (')')?
     ;
 fromClauseForUpdate
 	:  relationUpate (',' relationUpate)*
