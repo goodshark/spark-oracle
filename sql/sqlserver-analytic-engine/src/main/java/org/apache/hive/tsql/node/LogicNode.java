@@ -1,6 +1,8 @@
 package org.apache.hive.tsql.node;
 
+import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.arg.Var;
+import org.apache.hive.tsql.arg.VariableContainer;
 import org.apache.hive.tsql.common.TreeNode;
 
 import java.util.List;
@@ -16,6 +18,7 @@ public class LogicNode extends TreeNode {
         private Var upper = null;
         private Var curIndex = new Var();
         private boolean reverse = false;
+        private boolean initExecute = true;
 
         public void setIndexVar(Var index) {
             indexVar = index;
@@ -36,6 +39,7 @@ public class LogicNode extends TreeNode {
         public void init() throws Exception {
             if (indexVar == null || lower == null || upper == null)
                 return;
+
             if (reverse) {
                 curIndex.setVarValue(upper.getVarValue());
                 curIndex.setDataType(upper.getDataType());
@@ -49,10 +53,25 @@ public class LogicNode extends TreeNode {
             return indexVar;
         }
 
-        private void preExecute() throws Exception {
+        private Var preExecute(VariableContainer variableContainer) throws Exception {
+            if (initExecute) {
+                if (lower.getDataType() == Var.DataType.VAR) {
+                    Var lowerVar = variableContainer.findVar(lower.getVarName());
+                    lower.setVarValue(lowerVar.getVarValue());
+                    lower.setDataType(lowerVar.getDataType());
+                }
+                if (upper.getDataType() == Var.DataType.VAR) {
+                    Var upperVar = variableContainer.findVar(upper.getVarName());
+                    upper.setVarValue(upperVar.getVarValue());
+                    upper.setDataType(upperVar.getDataType());
+                }
+                init();
+                initExecute = false;
+            }
             indexVar.setVarValue(curIndex.getVarValue());
             int nextIndex = (int)curIndex.getVarValue() + 1;
             curIndex.setVarValue(nextIndex);
+            return indexVar;
         }
     }
 
@@ -111,7 +130,8 @@ public class LogicNode extends TreeNode {
 
     public void preExecute() throws Exception {
         if (indexIter != null) {
-            indexIter.preExecute();
+            Var index = indexIter.preExecute(getExecSession().getVariableContainer());
+            addVar(index);
         }
     }
 

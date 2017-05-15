@@ -867,7 +867,7 @@ open_statement
     ;
 
 fetch_statement
-    : FETCH cursor_name (it1=INTO variable_name (',' variable_name )* | BULK COLLECT INTO variable_name (',' variable_name )*)
+    : FETCH cursor_name (it1=INTO variable_name (',' variable_name )* | BULK COLLECT INTO variable_name (',' variable_name )* (LIMIT expression)?)
     ;
 
 open_for_statement
@@ -1376,7 +1376,33 @@ condition
 
 expression
     : cursor_expression
+    | id_expression ('.' id_expression)*
+    | constant
+    | function_call
+    | case_statement
+    | '(' expression ')'
+    | expression op=('*' | '/' | '%') expression
+    | unary_expression
+//    | op=('+' | '-') expression
+    | expression op=('||' | '|') expression
+    | expression op=('+' | '-') expression
+//    | concatenation
+    | logical_and_expression (OR logical_and_expression)*
+    | negated_expression (AND negated_expression)*
     | logical_or_expression
+    ;
+
+// only for logic condition (avoid nested left-recursive)
+sub_expression
+    : id_expression ('.' id_expression)*
+    | constant
+    | function_call
+    | case_statement
+    | sub_expression op=('*' | '/' | '%') sub_expression
+    | unary_expression
+//    | op=('+' | '-') new_expression
+    | sub_expression op=('||' | '|') sub_expression
+    | sub_expression op=('+' | '-') sub_expression
     ;
 
 logical_or_expression
@@ -1419,7 +1445,7 @@ relational_expression
     ;
 
 compound_expression
-    : concatenation
+    : sub_expression
       (NOT? (IN in_elements | BETWEEN between_elements | like_type concatenation like_escape_part?))?
     ;
 relational_operator
@@ -1447,6 +1473,8 @@ in_elements
 between_elements
     : concatenation AND concatenation
     ;
+
+
 
 concatenation
     : additive_expression (concatenation_op additive_expression)*
@@ -1946,7 +1974,7 @@ keep_clause
     ;
 
 function_argument
-    : '(' argument? (',' argument )* ')' keep_clause?
+    : '(' (argument '=>')? argument? (',' (argument '=>')? argument )* ')' keep_clause?
     ;
 
 function_argument_analytic
@@ -1965,7 +1993,9 @@ respect_or_ignore_nulls
 
 argument
 //    : (id '=' '>')? expression
-    : concatenation
+//    : concatenation
+//    : sub_expression
+    : expression
     ;
 
 type_spec

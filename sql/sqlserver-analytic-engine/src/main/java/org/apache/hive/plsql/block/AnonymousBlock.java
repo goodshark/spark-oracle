@@ -13,10 +13,9 @@ import java.util.Map;
  * Created by dengrb1 on 4/1 0001.
  */
 public class AnonymousBlock extends BaseStatement {
-    List<TreeNode> executeList = new ArrayList<>();
-    List<TreeNode> exceptionList = new ArrayList<>();
-    // all variables belong to this block will be here
-    Map<String, Var> varMap = new HashMap<>();
+    private List<TreeNode> executeList = new ArrayList<>();
+    private List<TreeNode> exceptionList = new ArrayList<>();
+
 
     public AnonymousBlock(TreeNode.Type t) {
         super();

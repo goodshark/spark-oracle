@@ -12,10 +12,7 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 import org.apache.spark.sql.execution.SparkPlan;
 
 import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 /**
  * Created by zhongdg1 on 2016/11/29.
@@ -46,7 +43,7 @@ public class ExecSession {
     public ExecSession() {
         rootNode = new RootNode();
 //        exceptions = new ArrayList<Exception>();
-        this.variableContainer = new VariableContainer();
+        this.variableContainer = new VariableContainer(this);
         resultSets = new ArrayList<>();
     }
 
@@ -140,5 +137,22 @@ public class ExecSession {
 
     public void leaveScope() {
         scopes.pollLast();
+    }
+
+    public TreeNode getCurrentScope() {
+        if (scopes.isEmpty())
+            return null;
+        return scopes.getLast();
+    }
+
+    public TreeNode[] getCurrentScopes() {
+        if (scopes.isEmpty())
+            return new TreeNode[0];
+        Object[] nodes = scopes.toArray();
+        List<Object> tmpList = Arrays.asList(nodes);
+        Collections.reverse(tmpList);
+        TreeNode[] scopesArray = new TreeNode[tmpList.size()];
+        tmpList.toArray(scopesArray);
+        return scopesArray;
     }
 }

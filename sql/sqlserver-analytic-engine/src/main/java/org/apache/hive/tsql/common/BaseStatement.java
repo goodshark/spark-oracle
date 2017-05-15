@@ -1,13 +1,13 @@
 package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.arg.Var;
+import org.apache.hive.tsql.cfl.GotoStatement;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 
 import java.sql.ResultSet;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -15,6 +15,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public abstract class BaseStatement extends TreeNode {
     private StringBuffer exeSql = new StringBuffer();
+    // store labels with while
+    private Set<String> labels = new HashSet<>();
+    // check labels belong to while is searched
+    private boolean labelSearched = false;
 
     public BaseStatement() {
         super();
@@ -122,5 +126,44 @@ public abstract class BaseStatement extends TreeNode {
         return sb.toString();
     }
 
+    public void setLabelSearched(Set<String> labs) {
+        labelSearched = true;
+        labels.addAll(labs);
+    }
 
+    public boolean isLabelSearched() {
+        return labelSearched;
+    }
+
+    public boolean existLabel(String name) {
+        if (!isLabelSearched()) {
+            Set<String> labs = searchAllLabels();
+            setLabelSearched(labs);
+        }
+        return labels.contains(name);
+    }
+
+    public Set<String> searchAllLabels() {
+        Set<String> labelSet= new HashSet<>();
+        TreeNode pNode = getParentNode();
+        // a normal CFL-node in AST tree always has a parent node
+        if (pNode == null) {
+            return labelSet;
+        }
+        List<TreeNode> childList = pNode.getChildrenNodes();
+        // label always before whileStmt
+        for (TreeNode child: childList) {
+            if (child.equals(this))
+                break;
+            else {
+                if (child.getNodeType() == TreeNode.Type.GOTO) {
+                    GotoStatement gotoStatement = (GotoStatement) child;
+                    if (!gotoStatement.getAction()) {
+                        labelSet.add(gotoStatement.getLabel());
+                    }
+                }
+            }
+        }
+        return labelSet;
+    }
 }

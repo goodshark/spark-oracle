@@ -1,5 +1,8 @@
 package org.apache.hive.tsql.arg;
 
+import org.apache.hive.tsql.ExecSession;
+import org.apache.hive.tsql.common.BaseStatement;
+import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.cursor.Cursor;
 import org.apache.hive.tsql.func.Procedure;
 
@@ -15,6 +18,7 @@ public class VariableContainer {
 
     //保存变量, 作用域仅限为go
     private ConcurrentHashMap<String, Var> vars = new ConcurrentHashMap<String, Var>();
+    private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, Var>> newVars = new ConcurrentHashMap<>();
     //保存表变量,作用域一个GO
     private ConcurrentHashMap<String, Var> tableVars = new ConcurrentHashMap<String, Var>();
     //保存临时表，作用域多个GO之间,<##temp, AliasName>
@@ -28,10 +32,17 @@ public class VariableContainer {
     //系统变量
     private ConcurrentHashMap<String,Var> systemVariables = new ConcurrentHashMap<>();
 
-    public VariableContainer() {
+    private ExecSession session;
+
+    public VariableContainer(ExecSession ss) {
         //init system variables
         addOrUpdateSys(new Var(SystemVName.FETCH_STATUS, 0, Var.DataType.INT));
         addOrUpdateSys(new Var(SystemVName.CURSOR_ROWS, 0, Var.DataType.INT));
+        session = ss;
+    }
+
+    private ConcurrentHashMap<String, Var> getNormalVars() {
+        return null;
     }
 
     public void addTableVars(Var var) {
@@ -125,7 +136,25 @@ public class VariableContainer {
     }
 
     public void addVar(Var var) {
-        vars.put(var.getVarName(), var);
+        TreeNode curBlock = session.getCurrentScope();
+        if (curBlock != null) {
+            if (newVars.containsKey(curBlock)) {
+                newVars.get(curBlock).put(var.getVarName(), var);
+            } else {
+                ConcurrentHashMap<String, Var> varMap = new ConcurrentHashMap<String, Var>();
+                varMap.put(var.getVarName(), var);
+                newVars.put(curBlock, varMap);
+            }
+        } else {
+            if (newVars.containsKey(session.getRootNode())) {
+                newVars.get(session.getRootNode()).put(var.getVarName(), var);
+            } else {
+                ConcurrentHashMap<String, Var> varMap = new ConcurrentHashMap<String, Var>();
+                varMap.put(var.getVarName(), var);
+                newVars.put(session.getRootNode(), varMap);
+            }
+        }
+//        vars.put(var.getVarName(), var);
     }
 
     public void setVars(ConcurrentHashMap<String, Var> vars) {
@@ -147,12 +176,48 @@ public class VariableContainer {
      * @return
      */
     public Var findVar(Var var) {
-
-        return null == vars.get(var.getVarName().toUpperCase()) ? vars.get(var.getAliasName()) : vars.get(var.getVarName().toUpperCase());
+        // TODO
+        if (var.getVarName() == null) {
+            return vars.get(var.getAliasName());
+        } else {
+            return findVar(var.getVarName());
+        }
+//        return null == vars.get(var.getVarName().toUpperCase()) ? vars.get(var.getAliasName()) : vars.get(var.getVarName().toUpperCase());
     }
 
     public Var findVar(String varName) {
-        return vars.get(varName.toUpperCase());
+        String scopeName = "";
+        if (varName.contains(".")) {
+            String[] fullVarArray = varName.split("\\.");
+            // ignore . counts more than 2
+            if (fullVarArray.length == 2) {
+                scopeName = fullVarArray[0];
+                varName = fullVarArray[1];
+            }
+        }
+        TreeNode[] blocks = session.getCurrentScopes();
+        // search all nested scope
+        for (TreeNode blk: blocks) {
+            if (!scopeName.isEmpty()) {
+                BaseStatement stmt = (BaseStatement) blk;
+                if (!stmt.existLabel(scopeName))
+                    continue;
+            }
+            ConcurrentHashMap<String, Var> blkVars = newVars.get(blk);
+            if (blkVars != null && blkVars.get(varName.toUpperCase()) != null) {
+                return blkVars.get(varName.toUpperCase());
+            } else {
+                if (!scopeName.isEmpty())
+                    return null;
+            }
+        }
+        // search global scope
+        ConcurrentHashMap<String, Var> rootScope = newVars.get(session.getRootNode());
+        if (rootScope != null) {
+            return rootScope.get(varName.toUpperCase());
+        }
+        // var do not exists
+        return null;
     }
 
     public Procedure findFunc(String varName) {

@@ -7,6 +7,8 @@ import org.apache.hive.plsql.PlsqlBaseVisitor;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.function.Function;
+import org.apache.hive.tsql.another.DeclareStatement;
+import org.apache.hive.tsql.another.SetStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.ExpressionBean;
@@ -80,6 +82,22 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     }
 
     @Override
+    public Object visitAssignment_statement(PlsqlParser.Assignment_statementContext ctx) {
+        SetStatement setStatement = new SetStatement();
+        String varName = "";
+        if (ctx.general_element() != null) {
+            varName = ctx.general_element().getText();
+        }
+        visit(ctx.expression());
+        TreeNode expr = treeBuilder.popStatement();
+        Var var = new Var(varName, expr);
+        var.setValueType(Var.ValueType.EXPRESSION);
+        setStatement.setVar(var);
+        treeBuilder.pushStatement(setStatement);
+        return setStatement;
+    }
+
+    @Override
     public Object visitAnonymous_block(PlsqlParser.Anonymous_blockContext ctx) {
         AnonymousBlock anonymousBlock = new AnonymousBlock(TreeNode.Type.ANONY_BLOCK);
         for (PlsqlParser.Declare_specContext declareCtx: ctx.declare_spec()) {
@@ -104,24 +122,68 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return anonymousBlock;
     }
 
+    /*@Override
+    public Object visitDeclare_spec(PlsqlParser.Declare_specContext ctx) {
+        return visitChildren(ctx);
+    }*/
+
     @Override
     public Object visitVariable_declaration(PlsqlParser.Variable_declarationContext ctx) {
-        visit(ctx.variable_name());
-        visit(ctx.type_spec());
+        DeclareStatement declareStatement = new DeclareStatement();
+        Var var = new Var();
+        String varName = ctx.variable_name().getText();
+        var.setVarName(varName);
+        Var.DataType varType = (Var.DataType) visit(ctx.type_spec());
+        var.setDataType(varType);
         if (ctx.default_value_part() != null) {
+            visit(ctx.default_value_part());
+            var.setExpr(treeBuilder.popStatement());
+            var.setValueType(Var.ValueType.EXPRESSION);
         }
-        return null;
+        declareStatement.addDeclareVar(var);
+        treeBuilder.pushStatement(declareStatement);
+        return declareStatement;
+    }
+
+    @Override
+    public Object visitType_spec(PlsqlParser.Type_specContext ctx) {
+        String typeName = "";
+        if (ctx.datatype() != null) {
+            // receive from native_datatype_element
+            typeName = (String) visit(ctx.datatype());
+        }
+        switch (typeName.toUpperCase()) {
+            case "BINARY_INTEGER":
+            case "PLS_INTEGER":
+            case "INTEGER":
+            case "INT":
+            case "NUMERIC":
+            case "SMALLINT":
+            case "NUMBER":
+            case "DECIMAL":
+            case "FLOAT":
+                return Var.DataType.INT;
+            case "VARCHAR2":
+            case "VARCHAR":
+            case "STRING":
+                return Var.DataType.STRING;
+            case "BOOLEAN":
+                // TODO need a top expression include logicNode and expressionStatement
+                return Var.DataType.BOOLEAN;
+            default:
+                return Var.DataType.DEFAULT;
+        }
+    }
+
+    @Override
+    public Object visitNative_datatype_element(PlsqlParser.Native_datatype_elementContext ctx) {
+        return ctx.getText();
     }
 
     /*@Override
-    public Object visitBlock(PlsqlParser.BlockContext ctx) {
-        List<PlsqlParser.Declare_specContext> declareList =  ctx.declare_spec();
-        for (PlsqlParser.Declare_specContext item: declareList) {
-        }
-
-        if (ctx.body() != null) {
-        }
-        return visitChildren(ctx);
+    public Object visitDefault_value_part(PlsqlParser.Default_value_partContext ctx) {
+        visit(ctx.expression());
+        return null;
     }*/
 
     @Override
@@ -326,7 +388,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             conditionNode = new LogicNode();
             conditionNode.setBool(true);
         }
-        loopStatement.setLoopIndexVar(conditionNode.getIndexVar());
+//        loopStatement.setLoopIndexVar(conditionNode.getIndexVar());
         loopStatement.setCondtionNode(conditionNode);
         visit(ctx.seq_of_statements());
         treeBuilder.addNode(loopStatement);
@@ -407,7 +469,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitRegular_id(PlsqlParser.Regular_idContext ctx) {
-        ExpressionStatement expressionStatement = genExpression(ctx.getText(), null, Var.DataType.DEFAULT);
+        ExpressionStatement expressionStatement = genExpression(ctx.getText(), null, Var.DataType.VAR);
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
@@ -437,9 +499,9 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitFunction_argument(PlsqlParser.Function_argumentContext ctx) {
         List<Var> args = new ArrayList<Var>();
         for (PlsqlParser.ArgumentContext argCtx: ctx.argument()) {
-            Var var = (Var) visit(argCtx);
-            treeBuilder.popStatement();
-            args.add(var);
+            visit(argCtx);
+            ExpressionStatement expressionStatement = (ExpressionStatement) treeBuilder.popStatement();
+            args.add(expressionStatement.getExpressionBean().getVar());
         }
         return args;
     }
@@ -461,7 +523,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         expressionBean.setVar(var);
         ExpressionStatement expressionStatement = new ExpressionStatement(expressionBean);
         treeBuilder.pushStatement(expressionStatement);
-        return var;
+        return expressionStatement;
     }
 
     @Override
