@@ -41,6 +41,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
      */
     private boolean procFlag = false;
 
+    private boolean firstVisit = false;
+
 
     private LinkedList<TreeNode> curNodeStack = new LinkedList<TreeNode>();
 
@@ -111,7 +113,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public BaseStatement visitSql_clauses(TSqlParser.Sql_clausesContext ctx) {
         SqlClausesStatement sqlClausesStatement = new SqlClausesStatement();
         for (TSqlParser.Sql_clauseContext clause : ctx.sql_clause()) {
+            firstVisit = true;
             visit(clause);
+            firstVisit = false;
             addNode(sqlClausesStatement);
         }
         this.pushStatement(sqlClausesStatement);
@@ -2227,13 +2231,18 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
     private void clearVariable() {
         limitSql = "";
+        resultSetVariable.clear();
     }
 
     @Override
     public SqlStatement visitSelect_statement(TSqlParser.Select_statementContext ctx) {
         SelectStatement selectStatement = new SelectStatement(Common.SELECT);
         StringBuffer sql = new StringBuffer();
-        clearVariable();
+        if(firstVisit){
+            clearVariable();
+            firstVisit = false;
+        }
+        selectStatement.setResultSetVariable(resultSetVariable);
         boolean withExpression = false;
         String fromTableName = "";
         String clusterByColumnName = "";
@@ -2273,7 +2282,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SelectIntoBean finalSelectIntoBean = selectStatement.getSelectIntoBean();
         if (null != finalSelectIntoBean) {
             TSqlParser.Query_specificationContext query = ctx.query_expression().query_specification();
-            if(StringUtils.isBlank(finalSelectIntoBean.getClusterByColumnName())){
+            if (StringUtils.isBlank(finalSelectIntoBean.getClusterByColumnName())) {
                 finalSelectIntoBean.setClusterByColumnName(getOutPutColumnFromQuery(query));
             }
             finalSelectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(query.table_sources()));
@@ -2301,10 +2310,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
         selectStatement.addVariables(localIdVariable);
         selectStatement.addResultSetVariables(resultSetVariable);
         selectStatement.addTableNames(tableNameList);
-
-
-        clearVariable();
-
         if (null != ctx.for_clause()) {
             selectStatement.setForClause(visitFor_clause(ctx.for_clause()));
         }

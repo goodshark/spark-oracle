@@ -31,6 +31,9 @@ public class SelectStatement extends SqlStatement {
      */
     private List<String> resultSetVariable = new ArrayList<>();
 
+    public void setResultSetVariable(List<String> resultSetVariable) {
+        this.resultSetVariable = resultSetVariable;
+    }
 
     /**
      * 将所有的tableName 放在一个变量里
@@ -81,6 +84,11 @@ public class SelectStatement extends SqlStatement {
 
     public void updateResultVar(SparkResultSet resultSet) throws Exception {
         List<String> filedNames = resultSet.getFiledName();
+        LOG.info("resultSetVariable:"+resultSetVariable.toString());
+        LOG.info("filedNames:"+filedNames.toString());
+
+
+
         if (resultSetVariable.size() != filedNames.size()) {
             throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
         }

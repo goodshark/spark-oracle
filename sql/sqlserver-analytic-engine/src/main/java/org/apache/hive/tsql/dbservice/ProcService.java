@@ -320,28 +320,28 @@ public class ProcService {
             stmt.setString(1, procName);
             rs = stmt.executeQuery();
             if (rs.next()) {
-                byte[] procedureObject = rs.getBytes("PROC_OBJECT");
+                /* byte[] procedureObject = rs.getBytes("PROC_OBJECT");
                 ByteArrayInputStream bais = new ByteArrayInputStream(procedureObject);
                 in = new ObjectInputStream(bais);
                 try {
                     procedure = (Procedure) in.readObject();//从流中读取对象
-                } catch (InvalidClassException ine) {
-                    LOG.warn("SerialVersionUID is change, run proc again .");
-                    try {
-                        String sqlContent = rs.getString("PROC_CONTENT");
-                        LOG.debug("query sql is " + sql.toString() + ",procName is " + procName + ",get sql is ==>" + sqlContent);
-                        updateProSerialVersionUID(procName);
-                        if (!StringUtils.isBlank(sqlContent)) {
-                            procedureCli.callProcedure(sqlContent);
-                            procedure = getProcContent(procName);
-                        } else {
-                            throw new Exception("procName:" + procName + ".the proc sql is null");
-                        }
-                    } catch (Throwable e) {
-                        LOG.error("reRun proc again error .", e);
-                        throw new Exception(e.getMessage());
+                } catch (InvalidClassException ine) { */
+                LOG.warn("SerialVersionUID is change, run proc again .");
+                try {
+                    String sqlContent = rs.getString("PROC_CONTENT");
+                    LOG.debug("query sql is " + sql.toString() + ",procName is " + procName + ",get sql is ==>" + sqlContent);
+                    updateProSerialVersionUID(procName);
+                    if (!StringUtils.isBlank(sqlContent)) {
+                        procedureCli.callProcedure(sqlContent);
+                        procedure = getProcContent(procName);
+                    } else {
+                        throw new Exception("procName:" + procName + ".the proc sql is null");
                     }
+                } catch (Throwable e) {
+                    LOG.error("reRun proc again error .", e);
+                    throw new Exception(e.getMessage());
                 }
+           /*     } */
             }
         } catch (Exception e) {
             LOG.error(" execute getCountByName sql : " + sql.toString() + " error.", e);
