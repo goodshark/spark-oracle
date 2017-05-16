@@ -58,8 +58,7 @@ private[sql] class HiveSessionCatalog(
   override def lookupRelation(name: TableIdentifier, alias: Option[String]): LogicalPlan = {
     val table = formatTableName(name.table)
     val db = formatDatabaseName(name.database.getOrElse(currentDb))
-    logInfo(s"viewTest hiveSeesionCatalog ==> db is =>${db}, table is =>${table}," +
-      s" relationAlias is =>{$relationAlias}")
+    logInfo(s"viewTest hiveSeesionCatalog ==> db is =>${db}, table is =>${table}")
     logInfo(s"viewTest==> hiveSeesionCatalog globalTempViewManager." +
       s"database is ${globalTempViewManager.database}")
     logInfo(s"viewTest==> hiveSeesionCatalog " +
