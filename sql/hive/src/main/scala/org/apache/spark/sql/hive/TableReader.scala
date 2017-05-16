@@ -443,13 +443,13 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         tableDeser.getObjectInspector).asInstanceOf[StructObjectInspector]
     }
 
-    logDebug(soi.toString)
+    logWarning("soi===>" + soi.toString)
     var vidIndex = -1
     val vidKeyAttrs = nonPartitionKeyAttrs.filter(_._1.name == HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
     if(!vidKeyAttrs.isEmpty) {
       vidIndex = vidKeyAttrs(0)._2
     }
-    logDebug(s" vid index : is ${vidIndex}")
+    logWarning(s" vid index : is ${vidIndex}")
 
     val (fieldRefs, fieldOrdinals) = nonPartitionKeyAttrs.filter(_._1.name !=
       HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
@@ -523,8 +523,9 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
           || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
           val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
           val vid = soi.getStructFieldData(raw, vidField).toString
+          logInfo(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
           if ( vidIndex != -1) {
-            mutableRow.update(vidIndex, UTF8String.fromString(vid))
+            mutableRow.update(vidIndex, UTF8String.fromString(vid ))
           } else {
             logError(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME + " not find in table ")
           }
