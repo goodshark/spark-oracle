@@ -84,9 +84,8 @@ public class SelectStatement extends SqlStatement {
 
     public void updateResultVar(SparkResultSet resultSet) throws Exception {
         List<String> filedNames = resultSet.getFiledName();
-        LOG.info("resultSetVariable:"+resultSetVariable.toString());
-        LOG.info("filedNames:"+filedNames.toString());
-
+        LOG.info("resultSetVariable:" + resultSetVariable.toString());
+        LOG.info("filedNames:" + filedNames.toString());
 
 
         if (resultSetVariable.size() != filedNames.size()) {
@@ -111,16 +110,16 @@ public class SelectStatement extends SqlStatement {
     }
 
     public void init() throws Exception {
-         selectIntoExec();
-        LOG.info("11===>"+execSQL);
+        selectIntoExec();
+        LOG.info("11===>" + execSQL);
         execSQL = getSql();
-        LOG.info("22===>"+execSQL);
+        LOG.info("22===>" + execSQL);
         execSQL = replaceVariable(execSQL, localIdVariableName);
-        LOG.info("33===>"+execSQL);
+        LOG.info("33===>" + execSQL);
         replaceTableNames();
-        LOG.info("44===>"+execSQL);
+        LOG.info("44===>" + execSQL);
         replaceCrudClusterByColumn();
-        LOG.info("55===>"+execSQL);
+        LOG.info("55===>" + execSQL);
     }
 
 
@@ -158,10 +157,10 @@ public class SelectStatement extends SqlStatement {
         String clusterByColumn = "";
         if (null != selectIntoBean) {
             clusterByColumn = selectIntoBean.getClusterByColumnName();
-            if(StringUtils.isBlank(clusterByColumn)){
-                LOG.info("current sql is " +  execSQL);
-                LOG.info("create crud table : clusterbyColumnName:" +  selectIntoBean.getClusterByColumnName());
-                LOG.info("create crud table : fromTb:" +  selectIntoBean.getSourceTableName());
+            if (StringUtils.isBlank(clusterByColumn)) {
+                LOG.info("current sql is " + execSQL);
+                LOG.info("create crud table : clusterbyColumnName:" + selectIntoBean.getClusterByColumnName());
+                LOG.info("create crud table : fromTb:" + selectIntoBean.getSourceTableName());
                 String fromTableName = selectIntoBean.getSourceTableName();
                 if (fromTableName.contains(".")) {
                     fromTableName = fromTableName.split("\\.")[1];
@@ -179,9 +178,8 @@ public class SelectStatement extends SqlStatement {
                 if (StringUtils.isBlank(clusterByColumn)) {
                     throw new Exception(" create  crud table: " + selectIntoBean.getIntoTableName() + " failed.");
                 }
-            }else{
-                execSQL = String.format(execSQL, StrUtils.addBackQuote(clusterByColumn));
             }
+            execSQL = String.format(execSQL, StrUtils.addBackQuote(clusterByColumn));
         }
     }
 
