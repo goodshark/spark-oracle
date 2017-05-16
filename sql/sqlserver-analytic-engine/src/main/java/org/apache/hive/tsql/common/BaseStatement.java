@@ -140,7 +140,7 @@ public abstract class BaseStatement extends TreeNode {
             Set<String> labs = searchAllLabels();
             setLabelSearched(labs);
         }
-        return labels.contains(name);
+        return labels.contains(name.toLowerCase());
     }
 
     public Set<String> searchAllLabels() {

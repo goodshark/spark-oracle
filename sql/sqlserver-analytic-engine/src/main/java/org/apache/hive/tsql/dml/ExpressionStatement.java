@@ -2,6 +2,7 @@ package org.apache.hive.tsql.dml;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.*;
+import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.util.StrUtils;
 
 import java.io.Serializable;
@@ -63,6 +64,12 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                 } else if (children.size() == 1) {
                     OperatorSign operatorSign = expressionBean.getOperatorSign();
                     TreeNode baseStatement = children.get(0);
+                    // full bool expression
+                    if (operatorSign == OperatorSign.COMPLEX_BOOL) {
+                        baseStatement.execute();
+                        boolean bool = ((LogicNode) baseStatement).getBool();
+                        return new Var("bool result", bool, Var.DataType.BOOLEAN);
+                    }
                     //baseStatement.setExecSession(getExecSession());
                     baseStatement.execute();
                     Var childrenVar = (Var) baseStatement.getRs().getObject(0);

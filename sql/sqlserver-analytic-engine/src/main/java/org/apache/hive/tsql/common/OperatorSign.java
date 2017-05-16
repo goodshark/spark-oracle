@@ -13,7 +13,8 @@ public enum OperatorSign {
     ADD("+"), SUBTRACT("-"), MULTIPLY("*"), DIVIDE("/"), MOD("%"),BRACKET("()"),
     AND("&"), OR("|"), EQUAL("="), NOT_EQUAL("!="), GREATER_THAN(">"),
     NOT_GREATER_THAN("!>"), LESS_THEN("<"), NOT_LESS_THEN("!<"),XOR("^"),
-    GREATER_THAN_OR_EQUAL(">="), LESS_THEN_OR_EQUAL("<="), NOT_EQUAL_ANOTHER("<>"), BIT_NOT("~");
+    GREATER_THAN_OR_EQUAL(">="), LESS_THEN_OR_EQUAL("<="), NOT_EQUAL_ANOTHER("<>"), BIT_NOT("~"),
+    COMPLEX_BOOL("bool");
 
     private String operator;
 

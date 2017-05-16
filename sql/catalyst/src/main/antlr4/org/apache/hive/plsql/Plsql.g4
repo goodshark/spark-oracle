@@ -1375,34 +1375,34 @@ condition
     ;
 
 expression
-    : cursor_expression
-    | id_expression ('.' id_expression)*
-    | constant
-    | function_call
-    | case_statement
-    | '(' expression ')'
-    | expression op=('*' | '/' | '%') expression
-    | unary_expression
+    : cursor_expression                                     #cursor_expression_alias
+    | id_expression ('.' id_expression)*                    #id_expression_alias
+    | constant                                              #constant_alias
+    | function_call                                         #function_call_alias
+    | case_statement                                        #case_statement_alias
+    | '(' expression ')'                                    #expression_nested_alias
+    | expression op=('*' | '/' | '%') expression            #binary_expression_alias
+    | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
-    | expression op=('||' | '|') expression
-    | expression op=('+' | '-') expression
+    | expression op=('||' | '|') expression                 #binary_expression_alias
+    | expression op=('+' | '-') expression                  #binary_expression_alias
 //    | concatenation
-    | logical_and_expression (OR logical_and_expression)*
-    | negated_expression (AND negated_expression)*
-    | logical_or_expression
+    | logical_and_expression (OR logical_and_expression)*   #bool_condition_alias
+    | negated_expression (AND negated_expression)*          #bool_condition_alias
+    | logical_or_expression                                 #complex_expression_alias
     ;
 
 // only for logic condition (avoid nested left-recursive)
 sub_expression
-    : id_expression ('.' id_expression)*
-    | constant
-    | function_call
-    | case_statement
-    | sub_expression op=('*' | '/' | '%') sub_expression
-    | unary_expression
+    : id_expression ('.' id_expression)*                    #id_expression_subalias
+    | constant                                              #constant_subalias
+    | function_call                                         #function_call_subalias
+    | case_statement                                        #case_statement_subalias
+    | sub_expression op=('*' | '/' | '%') sub_expression    #binary_expression_subalias
+    | unary_expression                                      #unary_expression_subalias
 //    | op=('+' | '-') new_expression
-    | sub_expression op=('||' | '|') sub_expression
-    | sub_expression op=('+' | '-') sub_expression
+    | sub_expression op=('||' | '|') sub_expression         #binary_expression_subalias
+    | sub_expression op=('+' | '-') sub_expression          #binary_expression_subalias
     ;
 
 logical_or_expression

@@ -12,6 +12,7 @@ import org.apache.hive.tsql.another.SetStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.ExpressionBean;
+import org.apache.hive.tsql.common.OperatorSign;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.node.LogicNode;
@@ -186,8 +187,16 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return null;
     }*/
 
+    /*@Override
+    public Object visitExpression(PlsqlParser.ExpressionContext ctx) {
+        // bool expression
+        if (ctx.OR() != null || ctx.logical_and_expression() != null) {
+        }
+        return visitChildren(ctx);
+    }*/
+
     @Override
-    public Object visitLogical_or_expression(PlsqlParser.Logical_or_expressionContext ctx) {
+    public Object visitBool_condition_alias(PlsqlParser.Bool_condition_aliasContext ctx) {
         LogicNode orNode = new LogicNode(TreeNode.Type.OR);
         List<PlsqlParser.Logical_and_expressionContext> andList = ctx.logical_and_expression();
         if (andList.size() == 1) {
@@ -211,6 +220,141 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(orNode);
         return orNode;
     }
+
+    /*private ExpressionStatement genBinary_expression(List<PlsqlParser.ExpressionContext> exprs, String op) {
+        ExpressionBean expressionBean = new ExpressionBean();
+        ExpressionStatement es = new ExpressionStatement(expressionBean);
+        expressionBean.setOperatorSign(OperatorSign.getOpator(op));
+        if (exprs.size() != 2) {
+            // TODO exception
+        }
+        for (PlsqlParser.ExpressionContext expr: exprs) {
+            visit(expr);
+            treeBuilder.addNode(es);
+        }
+        return es;
+    }*/
+
+    @Override
+    public Object visitBinary_expression_alias(PlsqlParser.Binary_expression_aliasContext ctx) {
+        ExpressionBean expressionBean = new ExpressionBean();
+        ExpressionStatement es = new ExpressionStatement(expressionBean);
+        expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
+        List<PlsqlParser.ExpressionContext> exprList = ctx.expression();
+        if (exprList.size() != 2) {
+            // TODO exception
+        }
+        for (PlsqlParser.ExpressionContext expr: exprList) {
+            visit(expr);
+            treeBuilder.addNode(es);
+        }
+        treeBuilder.pushStatement(es);
+        return es;
+    }
+
+    @Override
+    public Object visitBinary_expression_subalias(PlsqlParser.Binary_expression_subaliasContext ctx) {
+        ExpressionBean expressionBean = new ExpressionBean();
+        ExpressionStatement es = new ExpressionStatement(expressionBean);
+        expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
+        List<PlsqlParser.Sub_expressionContext> exprList = ctx.sub_expression();
+        if (exprList.size() != 2) {
+            // TODO exception
+        }
+        for (PlsqlParser.Sub_expressionContext expr: exprList) {
+            visit(expr);
+            treeBuilder.addNode(es);
+        }
+        treeBuilder.pushStatement(es);
+        return es;
+    }
+
+    private ExpressionStatement genId_expression(List<PlsqlParser.Id_expressionContext> exprs) {
+        ExpressionBean expressionBean = new ExpressionBean();
+        ExpressionStatement expressionStatement = new ExpressionStatement(expressionBean);
+        Var var = new Var();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < exprs.size(); i++) {
+            sb.append(exprs.get(i).getText());
+            if (i < exprs.size() - 1)
+                sb.append(".");
+        }
+        var.setVarName(sb.toString());
+        var.setDataType(Var.DataType.VAR);
+        expressionBean.setVar(var);
+        return expressionStatement;
+    }
+
+    @Override
+    public Object visitId_expression_alias(PlsqlParser.Id_expression_aliasContext ctx) {
+        /*ExpressionBean expressionBean = new ExpressionBean();
+        ExpressionStatement expressionStatement = new ExpressionStatement(expressionBean);
+        Var var = new Var();
+        String varName = ctx.getText();
+        var.setVarName(varName);
+        var.setDataType(Var.DataType.VAR);
+        expressionBean.setVar(var);*/
+        ExpressionStatement expressionStatement = genId_expression(ctx.id_expression());
+        treeBuilder.pushStatement(expressionStatement);
+        return expressionStatement;
+    }
+
+    @Override
+    public Object visitId_expression_subalias(PlsqlParser.Id_expression_subaliasContext ctx) {
+        ExpressionStatement expressionStatement = genId_expression(ctx.id_expression());
+        treeBuilder.pushStatement(expressionStatement);
+        return expressionStatement;
+    }
+
+    private ExpressionStatement genConstant(PlsqlParser.ConstantContext ctx) {
+        visit(ctx);
+        return (ExpressionStatement) treeBuilder.popStatement();
+    }
+
+    @Override
+    public Object visitConstant_alias(PlsqlParser.Constant_aliasContext ctx) {
+        if (ctx.constant() != null) {
+        }
+        TreeNode es = genConstant(ctx.constant());
+        treeBuilder.pushStatement(es);
+        return es;
+    }
+
+    @Override
+    public Object visitConstant_subalias(PlsqlParser.Constant_subaliasContext ctx) {
+        if (ctx.constant() != null) {
+            // TODO
+        }
+        TreeNode es = genConstant(ctx.constant());
+        treeBuilder.pushStatement(es);
+        return es;
+    }
+
+    /*@Override
+    public Object visitLogical_or_expression(PlsqlParser.Logical_or_expressionContext ctx) {
+        LogicNode orNode = new LogicNode(TreeNode.Type.OR);
+        List<PlsqlParser.Logical_and_expressionContext> andList = ctx.logical_and_expression();
+        if (andList.size() == 1) {
+            visit(andList.get(0));
+            orNode = (LogicNode) treeBuilder.popStatement();
+            treeBuilder.pushStatement(orNode);
+            return orNode;
+        } else {
+            visit(andList.get(0));
+            treeBuilder.addNode(orNode);
+            visit(andList.get(1));
+            treeBuilder.addNode(orNode);
+            for (int i = 2; i < andList.size(); i++) {
+                visit(andList.get(i));
+                LogicNode tmpOrNode = new LogicNode(TreeNode.Type.OR);
+                tmpOrNode.addNode(orNode);
+                orNode = tmpOrNode;
+                treeBuilder.addNode(orNode);
+            }
+        }
+        treeBuilder.pushStatement(orNode);
+        return orNode;
+    }*/
 
     @Override
     public Object visitLogical_and_expression(PlsqlParser.Logical_and_expressionContext ctx) {
