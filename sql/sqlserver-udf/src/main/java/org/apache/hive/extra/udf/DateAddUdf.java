@@ -14,16 +14,21 @@ public class DateAddUdf extends UDF {
     private static final String PATTERN = "yyyy-MM-dd HH:mm:ss.SSS";
     private DateAddCalculator calculator = new DateAddCalculator();
 
-    public String evaluate(String part, int number, String oldDate) {
+    public String evaluate(String part, String number, String oldDate) {
         try {
             DateUnit unit = DateUnit.parse(part);
             Date left = DateUtil.parseLenient(oldDate, PATTERN);
-            return calculator.doEval(unit, number, left);
+            return calculator.doEval(unit, getInt(number), left);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
+
+    private int getInt(String number) {
+        return Double.valueOf(number.trim()).intValue();
+    }
+
 
 }

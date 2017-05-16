@@ -22,7 +22,7 @@ public class DateAddCalculator extends BaseCalculator {
     public Var compute() throws Exception {
 //        String datePart = getArguments(0).getString(); //只支持天为单位
         DateUnit unit = DateUnit.parse(getArguments(0).getVarValue().toString());
-        int number = getArguments(1).getInt();
+        int number = Double.valueOf(getArguments(1).getString().trim()).intValue();;
         Date oldDate = getArguments(2).setDataType(Var.DataType.DATETIME).getDate();
 //        return new Var(new Date(date.getTime()+number*24*60*60*1000L), getArguments(2).getDataType());
         return new Var(doEval(unit, number, oldDate), Var.DataType.DATETIME);
