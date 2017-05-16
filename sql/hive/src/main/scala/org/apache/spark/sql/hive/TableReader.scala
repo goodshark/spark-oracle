@@ -523,7 +523,7 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
           || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
           val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
           val vid = soi.getStructFieldData(raw, vidField).toString
-          logInfo(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
+          logWarning(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
           if ( vidIndex != -1) {
             mutableRow.update(vidIndex, UTF8String.fromString(vid ))
           } else {
