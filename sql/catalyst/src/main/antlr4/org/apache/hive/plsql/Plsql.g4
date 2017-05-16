@@ -770,11 +770,11 @@ between_bound
     ;
 
 lower_bound
-    : concatenation
+    : expression
     ;
 
 upper_bound
-    : concatenation
+    : expression
     ;
 
 null_statement

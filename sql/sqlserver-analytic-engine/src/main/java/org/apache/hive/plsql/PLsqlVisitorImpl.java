@@ -517,7 +517,6 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitLoop_statement(PlsqlParser.Loop_statementContext ctx) {
         WhileStatement loopStatement = new WhileStatement(TreeNode.Type.WHILE);
-        loopStatement.hashCode();
         LogicNode conditionNode = null;
         // while statement
         if (ctx.WHILE() != null) {
