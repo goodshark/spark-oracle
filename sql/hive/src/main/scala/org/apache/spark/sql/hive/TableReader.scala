@@ -323,7 +323,7 @@ class HadoopTableReader(
 
         // fill the non partition key attributes
         HadoopTableReader.fillObject(iter, deserializer, nonPartitionKeyAttrs,
-          mutableRow, tableSerDe)
+          mutableRow, tableSerDe, hconf)
       }
     }.toSeq
 
