@@ -517,7 +517,8 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         }
         i += 1
       }
-
+      logWarning(s"SPARK_TRANSACTION_ACID is :${conf.getBoolean(SPARK_TRANSACTION_ACID, false)}" +
+        s", option is =>${conf.get(OPTION_TYPE)}")
       if( null!=conf && conf.getBoolean(SPARK_TRANSACTION_ACID, false)) {
         if (conf.get(OPTION_TYPE).equalsIgnoreCase("1")
           || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
