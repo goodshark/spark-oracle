@@ -302,9 +302,12 @@ class HadoopTableReader(
         if ( checkAcidTableFlag) {
           props.setProperty("columns",
             props.get("columns")
-              .toString + "," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+              .toString + "," + props.get("partition_columns")
+              .toString.replaceAll("/", ",") +"," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
           props.setProperty("columns.types",
-            props.get("columns.types").toString + ":string")
+            props.get("columns.types").toString + ":"
+              + props.get("partition_columns.types")
+              .toString + ":string")
         }
         deserializer.initialize(hconf, props)
         // get the table deserializer
@@ -443,13 +446,13 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         tableDeser.getObjectInspector).asInstanceOf[StructObjectInspector]
     }
 
-    logWarning("soi===>" + soi.toString)
+    // logWarning("soi===>" + soi.toString)
     var vidIndex = -1
     val vidKeyAttrs = nonPartitionKeyAttrs.filter(_._1.name == HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
     if(!vidKeyAttrs.isEmpty) {
       vidIndex = vidKeyAttrs(0)._2
     }
-    logWarning(s" vid index : is ${vidIndex}")
+    // logWarning(s" vid index : is ${vidIndex}")
 
     val (fieldRefs, fieldOrdinals) = nonPartitionKeyAttrs.filter(_._1.name !=
       HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
@@ -510,6 +513,7 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
       val length = fieldRefs.length
       while (i < length) {
         val fieldValue = soi.getStructFieldData(raw, fieldRefs(i))
+        // logWarning(s" i is $i , fieldValue is ${fieldValue},")
         if (fieldValue == null) {
           mutableRow.setNullAt(fieldOrdinals(i))
         } else {
@@ -517,14 +521,21 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         }
         i += 1
       }
-      logWarning(s"SPARK_TRANSACTION_ACID is :${conf.getBoolean(SPARK_TRANSACTION_ACID, false)}" +
-        s", option is =>${conf.get(OPTION_TYPE)}")
+     /* logWarning(s"filedLength is ${length},SPARK_TRANSACTION_ACID is " +
+        s":${conf.getBoolean(SPARK_TRANSACTION_ACID, false)}" +
+        s", option is =>${conf.get(OPTION_TYPE)}") */
       if( null!=conf && conf.getBoolean(SPARK_TRANSACTION_ACID, false)) {
         if (conf.get(OPTION_TYPE).equalsIgnoreCase("1")
           || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
+
           val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+         /* logWarning(s"soi toString  :${soi.toString}")
+          logWarning(s"vidField :${vidField}")
+          logWarning(s"vidFieldName :${vidField.getFieldName}")
+          logWarning(s"vidField-ID :${vidField.getFieldID}")
+          logWarning(s"getStructFieldData :${soi.getStructFieldData(raw, vidField)}") */
           val vid = soi.getStructFieldData(raw, vidField).toString
-          logWarning(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
+          // logWarning(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
           if ( vidIndex != -1) {
             mutableRow.update(vidIndex, UTF8String.fromString(vid ))
           } else {
