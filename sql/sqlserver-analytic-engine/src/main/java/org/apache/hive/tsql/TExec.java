@@ -296,13 +296,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         Var var = new Var(varName, null, dataType);
         if (null != ctx.default_value()) {
             try {
-                Var v = (Var) visitDefault_value(ctx.default_value()).getVarValue();
-                if (v.getDataType().equals(Var.DataType.STRING)) {
-                    v.setVarValue(StrUtils.trimQuot(v.getVarValue().toString()));
-                }
                 var.setVarValue(visitDefault_value(ctx.default_value()).getVarValue());
                 var.setDefault(true);
-            } catch (ParseException e) {
+            } catch (Exception e) {
                 this.addException("Parse Error ", locate(ctx));
             }
         }
@@ -2285,7 +2281,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             if (StringUtils.isBlank(finalSelectIntoBean.getClusterByColumnName())) {
                 finalSelectIntoBean.setClusterByColumnName(getOutPutColumnFromQuery(query));
             }
-            finalSelectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(query.table_sources()));
+            if(StringUtils.isBlank(finalSelectIntoBean.getSourceTableName())){
+                finalSelectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(query.table_sources()));
+            }
         }
         // with tmpShip as (select * from t11) select * into #tmp from tmpShip;
         // 由于spark不支持with tmpShip as (  select * from t1   ) create table tmp.tmp_tmp_1494555472055_691 as select * from tmpShip
