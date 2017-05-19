@@ -87,7 +87,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
             RuleExecutor.timeMap.addAndGet(rule.ruleName, runTime)
 
             if (!result.fastEquals(plan)) {
-              logTrace(
+              logWarning(
                 s"""
                   |=== Applying Rule ${rule.ruleName} ===
                   |${sideBySide(plan.treeString, result.treeString).mkString("\n")}
@@ -111,7 +111,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
         }
 
         if (curPlan.fastEquals(lastPlan)) {
-          logTrace(
+          logWarning(
             s"Fixed point reached for batch ${batch.name} after ${iteration - 1} iterations.")
           continue = false
         }
@@ -119,13 +119,13 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
       }
 
       if (!batchStartPlan.fastEquals(curPlan)) {
-        logDebug(
+        logWarning(
           s"""
           |=== Result of Batch ${batch.name} ===
           |${sideBySide(plan.treeString, curPlan.treeString).mkString("\n")}
         """.stripMargin)
       } else {
-        logTrace(s"Batch ${batch.name} has no effect.")
+        logWarning(s"Batch ${batch.name} has no effect.")
       }
     }
 

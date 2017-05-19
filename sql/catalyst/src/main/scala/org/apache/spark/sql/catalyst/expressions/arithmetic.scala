@@ -22,7 +22,7 @@ import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.util.TypeUtils
 import org.apache.spark.sql.types._
-import org.apache.spark.unsafe.types.CalendarInterval
+import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
 
 @ExpressionDescription(
   usage = "_FUNC_(expr) - Returns the negated value of `expr`.",
@@ -148,7 +148,8 @@ object BinaryArithmetic {
   """)
 case class Add(left: Expression, right: Expression) extends BinaryArithmetic with NullIntolerant {
 
-  override def inputType: AbstractDataType = TypeCollection.NumericAndInterval
+  // override def inputType: AbstractDataType = TypeCollection.NumericAndInterval
+  override def inputType: AbstractDataType = TypeCollection.NumericAndIntervalAddString
 
   override def symbol: String = "+"
 
@@ -157,6 +158,8 @@ case class Add(left: Expression, right: Expression) extends BinaryArithmetic wit
   protected override def nullSafeEval(input1: Any, input2: Any): Any = {
     if (dataType.isInstanceOf[CalendarIntervalType]) {
       input1.asInstanceOf[CalendarInterval].add(input2.asInstanceOf[CalendarInterval])
+    } else if (dataType.isInstanceOf[StringType]) {
+      input1.asInstanceOf[UTF8String].toString + input2.asInstanceOf[UTF8String].toString
     } else {
       numeric.plus(input1, input2)
     }

@@ -52,6 +52,8 @@ import org.apache.spark.util.Utils
  */
 abstract class Expression extends TreeNode[Expression] {
 
+  var applyRule: Boolean = false
+
   /**
    * Returns true when an expression is a candidate for static evaluation before the query is
    * executed.
