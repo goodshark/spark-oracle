@@ -58,24 +58,24 @@ private[sql] class HiveSessionCatalog(
   override def lookupRelation(name: TableIdentifier, alias: Option[String]): LogicalPlan = {
     val table = formatTableName(name.table)
     val db = formatDatabaseName(name.database.getOrElse(currentDb))
-    logInfo(s"viewTest hiveSeesionCatalog ==> db is =>${db}, table is =>${table}")
+  /*  logInfo(s"viewTest hiveSeesionCatalog ==> db is =>${db}, table is =>${table}")
     logInfo(s"viewTest==> hiveSeesionCatalog globalTempViewManager." +
       s"database is ${globalTempViewManager.database}")
     logInfo(s"viewTest==> hiveSeesionCatalog " +
-      s"globalTmp is =>${globalTempViewManager.listViewNames("*")}")
+      s"globalTmp is =>${globalTempViewManager.listViewNames("*")}") */
     if (db == globalTempViewManager.database) {
-      logInfo(s"viewTest==> globalTempViewManager")
+      // logInfo(s"viewTest==> globalTempViewManager")
       val relationAlias = alias.getOrElse(table)
       globalTempViewManager.get(table).map { viewDef =>
         SubqueryAlias(relationAlias, viewDef, Some(name))
       }.getOrElse(throw new NoSuchTableException(db, table))
     } else if (name.database.isDefined || !tempTables.contains(table)) {
-      logInfo(s"viewTest==> name.database.isDefined")
+      // logInfo(s"viewTest==> name.database.isDefined")
       val database = name.database.map(formatDatabaseName)
       val newName = name.copy(database = database, table = table)
       metastoreCatalog.lookupRelation(newName, alias)
     } else {
-      logInfo(s"viewTest==> last else")
+      // logInfo(s"viewTest==> last else")
       val relation = tempTables(table)
       val tableWithQualifiers = SubqueryAlias(table, relation, None)
       // If an alias was specified by the lookup, wrap the plan in a subquery so that

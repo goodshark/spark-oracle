@@ -599,25 +599,25 @@ class SessionCatalog(
       val db = formatDatabaseName(name.database.getOrElse(currentDb))
       val table = formatTableName(name.table)
       val relationAlias = alias.getOrElse(table)
-      logInfo(s"viewTest==> db is =>${db}, table is =>${table}," +
+      /* logInfo(s"viewTest==> db is =>${db}, table is =>${table}," +
         s" relationAlias is =>{$relationAlias}")
       logInfo(s"viewTest==> globalTempViewManager.database is ${globalTempViewManager.database}")
-      logInfo(s"viewTest==> globalTmp is =>${globalTempViewManager.listViewNames("*")}")
+      logInfo(s"viewTest==> globalTmp is =>${globalTempViewManager.listViewNames("*")}") */
       if (db == globalTempViewManager.database) {
 
-        logInfo(s"viewTest==> globalTempViewManager")
+        // logInfo(s"viewTest==> globalTempViewManager")
         globalTempViewManager.get(table).map { viewDef =>
           SubqueryAlias(relationAlias, viewDef, Some(name))
         }.getOrElse(throw new NoSuchTableException(db, table))
       } else if (name.database.isDefined || !tempTables.contains(table)) {
-        logInfo(s"viewTest==> name.database.isDefined")
+        // logInfo(s"viewTest==> name.database.isDefined")
         val metadata = externalCatalog.getTable(db, table)
         val view = Option(metadata.tableType).collect {
           case CatalogTableType.VIEW => name
         }
         SubqueryAlias(relationAlias, SimpleCatalogRelation(db, metadata), view)
       } else {
-        logInfo(s"viewTest==> last else")
+        //  logInfo(s"viewTest==> last else")
         SubqueryAlias(relationAlias, tempTables(table), Option(name))
       }
     }
