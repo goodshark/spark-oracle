@@ -1390,9 +1390,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return "DOUBLE";
         } else if (dataType.contains("NUMERIC")) {
             return "DOUBLE";
-        } else if (dataType.contains("TIMESTAMP") || dataType.contains("DATETIME")) {
+        } else if (dataType.contains("TIMESTAMP") || dataType.contains("DATETIME") || dataType.contains("TIME")) {
             return "TIMESTAMP";
-        } else if (dataType.contains("DATE") || dataType.contains("TIME")) {
+        } else if (dataType.contains("DATE")) {
             return "DATE";
         } else if (dataType.contains("BINARY")) {
             return "BINARY";
@@ -1404,6 +1404,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         } else if (dataType.contains("NVARCHAR")) {
             String d = dataType.replaceAll("NVARCHAR", "VARCHAR");
             return StrUtils.replaceAllBracket(d);
+        } else if (dataType.contains("BIGINT")) {
+            return "BIGINT";
         } else if (dataType.contains("INT")) {
             return "INT";
         } else {
@@ -2234,7 +2236,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
     public SqlStatement visitSelect_statement(TSqlParser.Select_statementContext ctx) {
         SelectStatement selectStatement = new SelectStatement(Common.SELECT);
         StringBuffer sql = new StringBuffer();
-        if(firstVisit){
+        if (firstVisit) {
             clearVariable();
             firstVisit = false;
         }
@@ -2281,7 +2283,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             if (StringUtils.isBlank(finalSelectIntoBean.getClusterByColumnName())) {
                 finalSelectIntoBean.setClusterByColumnName(getOutPutColumnFromQuery(query));
             }
-            if(StringUtils.isBlank(finalSelectIntoBean.getSourceTableName())){
+            if (StringUtils.isBlank(finalSelectIntoBean.getSourceTableName())) {
                 finalSelectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(query.table_sources()));
             }
         }
@@ -2565,6 +2567,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
     }
 
     private String getTbNameFromTableSourceContext(TSqlParser.Table_sourcesContext ctx) {
+        if (null == ctx) {
+            return "";
+        }
         List<TSqlParser.Table_sourceContext> tbSources = ctx.table_source();
         String tableName = "";
         TSqlParser.Table_name_with_hintContext tableNameWithHint = tbSources.get(0).table_source_item_joined()
