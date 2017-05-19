@@ -84,8 +84,8 @@ public class SelectStatement extends SqlStatement {
 
     public void updateResultVar(SparkResultSet resultSet) throws Exception {
         List<String> filedNames = resultSet.getFiledName();
-        //LOG.info("resultSetVariable:" + resultSetVariable.toString());
-        //LOG.info("filedNames:" + filedNames.toString());
+        LOG.info("resultSetVariable:" + resultSetVariable.toString());
+        LOG.info("filedNames:" + filedNames.toString());
 
 
         if (resultSetVariable.size() != filedNames.size()) {

@@ -2240,7 +2240,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             clearVariable();
             firstVisit = false;
         }
-        selectStatement.setResultSetVariable(resultSetVariable);
+        //selectStatement.setResultSetVariable(resultSetVariable);
         boolean withExpression = false;
         String fromTableName = "";
         String clusterByColumnName = "";
