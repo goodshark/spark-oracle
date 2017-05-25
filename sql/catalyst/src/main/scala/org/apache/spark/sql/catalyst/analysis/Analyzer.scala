@@ -19,12 +19,11 @@ package org.apache.spark.sql.catalyst.analysis
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.{CatalystConf, ScalaReflection, SimpleCatalystConf}
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, InMemoryCatalog, SessionCatalog}
 import org.apache.spark.sql.catalyst.encoders.OuterScopes
-import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.{Expression, _}
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.expressions.objects.NewInstance
 import org.apache.spark.sql.catalyst.optimizer.BooleanSimplification
@@ -381,17 +380,16 @@ class Analyzer(
         logWarning("groupByExprs size is ==>" + groupByExprs.size)
         if (rs.size == 0) {
           var neadFilteColumns = Seq[String]()
-          aggregates.foreach( a => {
-            a.asInstanceOf[AggregateExpression].aggregateFunction.children.foreach(
-              functionChild => functionChild.children.foreach(
-                childColumns => {
-                  neadFilteColumns = neadFilteColumns :+
-                    childColumns.asInstanceOf[AttributeReference].name
-                }
-              )
-            )
-          })
-          neadFilteColumns = neadFilteColumns :+ pivotColumn.asInstanceOf[AttributeReference].name
+           def getAggregateColumnName(seqE: Seq[Expression]) : Unit = {
+             seqE.foreach( e => {
+               if (e.children.size == 0) {
+                 neadFilteColumns = neadFilteColumns :+
+                   e.asInstanceOf[AttributeReference].name
+               } else {
+                 getAggregateColumnName(e.children)
+               }
+             })
+           }
           def checkColumn(cName: String, neadFilteColumns: Seq[String]) : Boolean = {
             var flag = false
             neadFilteColumns.foreach(f => {
@@ -401,11 +399,20 @@ class Analyzer(
             })
             flag
           }
+          aggregates.foreach( a => {
+            a.asInstanceOf[AggregateExpression].aggregateFunction.foreach(
+              functionChild => getAggregateColumnName(functionChild.children)
+            )
+          })
+          logWarning(s"neadFilteColumns:${neadFilteColumns.toString()}")
+          neadFilteColumns = neadFilteColumns :+ pivotColumn.asInstanceOf[AttributeReference].name
+          logWarning(s"neadFilteColumns add pivotColumn :${neadFilteColumns.toString()}")
           child.expressions.filterNot( c => {
             val cName = c.asInstanceOf[AttributeReference].name
             checkColumn(cName, neadFilteColumns)
           }).foreach( c => {
             val cn = c.asInstanceOf[AttributeReference].name
+            logWarning(s"groupByExprs ColumnName :${cn}")
             rs = rs :+ Alias(c, cn)()
           }
           )
