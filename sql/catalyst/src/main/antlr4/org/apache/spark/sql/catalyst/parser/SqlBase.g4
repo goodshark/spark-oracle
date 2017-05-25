@@ -418,6 +418,18 @@ queryOrganization
       (SORT BY sort+=sortItem (',' sort+=sortItem)*)?
       windows?
       (LIMIT limit=expression)?
+      pivoted_table?
+      unpivoted_table?
+    ;
+//ADD FOR PIVOTED_TABLE , unpivoted_table
+pivoted_table
+    : PIVOT  pivot_clause (AS? strictIdentifier)?
+    ;
+pivot_clause
+    :'(' namedExpressionSeq FOR '('pivot_column=expression ')' IN value_column=constantList ')'
+    ;
+unpivoted_table
+    :UNPIVOT namedExpressionSeq
     ;
 
 multiInsertQueryBody
@@ -791,7 +803,8 @@ nonReserved
     | UNBOUNDED | WHEN
     | DATABASE | SELECT | FROM | WHERE | HAVING | TO | TABLE | WITH | NOT | CURRENT_DATE | CURRENT_TIMESTAMP | UPDATE
     ;
-
+UNPIVOT:'UNPIVOT';
+PIVOT:   'PIVOT';
 UPDATE: 'UPDATE';
 SELECT: 'SELECT';
 FROM: 'FROM';

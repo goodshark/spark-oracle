@@ -376,9 +376,94 @@ class Analyzer(
       case p: Pivot if !p.childrenResolved | !p.aggregates.forall(_.resolved)
         | !p.groupByExprs.forall(_.resolved) | !p.pivotColumn.resolved => p
       case Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
-        val singleAgg = aggregates.size == 1
+        var singleAgg = aggregates.size == 1
+        var rs = groupByExprs
+        logWarning("groupByExprs size is ==>" + groupByExprs.size)
+        if (rs.size == 0) {
+          var neadFilteColumns = Seq[String]()
+          aggregates.foreach( a => {
+            a.asInstanceOf[AggregateExpression].aggregateFunction.children.foreach(
+              functionChild => functionChild.children.foreach(
+                childColumns => {
+                  neadFilteColumns = neadFilteColumns :+
+                    childColumns.asInstanceOf[AttributeReference].name
+                }
+              )
+            )
+          })
+          neadFilteColumns = neadFilteColumns :+ pivotColumn.asInstanceOf[AttributeReference].name
+          def checkColumn(cName: String, neadFilteColumns: Seq[String]) : Boolean = {
+            var flag = false
+            neadFilteColumns.foreach(f => {
+              if (cName.equalsIgnoreCase(f)) {
+                flag = true
+              }
+            })
+            flag
+          }
+          child.expressions.filterNot( c => {
+            val cName = c.asInstanceOf[AttributeReference].name
+            checkColumn(cName, neadFilteColumns)
+          }).foreach( c => {
+            val cn = c.asInstanceOf[AttributeReference].name
+            rs = rs :+ Alias(c, cn)()
+          }
+          )
+        }
+        /* aa.++(Seq(OuterReference(a))
+        // OuterReference
+          // groupByExprs.add
+        // var rs = Seq[NamedExpression]()
+        logWarning(s"child output is ${child.output}")
+        aggregates.foreach(
+          a => a.asInstanceOf[AggregateExpression].aggregateFunction.inputAggBufferAttributes
+        )
+        logWarning(s"child expression ${child.expressions}")
+        child.expressions.foreach(e => {
+          logWarning(s"child expression for each e:  ${e.toString}"  )
+        } )
+        logWarning(s"pivotColumn is ${pivotColumn.treeString}")
+
+        val filterEx = child.expressions.filterNot( c => c.equals(pivotColumn))
+        val rs001 = child.expressions.filterNot( c => c.asInstanceOf[AttributeReference]
+          .name.equalsIgnoreCase(pivotColumn.asInstanceOf[AttributeReference].name))
+        rs001.foreach(e => {
+          logWarning(s"filterEx expression for each e:  ${e.toString}"  )
+        } )
+
+
+
+        var rs = groupByExprs
+        rs001.foreach(e => {
+          rs = rs :+ Alias(e, "test004")()
+        } )
+
+
+        groupByExprs.foreach( g => {
+          logWarning(s"class: ${g.getClass} => ${a.getClass}")
+          logWarning(s"treeString: ${g.treeString} => ${a.treeString}")
+          logWarning(s"toString: ${g.toString} => ${a.toString}")
+          logWarning(s"resolved: ${g.resolved} => ${a.resolved}")
+          logWarning(s"nodeName: ${g.nodeName} => ${a.nodeName}")
+          logWarning(s"exprId: ${g.exprId} => ${a.exprId}")
+          logWarning(s"simpleString: ${g.simpleString} => ${a.simpleString}")
+          logWarning(s"sql: ${g.sql} => ${a.sql}")
+          logWarning(s"name: ${g.name} => ${a.name}")
+          logWarning(s"prettyName: ${g.prettyName} => ${a.prettyName}")
+          logWarning(s"qualifiedName: ${g.qualifiedName} => ${a.qualifiedName}")
+          logWarning(s"metadata: ${g.metadata} => ${a.metadata}")
+        })
+       /* rs = rs :+ ResolvedStar(Seq(a))
+        rs = rs :+ ResolvedStar(Seq(b)) */
+
+       /*  rs = rs :+ Alias(a, a.name)()
+         rs = rs :+ Alias(b, b.name)() */
+
+        // val singleAgg = aggregates.size == 1
+        val singleAgg = rs.size == 1 */
+        singleAgg = rs.size == 1
         def outputName(value: Literal, aggregate: Expression): String = {
-          if (singleAgg) {
+         /* if (singleAgg) {
             value.toString
           } else {
             val suffix = aggregate match {
@@ -386,7 +471,8 @@ class Analyzer(
               case _ => aggregate.sql
             }
             value + "_" + suffix
-          }
+          } */
+          value.toString
         }
         if (aggregates.forall(a => PivotFirst.supportsDataType(a.dataType))) {
           // Since evaluating |pivotValues| if statements for each input row can get slow this is an
@@ -396,7 +482,8 @@ class Analyzer(
             case n: NamedExpression => n
             case _ => Alias(pivotColumn, "__pivot_col")()
           }
-          val bigGroup = groupByExprs :+ namedPivotCol
+         //  val bigGroup = groupByExprs :+ namedPivotCol
+          val bigGroup = rs :+ namedPivotCol
           val firstAgg = Aggregate(bigGroup, bigGroup ++ namedAggExps, child)
           val castPivotValues = pivotValues.map(Cast(_, pivotColumn.dataType).eval(EmptyRow))
           val pivotAggs = namedAggExps.map { a =>
@@ -404,7 +491,8 @@ class Analyzer(
               .toAggregateExpression()
             , "__pivot_" + a.sql)()
           }
-          val groupByExprsAttr = groupByExprs.map(_.toAttribute)
+          // val groupByExprsAttr = groupByExprs.map(_.toAttribute)
+          val groupByExprsAttr = rs.map(_.toAttribute)
           val secondAgg = Aggregate(groupByExprsAttr, groupByExprsAttr ++ pivotAggs, firstAgg)
           val pivotAggAttribute = pivotAggs.map(_.toAttribute)
           val pivotOutputs = pivotValues.zipWithIndex.flatMap { case (value, i) =>
@@ -442,7 +530,8 @@ class Analyzer(
               Alias(filteredAggregate, outputName(value, aggregate))()
             }
           }
-          Aggregate(groupByExprs, groupByExprs ++ pivotAggregates, child)
+          // Aggregate(groupByExprs, groupByExprs ++ pivotAggregates, child)
+          Aggregate(rs, rs ++ pivotAggregates, child)
         }
     }
   }

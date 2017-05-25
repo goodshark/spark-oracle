@@ -679,6 +679,16 @@ case class Pivot(
   }
 }
 
+object PivotObject {
+  def apply(groupByExprs: Seq[NamedExpression],
+            pivotColumn: Expression,
+            pivotValues: Seq[Literal],
+            aggregates: Seq[Expression],
+            child: LogicalPlan): UnaryNode = {
+    Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child)
+  }
+}
+
 object Limit {
   def apply(limitExpr: Expression, child: LogicalPlan): UnaryNode = {
     GlobalLimit(limitExpr, LocalLimit(limitExpr, child))

@@ -252,6 +252,8 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     }
   }
 
+  private def expressionForPivot(ctx: ParserRuleContext): Expression = typedVisit(ctx)
+
   /**
    * Add ORDER BY/SORT BY/CLUSTER BY/DISTRIBUTE BY/LIMIT/WINDOWS clauses to the logical plan. These
    * clauses determine the shape (ordering/partitioning/rows) of the query result.
@@ -295,11 +297,30 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
 
     // WINDOWS
     val withWindow = withOrder.optionalMap(windows)(withWindows)
-
-    // LIMIT
-    withWindow.optional(limit) {
-      Limit(typedVisit(limit), withWindow)
+    // pivot
+    val pivotOp = withWindow.optionalMap(pivoted_table)(pivoted)
+    // limit
+    pivotOp.optional(limit) {
+      Limit(typedVisit(limit), pivotOp)
     }
+
+  }
+  private def pivoted(ctx: Pivoted_tableContext,
+                           query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
+    val pivotColumn = expressionForPivot(ctx.pivot_clause().pivot_column)
+    var pivotValues = Seq[Literal]()
+    val constantList = ctx.pivot_clause().constantList()
+    constantList.constant().asScala.foreach(c => {
+      pivotValues = pivotValues :+ Literal(visitStringConstant(c))
+    })
+    val namedExpressionSeq = ctx.pivot_clause().namedExpressionSeq()
+    val aggregates = Option(namedExpressionSeq).toSeq
+      .flatMap(_.namedExpression.asScala)
+      .map(typedVisit[Expression])
+    val groupByExprs = Seq[NamedExpression]()
+    Pivot(groupByExprs, pivotColumn,
+      pivotValues,
+      aggregates, query)
   }
 
   /**
