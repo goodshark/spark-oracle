@@ -160,7 +160,9 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                         case XOR:
                             var = leftChildrenVar.operatorXor(rightChildrenVar);
                             break;
-
+                        case CONCAT:
+                            var = leftChildrenVar.operatorConcat(rightChildrenVar);
+                            break;
                     }
                     return var;
                 }
@@ -217,8 +219,10 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                 return var;
             }
             if (var.getValueType() == Var.ValueType.EXPRESSION) {
-                BaseStatement baseStatement = (BaseStatement) var.getExpr();
-                //baseStatement.setExecSession(getExecSession());
+                TreeNode baseStatement = var.getExpr();
+                if (baseStatement == null)
+                    return var;
+                baseStatement.setExecSession(getExecSession());
                 baseStatement.execute();
                 Var baseVar = (Var) baseStatement.getRs().getObject(0);
                 var.setVarValue(baseVar.getVarValue());

@@ -29,7 +29,7 @@ public class Var implements Serializable {
     }
 
     public enum VarType {
-        INPUT, OUTPUT
+        INPUT, OUTPUT, INOUT
     }
 
     private String varName = null;
@@ -42,6 +42,9 @@ public class Var implements Serializable {
     private boolean isReadonly = false;
     private boolean isExecuted = false;
     private boolean isDefault = false;
+    private boolean noCopy = false;
+    // oracle a => b, a is OUT
+    private String mapOutName = null;
 
 
     public Var(String varName, Object varValue, DataType dataType) {
@@ -89,6 +92,7 @@ public class Var implements Serializable {
         v.setAliasName(this.aliasName);
         v.setVarType(this.varType);
         v.setExecuted(this.isExecuted);
+        v.setExpr(this.expr);
         return v;
     }
 
@@ -126,6 +130,27 @@ public class Var implements Serializable {
 
     public void setValueType(ValueType valueType) {
         this.valueType = valueType;
+    }
+
+    public void setNoCopy() {
+        noCopy = true;
+    }
+
+    public boolean isNoCopy() {
+        return noCopy;
+    }
+
+    public void setMapOutName(String name) {
+        mapOutName = name;
+    }
+
+    public String getMapOutName() {
+        return mapOutName;
+    }
+
+    public Var operatorConcat(Var v) throws Exception {
+        ExpressionComputer expressionComputer = new ExpressionComputer();
+        return expressionComputer.operatorConcat(this, v);
     }
 
     /**

@@ -35,6 +35,25 @@ public class ExpressionComputer {
     }
 
     /**
+     *
+     * @param v1
+     * @param v2
+     * @return v1 || v2
+     * @throws Exception
+     */
+    public Var operatorConcat(Var v1, Var v2) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        if (v1 != null)
+            sb.append(v1.getVarValue().toString());
+        if (v2 != null)
+            sb.append(v2.getVarValue().toString());
+        Var var = new Var();
+        var.setDataType(Var.DataType.STRING);
+        var.setVarValue(sb.toString());
+        return var;
+    }
+
+    /**
      * and操作
      */
     public Var operatorXor(Var v1, Var v2) throws ParseException {
