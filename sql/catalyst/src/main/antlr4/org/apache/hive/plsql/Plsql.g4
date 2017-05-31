@@ -133,7 +133,7 @@ create_package
 // $<Create Package - Specific Clauses
 
 package_body
-    : BODY package_name (IS | AS) package_obj_body* (BEGIN seq_of_statements | END package_name?)
+    : BODY package_name (IS | AS) package_obj_body* ((BEGIN seq_of_statements END package_name?) | END package_name?)
     ;
 
 package_spec
@@ -790,7 +790,9 @@ return_statement
     ;
 
 function_call
-    : CALL? routine_name function_argument?
+//    : CALL? routine_name function_argument?
+    : CALL? routine_name '(' (execute_argument (',' execute_argument)*)? ')' keep_clause?
+//    : CALL? routine_name '(' (execute_argument ((',' | '||') execute_argument)*)? ')' keep_clause?
     ;
 
 body
@@ -1384,11 +1386,11 @@ expression
     | expression op=('*' | '/' | '%') expression            #binary_expression_alias
     | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
-    | expression op=('||' | '|') expression                 #binary_expression_alias
     | expression op=('+' | '-') expression                  #binary_expression_alias
 //    | concatenation
     | logical_and_expression (OR logical_and_expression)*   #bool_condition_alias
     | negated_expression (AND negated_expression)*          #bool_condition_alias
+    | expression op=('||' | '|') expression                 #binary_expression_alias
     | logical_or_expression                                 #complex_expression_alias
     ;
 
@@ -1974,7 +1976,11 @@ keep_clause
     ;
 
 function_argument
-    : '(' (argument '=>')? argument? (',' (argument '=>')? argument )* ')' keep_clause?
+    : '(' (id_expression '=>')? argument? (',' (id_expression '=>')? argument )* ')' keep_clause?
+    ;
+
+execute_argument
+    : (id_expression '=>')? argument
     ;
 
 function_argument_analytic
