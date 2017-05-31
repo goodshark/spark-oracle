@@ -1,23 +1,27 @@
 package org.apache.hive.plsql;
 
 import org.antlr.v4.runtime.misc.Interval;
-import org.apache.commons.logging.Log;
 import org.apache.hive.basesql.TreeBuilder;
-import org.apache.hive.plsql.PlsqlBaseVisitor;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
+import org.apache.hive.plsql.cfl.OracleReturnStatement;
+import org.apache.hive.plsql.function.FakeFunction;
 import org.apache.hive.plsql.function.Function;
+import org.apache.hive.plsql.function.ProcedureCall;
 import org.apache.hive.tsql.another.DeclareStatement;
 import org.apache.hive.tsql.another.SetStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.ExpressionBean;
+import org.apache.hive.tsql.common.MD5Util;
 import org.apache.hive.tsql.common.OperatorSign;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.ddl.CreateProcedureStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
+import org.apache.hive.tsql.func.FuncName;
+import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
-import scala.tools.nsc.backend.jvm.opt.BytecodeUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -617,6 +621,100 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return expressionStatement;
     }
 
+    @Override
+    public Object visitCreate_procedure_body(PlsqlParser.Create_procedure_bodyContext ctx) {
+        String sourceProcedure = ctx.start.getInputStream().getText(
+                new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        String procName = ctx.procedure_name().getText();
+        FuncName procId = new FuncName();
+        procId.setFuncName(procName);
+        Procedure procedure = new Procedure(procId);
+        procedure.setProcSql(sourceProcedure);
+        procedure.setMd5(MD5Util.md5Hex(sourceProcedure));
+
+        for (PlsqlParser.ParameterContext para: ctx.parameter()) {
+            procedure.addInAndOutputs((Var) visit(para));
+        }
+
+        visit(ctx.anonymous_block());
+        procedure.setSqlClauses(treeBuilder.popStatement());
+        procedure.setLeastArguments();
+
+        CreateProcedureStatement.Action action = null != ctx.CREATE() ?
+                CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
+        CreateProcedureStatement statement = new CreateProcedureStatement(procedure, action);
+        treeBuilder.pushStatement(statement);
+        return statement;
+    }
+
+    @Override
+    public Object visitParameter(PlsqlParser.ParameterContext ctx) {
+        String varName = ctx.parameter_name().getText().toUpperCase();
+        Var.DataType type = Var.DataType.DEFAULT;
+        if (ctx.type_spec() != null) {
+            type = (Var.DataType) visit(ctx.type_spec());
+        }
+        Var var = new Var(varName, null, type);
+
+
+        if (ctx.OUT().size() != 0)
+            var.setVarType(Var.VarType.OUTPUT);
+        if (ctx.IN().size() != 0 && ctx.OUT().size() != 0)
+            var.setVarType(Var.VarType.INOUT);
+        if (ctx.INOUT().size() != 0)
+            var.setVarType(Var.VarType.INOUT);
+        if (ctx.NOCOPY().size() != 0)
+            var.setNoCopy();
+
+        if (ctx.default_value_part() != null) {
+            visit(ctx.default_value_part().expression());
+            TreeNode expressionStatement = treeBuilder.popStatement();
+            var.setExpr(expressionStatement);
+            var.setValueType(Var.ValueType.EXPRESSION);
+            var.setDefault(true);
+        }
+        return var;
+    }
+
+    @Override
+    public Object visitCreate_function_body(PlsqlParser.Create_function_bodyContext ctx) {
+        String sourceFunction = ctx.start.getInputStream().getText(
+                new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        String functionName = ctx.function_name().getText();
+        FuncName funcId = new FuncName();
+        funcId.setFuncName(functionName);
+        Function function = new Function(funcId);
+        function.setProcSql(sourceFunction);
+        function.setMd5(MD5Util.md5Hex(sourceFunction));
+
+        for (PlsqlParser.ParameterContext para: ctx.parameter()) {
+            function.addInAndOutputs((Var) visit(para));
+        }
+
+        visit(ctx.anonymous_block());
+        function.setSqlClauses(treeBuilder.popStatement());
+        function.setLeastArguments();
+
+        CreateProcedureStatement.Action action = null != ctx.CREATE() ?
+                CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
+        CreateProcedureStatement statement = new CreateProcedureStatement(function, action);
+        treeBuilder.pushStatement(statement);
+
+        return statement;
+    }
+
+    @Override
+    public Object visitReturn_statement(PlsqlParser.Return_statementContext ctx) {
+        OracleReturnStatement returnStatement = new OracleReturnStatement();
+        if (ctx.condition() != null) {
+            visit(ctx.condition());
+            returnStatement.setExpr(treeBuilder.popStatement());
+        }
+
+        treeBuilder.pushStatement(returnStatement);
+        return returnStatement;
+    }
+
     /*@Override
     public Object visitConcatenation(PlsqlParser.ConcatenationContext ctx) {
         // TODO test only constant
@@ -624,10 +722,37 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return visitChildren(ctx);
     }*/
 
-    // TODO only for test, all function call just only print args
+    // TODO only for test, print | DBMS_OUTPUT.put_line function call just only print args
     @Override
     public Object visitFunction_call(PlsqlParser.Function_callContext ctx) {
-        Function function = new Function();
+        String name = ctx.routine_name().getText();
+        if (name.startsWith("print") || name.startsWith("dbms_output.put_line")) {
+            FakeFunction function = new FakeFunction();
+            visit(ctx.routine_name());
+            treeBuilder.popAll();
+            List<Var> vars = new ArrayList<>();
+            for (PlsqlParser.Execute_argumentContext argCtx: ctx.execute_argument()) {
+                vars.add((Var) visit(argCtx));
+            }
+            function.setVars(vars);
+            /*if (ctx.execute_argument() != null) {
+                List<Var> args = (List<Var>) visit(ctx.function_argument());
+                function.setVars(args);
+            }*/
+            treeBuilder.pushStatement(function);
+            return function;
+        } else {
+            FuncName funcName = new FuncName();
+            funcName.setFuncName(name);
+            ProcedureCall statement = new ProcedureCall(funcName);
+            for (PlsqlParser.Execute_argumentContext argCtx: ctx.execute_argument()) {
+                Var arg = (Var) visit(argCtx);
+                statement.addArgument(arg);
+            }
+            treeBuilder.pushStatement(statement);
+            return statement;
+        }
+        /*FakeFunction function = new FakeFunction();
         visit(ctx.routine_name());
         treeBuilder.popAll();
         if (ctx.function_argument() != null) {
@@ -635,7 +760,21 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             function.setVars(args);
         }
         treeBuilder.pushStatement(function);
-        return function;
+        return function;*/
+    }
+
+    @Override
+    public Object visitExecute_argument(PlsqlParser.Execute_argumentContext ctx) {
+        Var var = new Var();
+        if (ctx.id_expression() != null) {
+//            var.setMapName(ctx.id_expression().getText());
+            var.setVarName(ctx.id_expression().getText());
+        }
+        visit(ctx.argument());
+        TreeNode expressionStatement = treeBuilder.popStatement();
+        var.setExpr(expressionStatement);
+        var.setValueType(Var.ValueType.EXPRESSION);
+        return var;
     }
 
     @Override

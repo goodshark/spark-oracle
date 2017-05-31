@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.arg;
 
+import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
@@ -7,6 +8,8 @@ import org.apache.hive.tsql.cursor.Cursor;
 import org.apache.hive.tsql.func.Procedure;
 
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,7 +28,8 @@ public class VariableContainer {
     private ConcurrentHashMap<String, String> tmpTables = new ConcurrentHashMap<String, String>();
 
     //保存func/proc
-    private ConcurrentHashMap<String, Procedure> functions = new ConcurrentHashMap<String, Procedure>();
+    private ConcurrentHashMap<String, CommonProcedureStatement> functions = new ConcurrentHashMap<String, CommonProcedureStatement>();
+    private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, List<CommonProcedureStatement>>> newFunctions = new ConcurrentHashMap<>();
     //保存cursor
     private ConcurrentHashMap<String, Cursor> localCursors = new ConcurrentHashMap<>();//本地游标
     private ConcurrentHashMap<String, Cursor> globalCursors = new ConcurrentHashMap<>();//全局游标
@@ -102,6 +106,20 @@ public class VariableContainer {
         globalCursors.remove(cursorName);
     }
 
+    private Var funcReturnVar = null;
+
+    public void setFuncReturnVar(Var res) {
+        funcReturnVar = res;
+    }
+
+    public Var getFuncReturnVar() {
+        return funcReturnVar;
+    }
+
+    public void clearFuncReturnVar() {
+        funcReturnVar = null;
+    }
+
     private Var returnVar = new Var("_RETURN_", Var.DataType.INT);
 
 
@@ -127,8 +145,46 @@ public class VariableContainer {
 
 
 
-    public void addProcFunc(Procedure function) {
-        this.functions.put(function.getName().getFullFuncName(), function);
+    public void addProcFunc(CommonProcedureStatement function) {
+        if (function == null)
+            return;
+        String functionName = function.getName().getFullFuncName().toUpperCase();
+
+        TreeNode curBlock = session.getCurrentScope();
+        if (curBlock != null) {
+            if (newFunctions.containsKey(curBlock)) {
+                if (newFunctions.get(curBlock).containsKey(functionName)) {
+                    newFunctions.get(curBlock).get(functionName).add(function);
+                } else {
+                    List<CommonProcedureStatement> procList = new ArrayList<>();
+                    procList.add(function);
+                    newFunctions.get(curBlock).put(functionName, procList);
+                }
+            } else {
+                ConcurrentHashMap<String, List<CommonProcedureStatement>> procMap = new ConcurrentHashMap<>();
+                List<CommonProcedureStatement> procList = new ArrayList<>();
+                procList.add(function);
+                procMap.put(functionName, procList);
+                newFunctions.put(curBlock, procMap);
+            }
+        } else {
+            if (newFunctions.containsKey(session.getRootNode())) {
+                if (newFunctions.get(session.getRootNode()).containsKey(functionName)) {
+                    newFunctions.get(session.getRootNode()).get(functionName).add(function);
+                } else {
+                    List<CommonProcedureStatement> procList = new ArrayList<>();
+                    procList.add(function);
+                    newFunctions.get(session.getRootNode()).put(functionName, procList);
+                }
+            } else {
+                ConcurrentHashMap<String, List<CommonProcedureStatement>> procMap = new ConcurrentHashMap<>();
+                List<CommonProcedureStatement> procList = new ArrayList<>();
+                procList.add(function);
+                procMap.put(functionName, procList);
+                newFunctions.put(session.getRootNode(), procMap);
+            }
+        }
+//        this.functions.put(function.getName().getFullFuncName(), function);
     }
 
     public ConcurrentHashMap<String, Var> getVars() {
@@ -220,8 +276,32 @@ public class VariableContainer {
         return null;
     }
 
-    public Procedure findFunc(String varName) {
-        return functions.get(varName);
+    public CommonProcedureStatement findFunc(String varName) {
+        String funcName = varName.toUpperCase();
+        TreeNode[] blocks = session.getCurrentScopes();
+        // procedure inside the scope
+        for (TreeNode blk: blocks) {
+            ConcurrentHashMap<String, List<CommonProcedureStatement>> blkProcs = newFunctions.get(blk);
+            if (blkProcs != null && blkProcs.get(funcName) != null) {
+                List<CommonProcedureStatement> procs = blkProcs.get(funcName);
+                return (procs.size() >= 1) ? procs.get(0) : null;
+            }
+        }
+        // global procedure
+        TreeNode rootScope = session.getRootNode();
+        if (rootScope != null) {
+            List<CommonProcedureStatement> procs = newFunctions.get(rootScope).get(funcName);
+            return (procs.size() >= 1) ? procs.get(0) : null;
+        }
+        return null;
+    }
+
+    // check all procedure signature belong to current scope
+    public CommonProcedureStatement findFunc(String procName, List<Var> paras) {
+        if (session.getCurrentScope() == null)
+            return findFunc(procName);
+        // TODO get proc based on signature
+        return findFunc(procName);
     }
 
     public Var updateValue(String name, Object val) {
