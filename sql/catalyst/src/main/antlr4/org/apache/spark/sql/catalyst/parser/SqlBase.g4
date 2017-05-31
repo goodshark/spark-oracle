@@ -411,6 +411,16 @@ assignExpression
     : (qualifiedName) EQ expression
     ;
 
+for_clause
+    : FOR BROWSE
+    | FOR XML AUTO xml_common_directives?
+    | FOR XML PATH ('(' STRING ')')? xml_common_directives?
+    ;
+
+xml_common_directives
+    : ',' (TYPE | ROOT)
+    ;
+
 queryOrganization
     : (ORDER BY order+=sortItem (',' order+=sortItem)*)?
       (CLUSTER BY clusterBy+=expression (',' clusterBy+=expression)*)?
@@ -420,6 +430,7 @@ queryOrganization
       (LIMIT limit=expression)?
       pivoted_table?
       unpivoted_table?
+      for_clause?
     ;
 //ADD FOR PIVOTED_TABLE , unpivoted_table
 pivoted_table
@@ -840,6 +851,12 @@ NULLS: 'NULLS';
 ASC: 'ASC';
 DESC: 'DESC';
 FOR: 'FOR';
+BROWSE: 'BROWSE';
+XML: 'XML';
+AUTO: 'AUTO';
+TYPE: 'TYPE';
+ROOT: 'ROOT';
+PATH: 'PATH';
 INTERVAL: 'INTERVAL';
 CASE: 'CASE';
 WHEN: 'WHEN';

@@ -683,6 +683,12 @@ class Analyzer(
           ordering.map(order => resolveExpression(order, child).asInstanceOf[SortOrder])
         Sort(newOrdering, global, child)
 
+      case ForClause(forClauseDetail, child, _, xmlElems) if child.resolved => {
+        val attr = AttributeReference("xml_path_result_column", StringType, false, Metadata.empty)().toAttribute
+
+        ForClause(forClauseDetail, child, Seq(attr), xmlElems)
+      }
+
       // A special case for Generate, because the output of Generate should not be resolved by
       // ResolveReferences. Attributes in the output will be resolved by ResolveGenerate.
       case g @ Generate(generator, _, _, _, _, _) if generator.resolved => g
@@ -694,6 +700,8 @@ class Analyzer(
         } else {
           Generate(newG.asInstanceOf[Generator], join, outer, qualifier, output, child)
         }
+
+
 
       // Skips plan which contains deserializer expressions, as they should be resolved by another
       // rule: ResolveDeserializer.

@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst.plans.logical
 import org.apache.spark.sql.catalyst.TableIdentifier
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
+import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, UnresolvedAttribute}
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
@@ -452,6 +452,15 @@ case class Sort(
   override def output: Seq[Attribute] = child.output
   override def maxRows: Option[Long] = child.maxRows
 }
+
+case class ForClause(forClauseDetail: ForClauseDetail, child: LogicalPlan,
+                     output: Seq[Attribute] = Seq.empty, xmlElems: Seq[String]) extends UnaryNode {
+//  override def output: Seq[Attribute] = {
+//    Seq(UnresolvedAttribute(Seq("xml_123456")).toAttribute)
+//    child.output
+//  }
+}
+
 
 /** Factory for constructing new `Range` nodes. */
 object Range {

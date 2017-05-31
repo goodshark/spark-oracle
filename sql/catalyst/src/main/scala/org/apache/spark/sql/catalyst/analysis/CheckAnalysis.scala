@@ -333,10 +333,14 @@ trait CheckAnalysis extends PredicateHelper {
           case o if o.children.nonEmpty && o.missingInput.nonEmpty =>
             val missingAttributes = o.missingInput.mkString(",")
             val input = o.inputSet.mkString(",")
+            val withoutXml = o.missingInput.filterNot(attr =>
+                              attr.name.equalsIgnoreCase("xml_path_result_column"))
+            if (withoutXml.size > 0) {
+              failAnalysis(
+                s"resolved attribute(s) $missingAttributes missing from $input " +
+                  s"in operator ${operator.simpleString}, withoutXml $withoutXml")
+            }
 
-            failAnalysis(
-              s"resolved attribute(s) $missingAttributes missing from $input " +
-                s"in operator ${operator.simpleString}")
 
           case p @ Project(exprs, _) if containsMultipleGenerators(exprs) =>
             failAnalysis(

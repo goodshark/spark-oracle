@@ -304,7 +304,37 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       Limit(typedVisit(limit), pivotOp)
     }
 
+    // LIMIT
+    val withLimit = withWindow.optional(limit) {
+      Limit(typedVisit(limit), withWindow)
+    }
+
+    // For Xml
+    val withFor = withLimit.optional(for_clause) {
+      val xmlElemNames = {
+        val prjList = withOrder match {
+          case Project(projectList, _) => projectList
+          case Sort(_, _, child) => child.asInstanceOf[Project].projectList
+        }
+        val xmlOutputs = prjList.map(nameExpr => {
+          nameExpr match {
+            case UnresolvedAttribute(nameParts) => nameParts(0)
+            case Alias(_, name) => name
+            case UnresolvedAlias(_, _) => ""
+          }
+        })
+
+        xmlOutputs
+      }
+
+      ForClause(visitFor_clause(for_clause()), withLimit,
+        Seq(UnresolvedAttribute(Seq("xml_path_result_column")).toAttribute), xmlElemNames)
+    }
+
+    withFor
   }
+
+
   private def pivoted(ctx: Pivoted_tableContext,
                            query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
     val pivotColumn = expressionForPivot(ctx.pivot_clause().pivot_column)
@@ -322,6 +352,43 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       pivotValues,
       aggregates, query)
   }
+
+
+  override def visitFor_clause(ctx: For_clauseContext): ForClauseDetail = {
+    val forType = if (null != ctx.XML()) {
+      "XML"
+    } else {
+      "BROWSE"
+    }
+
+    def xmlType: String = {
+      if (null != ctx.PATH()) {
+        "PATH"
+      } else {
+        "AUTO"
+      }
+    }
+
+    def rowLabel: String = {
+      if (null != ctx.STRING()) {
+        val withQuota = ctx.STRING().getText
+        withQuota.substring(1, withQuota.length - 1).trim
+      } else {
+        "row"
+      }
+    }
+
+    def hasRoot: Boolean = {
+      null != ctx.xml_common_directives() && null != ctx.xml_common_directives().ROOT()
+    }
+
+    forType match {
+      case "BROWSE" => ForClauseDetail(forType)
+      case "XML" => ForClauseDetail(forType, ForXmlClause(xmlType, rowLabel, hasRoot))
+    }
+  }
+
+
 
   /**
    * Create a logical plan using a query specification.
