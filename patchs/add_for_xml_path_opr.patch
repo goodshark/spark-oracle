@@ -1,0 +1,370 @@
+Index: sql/core/src/main/scala/org/apache/spark/sql/execution/ForClauseExec.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/core/src/main/scala/org/apache/spark/sql/execution/ForClauseExec.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
++++ sql/core/src/main/scala/org/apache/spark/sql/execution/ForClauseExec.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -0,0 +1,88 @@
++/*
++ * Created by zhongdg1 on 2017/5/17.
++ */
++package org.apache.spark.sql.execution
++
++import org.apache.spark.rdd.RDD
++import org.apache.spark.serializer.Serializer
++import org.apache.spark.sql.catalyst.InternalRow
++import org.apache.spark.sql.catalyst.expressions.{Attribute, ForClauseDetail, UnsafeProjection}
++import org.apache.spark.sql.catalyst.plans.physical.{Partitioning, SinglePartition}
++import org.apache.spark.sql.execution.exchange.ShuffleExchange
++import org.apache.spark.sql.types.{DataType, StringType}
++import org.apache.spark.unsafe.types.UTF8String
++
++case class ForClauseExec(forClauseDetail: ForClauseDetail, output: Seq[Attribute]
++                         , child: SparkPlan, xmlElemNames: Seq[String])
++  extends UnaryExecNode {
++
++  private val serializer: Serializer = new UnsafeRowSerializer(1)
++
++  def hasRowLabel(): Boolean = {
++    forClauseDetail.forXmlClause.rowLabel.length > 0
++  }
++
++  /**
++    * Overridden by concrete implementations of SparkPlan.
++    * Produces the result of the query as an RDD[InternalRow]
++    */
++  override protected def doExecute(): RDD[InternalRow] = {
++
++    val childRdd = child.execute()
++
++    val shuffled = new ShuffledRowRDD(
++      ShuffleExchange.prepareShuffleDependency(
++        childRdd, child.output, SinglePartition, serializer))
++    shuffled.mapPartitionsInternal(iter => {
++      val converter = UnsafeProjection.create(Array[DataType](StringType))
++      val builder = new StringBuilder
++      val columnLen = child.output.length
++      if (hasRoot()) {
++        builder.append("<root>")
++      }
++
++      while (iter.hasNext) {
++        val row = iter.next()
++        if (hasRowLabel()) {
++          builder.append("<").append(forClauseDetail.forXmlClause.rowLabel).append(">")
++        }
++        for (i <- 0 to (columnLen - 1)) {
++          val value = row.get(i, child.output(i).dataType)
++          var hasColumnLabel = true
++          if (null == xmlElemNames(i) || xmlElemNames(i).length == 0) {
++            hasColumnLabel = false
++          }
++          if (hasColumnLabel) {
++            builder.append("<").append(xmlElemNames(i)).append(">")
++          }
++
++          builder.append(value)
++          if (hasColumnLabel) {
++            builder.append("</").append(xmlElemNames(i)).append(">")
++          }
++        }
++
++        if (hasRowLabel()) {
++          builder.append("</").append(forClauseDetail.forXmlClause.rowLabel).append(">")
++        }
++      }
++
++      if (hasRoot()) {
++        builder.append("</root>")
++      }
++
++      Iterator(converter.apply(InternalRow(UTF8String.fromString(builder.toString()))))
++    })
++  }
++
++  def hasRoot(): Boolean = {
++    forClauseDetail.forXmlClause.hasRoot
++  }
++
++  /** Specifies how data is partitioned across different nodes in the cluster. */
++  override def outputPartitioning: Partitioning = SinglePartition
++
++  override def simpleString: String = {
++    s"(for clause detail:$forClauseDetail, projects: $output, child: $child)"
++  }
++}
+Index: sql/catalyst/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBase.g4
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBase.g4	(revision 3342bd6790b992948c866a5df5f4dcff6b38a723)
++++ sql/catalyst/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBase.g4	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -411,6 +411,16 @@
+     : (qualifiedName) EQ expression
+     ;
+ 
++for_clause
++    : FOR BROWSE
++    | FOR XML AUTO xml_common_directives?
++    | FOR XML PATH ('(' STRING ')')? xml_common_directives?
++    ;
++
++xml_common_directives
++    : ',' (TYPE | ROOT)
++    ;
++
+ queryOrganization
+     : (ORDER BY order+=sortItem (',' order+=sortItem)*)?
+       (CLUSTER BY clusterBy+=expression (',' clusterBy+=expression)*)?
+@@ -420,6 +430,7 @@
+       (LIMIT limit=expression)?
+       pivoted_table?
+       unpivoted_table?
++      for_clause?
+     ;
+ //ADD FOR PIVOTED_TABLE , unpivoted_table
+ pivoted_table
+@@ -840,6 +851,12 @@
+ ASC: 'ASC';
+ DESC: 'DESC';
+ FOR: 'FOR';
++BROWSE: 'BROWSE';
++XML: 'XML';
++AUTO: 'AUTO';
++TYPE: 'TYPE';
++ROOT: 'ROOT';
++PATH: 'PATH';
+ INTERVAL: 'INTERVAL';
+ CASE: 'CASE';
+ WHEN: 'WHEN';
+Index: sql/core/src/main/scala/org/apache/spark/sql/execution/SparkStrategies.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/core/src/main/scala/org/apache/spark/sql/execution/SparkStrategies.scala	(revision 3342bd6790b992948c866a5df5f4dcff6b38a723)
++++ sql/core/src/main/scala/org/apache/spark/sql/execution/SparkStrategies.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -382,6 +382,8 @@
+         execution.SortExec(sortExprs, global = false, child = planLater(child)) :: Nil
+       case logical.Sort(sortExprs, global, child) =>
+         execution.SortExec(sortExprs, global, planLater(child)) :: Nil
++      case logical.ForClause(forClauseDetail, child, output, xmlElems) =>
++        execution.ForClauseExec(forClauseDetail, output, planLater(child), xmlElems) :: Nil
+       case logical.Project(projectList, child) =>
+         execution.ProjectExec(projectList, planLater(child)) :: Nil
+       case logical.Filter(condition, child) =>
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala	(revision 3342bd6790b992948c866a5df5f4dcff6b38a723)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -683,6 +683,12 @@
+           ordering.map(order => resolveExpression(order, child).asInstanceOf[SortOrder])
+         Sort(newOrdering, global, child)
+ 
++      case ForClause(forClauseDetail, child, _, xmlElems) if child.resolved => {
++        val attr = AttributeReference("xml_path_result_column", StringType, false, Metadata.empty)().toAttribute
++
++        ForClause(forClauseDetail, child, Seq(attr), xmlElems)
++      }
++
+       // A special case for Generate, because the output of Generate should not be resolved by
+       // ResolveReferences. Attributes in the output will be resolved by ResolveGenerate.
+       case g @ Generate(generator, _, _, _, _, _) if generator.resolved => g
+@@ -695,6 +701,8 @@
+           Generate(newG.asInstanceOf[Generator], join, outer, qualifier, output, child)
+         }
+ 
++
++
+       // Skips plan which contains deserializer expressions, as they should be resolved by another
+       // rule: ResolveDeserializer.
+       case plan if containsDeserializer(plan.expressions) => plan
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/parser/AstBuilder.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/parser/AstBuilder.scala	(revision 3342bd6790b992948c866a5df5f4dcff6b38a723)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/parser/AstBuilder.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -304,7 +304,37 @@
+       Limit(typedVisit(limit), pivotOp)
+     }
+ 
++    // LIMIT
++    val withLimit = withWindow.optional(limit) {
++      Limit(typedVisit(limit), withWindow)
++    }
++
++    // For Xml
++    val withFor = withLimit.optional(for_clause) {
++      val xmlElemNames = {
++        val prjList = withOrder match {
++          case Project(projectList, _) => projectList
++          case Sort(_, _, child) => child.asInstanceOf[Project].projectList
++        }
++        val xmlOutputs = prjList.map(nameExpr => {
++          nameExpr match {
++            case UnresolvedAttribute(nameParts) => nameParts(0)
++            case Alias(_, name) => name
++            case UnresolvedAlias(_, _) => ""
++          }
++        })
++
++        xmlOutputs
++      }
++
++      ForClause(visitFor_clause(for_clause()), withLimit,
++        Seq(UnresolvedAttribute(Seq("xml_path_result_column")).toAttribute), xmlElemNames)
++    }
++
++    withFor
+   }
++
++
+   private def pivoted(ctx: Pivoted_tableContext,
+                            query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
+     val pivotColumn = expressionForPivot(ctx.pivot_clause().pivot_column)
+@@ -323,6 +353,43 @@
+       aggregates, query)
+   }
+ 
++
++  override def visitFor_clause(ctx: For_clauseContext): ForClauseDetail = {
++    val forType = if (null != ctx.XML()) {
++      "XML"
++    } else {
++      "BROWSE"
++    }
++
++    def xmlType: String = {
++      if (null != ctx.PATH()) {
++        "PATH"
++      } else {
++        "AUTO"
++      }
++    }
++
++    def rowLabel: String = {
++      if (null != ctx.STRING()) {
++        val withQuota = ctx.STRING().getText
++        withQuota.substring(1, withQuota.length - 1).trim
++      } else {
++        "row"
++      }
++    }
++
++    def hasRoot: Boolean = {
++      null != ctx.xml_common_directives() && null != ctx.xml_common_directives().ROOT()
++    }
++
++    forType match {
++      case "BROWSE" => ForClauseDetail(forType)
++      case "XML" => ForClauseDetail(forType, ForXmlClause(xmlType, rowLabel, hasRoot))
++    }
++  }
++
++
++
+   /**
+    * Create a logical plan using a query specification.
+    */
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/rules/RuleExecutor.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/rules/RuleExecutor.scala	(revision 3342bd6790b992948c866a5df5f4dcff6b38a723)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/rules/RuleExecutor.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -87,7 +87,7 @@
+             RuleExecutor.timeMap.addAndGet(rule.ruleName, runTime)
+ 
+             if (!result.fastEquals(plan)) {
+-              logWarning(
++              logTrace(
+                 s"""
+                   |=== Applying Rule ${rule.ruleName} ===
+                   |${sideBySide(plan.treeString, result.treeString).mkString("\n")}
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/CheckAnalysis.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/CheckAnalysis.scala	(revision 3342bd6790b992948c866a5df5f4dcff6b38a723)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/CheckAnalysis.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -333,10 +333,14 @@
+           case o if o.children.nonEmpty && o.missingInput.nonEmpty =>
+             val missingAttributes = o.missingInput.mkString(",")
+             val input = o.inputSet.mkString(",")
+-
+-            failAnalysis(
+-              s"resolved attribute(s) $missingAttributes missing from $input " +
+-                s"in operator ${operator.simpleString}")
++            val withoutXml = o.missingInput.filterNot(attr =>
++                              attr.name.equalsIgnoreCase("xml_path_result_column"))
++            if (withoutXml.size > 0) {
++              failAnalysis(
++                s"resolved attribute(s) $missingAttributes missing from $input " +
++                  s"in operator ${operator.simpleString}, withoutXml $withoutXml")
++            }
++
+ 
+           case p @ Project(exprs, _) if containsMultipleGenerators(exprs) =>
+             failAnalysis(
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/ForClauseDetail.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/ForClauseDetail.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/ForClauseDetail.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -0,0 +1,13 @@
++/*
++ * Created by zhongdg1 on 2017/5/17.
++ */
++package org.apache.spark.sql.catalyst.expressions
++
++case class ForClauseDetail(forType: String = "XML", forXmlClause: ForXmlClause = null) {
++
++}
++
++case class ForXmlClause(xmlType: String = "PATH", rowLabel: String = "row",
++                        hasRoot: Boolean = false) {
++
++}
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala	(revision 3342bd6790b992948c866a5df5f4dcff6b38a723)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala	(revision c240a90fc74484194ce31d65ac2401b2c227394b)
+@@ -20,7 +20,7 @@
+ import org.apache.spark.sql.catalyst.TableIdentifier
+ 
+ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+-import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
++import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, UnresolvedAttribute}
+ import org.apache.spark.sql.catalyst.catalog.CatalogTypes
+ import org.apache.spark.sql.catalyst.expressions._
+ import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
+@@ -453,6 +453,15 @@
+   override def maxRows: Option[Long] = child.maxRows
+ }
+ 
++case class ForClause(forClauseDetail: ForClauseDetail, child: LogicalPlan,
++                     output: Seq[Attribute] = Seq.empty, xmlElems: Seq[String]) extends UnaryNode {
++//  override def output: Seq[Attribute] = {
++//    Seq(UnresolvedAttribute(Seq("xml_123456")).toAttribute)
++//    child.output
++//  }
++}
++
++
+ /** Factory for constructing new `Range` nodes. */
+ object Range {
+   def apply(start: Long, end: Long, step: Long, numSlices: Option[Int]): Range = {

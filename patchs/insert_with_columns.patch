@@ -1,0 +1,693 @@
+Index: sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/ddl.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/ddl.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/ddl.scala	(revision )
+@@ -21,13 +21,10 @@
+ import org.antlr.v4.runtime.tree.ParseTree
+ import org.apache.spark.sql._
+ import org.apache.spark.sql.catalyst.TableIdentifier
+-import org.apache.spark.sql.catalyst.expressions.Attribute
+ import org.apache.spark.sql.catalyst.catalog.{BucketSpec, CatalogTable, CatalogUtils}
++import org.apache.spark.sql.catalyst.parser.SqlBaseParser._
+ import org.apache.spark.sql.catalyst.plans.QueryPlan
+ import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan}
+-import org.apache.spark.sql.catalyst.parser.SqlBaseParser._
+-import org.apache.spark.sql.catalyst.plans.logical
+-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+ import org.apache.spark.sql.execution.command.RunnableCommand
+ import org.apache.spark.sql.internal.SessionState
+ import org.apache.spark.sql.types._
+@@ -268,20 +265,6 @@
+   }
+ }
+ 
+-case class InsertIntoWithColumnsCommand(ctx: InsertIntoWithColumnsContext,
+-                                        insertColumns: Seq[String])
+-  extends RunnableCommand {
+-
+-  def rewrite(sessionState: SessionState): String = {
+-    ""
+-  }
+-
+-  override def run(sparkSession: SparkSession): Seq[Row] = {
+-    Seq.empty[Row]
+-  }
+-}
+-
+-
+ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
+                           tableNameAlias: String)
+   extends RunnableCommand {
+Index: sql/hive/src/main/scala/org/apache/spark/sql/hive/execution/InsertIntoHiveTable.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/hive/src/main/scala/org/apache/spark/sql/hive/execution/InsertIntoHiveTable.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/hive/src/main/scala/org/apache/spark/sql/hive/execution/InsertIntoHiveTable.scala	(revision )
+@@ -364,13 +364,7 @@
+           // inheritTableSpecs is set to true. It should be set to false for an IMPORT query
+           // which is currently considered as a Hive native command.
+           val inheritTableSpecs = true
+-          if (sessionState.catalog.checkAcidTable(table.catalogTable)) {
+-            val src = new Path(outputPath.toString + partitionPathStr)
+-            val detPath = new Path(table.tableDesc.getProperties.get("location").toString
+-              + partitionPathStr)
+-            loadTableForCrud(src, detPath)
+-          } else {
+-            externalCatalog.loadPartition(
++                externalCatalog.loadPartition(
+               table.catalogTable.database,
+               table.catalogTable.identifier.table,
+               outputPath.toString,
+@@ -378,7 +372,7 @@
+               isOverwrite = doHiveOverwrite,
+               holdDDLTime = holdDDLTime,
+               inheritTableSpecs = inheritTableSpecs)
+-          }
++//          }
+         }
+       }
+     } else {
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala	(revision )
+@@ -17,9 +17,9 @@
+ 
+ package org.apache.spark.sql.catalyst.plans.logical
+ 
+-import scala.collection.mutable.ArrayBuffer
+-
+ import org.apache.spark.sql.catalyst.TableIdentifier
++
++import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+ import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
+ import org.apache.spark.sql.catalyst.catalog.CatalogTypes
+ import org.apache.spark.sql.catalyst.expressions._
+@@ -386,7 +386,8 @@
+     overwrite: OverwriteOptions,
+     ifNotExists: Boolean,
+     tableName: String = null,
+-    dbName: Option[String] = null)
++    dbName: Option[String] = null,
++    insertColumns: Option[Seq[String]] = null)
+   extends LogicalPlan {
+ 
+   override def children: Seq[LogicalPlan] = child :: Nil
+@@ -396,6 +397,21 @@
+   assert(partition.values.forall(_.nonEmpty) || !ifNotExists)
+ 
+   override lazy val resolved: Boolean = childrenResolved && table.resolved
++
++
++
++  def insertColumnLength(): Int = {
++    if (null == insertColumns) {
++      0
++    }
++    insertColumns match {
++      case Some(columns) => columns.length
++      case None => 0
++    }
++
++  }
++
++
+ }
+ 
+ /**
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/CheckAnalysis.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/CheckAnalysis.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/CheckAnalysis.scala	(revision )
+@@ -379,26 +379,33 @@
+ 
+           // TODO: We need to consolidate this kind of checks for InsertIntoTable
+           // with the rule of PreWriteCheck defined in extendedCheckRules.
+-          case InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _) =>
++          case InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _,_) =>
+             failAnalysis(
+               s"""
+                  |Hive support is required to insert into the following tables:
+                  |${s.catalogTable.identifier}
+                """.stripMargin)
+ 
+-          case InsertIntoTable(t, _, _, _, _, _, _)
++          case InsertIntoTable(t, _, _, _, _, _, _, _)
+             if !t.isInstanceOf[LeafNode] ||
+               t.isInstanceOf[Range] ||
+               t == OneRowRelation ||
+               t.isInstanceOf[LocalRelation] =>
+             failAnalysis(s"Inserting into an RDD-based table is not allowed.")
+ 
+-          case i @ InsertIntoTable(table, partitions, query, _, _, _, _) =>
++          case i @ InsertIntoTable(table, partitions, query, _, _, _, _, _) =>
+             val numStaticPartitions = partitions.values.count(_.isDefined)
+-            if (table.output.size != (query.output.size + numStaticPartitions)) {
++            var insertColumnCount = i.insertColumnLength()
++
++            if (0 == insertColumnCount) {
++              insertColumnCount = table.output.size
++            } else {
++              insertColumnCount += numStaticPartitions
++            }
++            if (insertColumnCount != (query.output.size + numStaticPartitions)) {
+               failAnalysis(
+                 s"$table requires that the data to be inserted have the same number of " +
+-                  s"columns as the target table: target table has ${table.output.size} " +
++                  s"columns as the target table: target table has ${insertColumnCount} " +
+                   s"column(s) but the inserted data has " +
+                   s"${query.output.size + numStaticPartitions} column(s), including " +
+                   s"$numStaticPartitions partition column(s) having constant value(s).")
+Index: sql/core/src/main/scala/org/apache/spark/sql/execution/SparkSqlParser.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/core/src/main/scala/org/apache/spark/sql/execution/SparkSqlParser.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/core/src/main/scala/org/apache/spark/sql/execution/SparkSqlParser.scala	(revision )
+@@ -125,30 +125,6 @@
+     return AcidUpdateCommand(ctx, updateTable, tableNameAlias, tableNames)
+   }
+ 
+-
+-  /**
+-    * {@inheritDoc }
+-    *
+-    * <p>The default implementation returns the result of calling
+-    * {@link #visitChildren} on {@code ctx}.</p>
+-    */
+-  override def visitInsertIntoWithColumns(ctx: InsertIntoWithColumnsContext):
+-      LogicalPlan = withOrigin(ctx) {
+-    val insertColumns = visitInsertColumns(ctx.insertColumns());
+-    InsertIntoWithColumnsCommand(ctx, insertColumns)
+-  }
+-
+-
+-  /**
+-    * {@inheritDoc }
+-    *
+-    * <p>The default implementation returns the result of calling
+-    * {@link #visitChildren} on {@code ctx}.</p>
+-    */
+-  override def visitInsertColumns(ctx: InsertColumnsContext): Seq[String] = {
+-    visitIdentifierSeq(ctx.identifierSeq())
+-  }
+-
+   /**
+     * Create a [[SetCommand]] logical plan.
+     *
+Index: sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveStrategies.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveStrategies.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveStrategies.scala	(revision )
+@@ -45,7 +45,7 @@
+   object DataSinks extends Strategy {
+     def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
+       case logical.InsertIntoTable(
+-          table: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _) =>
++          table: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _, _) =>
+         InsertIntoHiveTable(
+           table, partition, planLater(child), overwrite.enabled, ifNotExists) :: Nil
+ 
+Index: sql/catalyst/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBase.g4
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBase.g4	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/catalyst/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBase.g4	(revision )
+@@ -233,13 +233,9 @@
+      :'('identifierSeq')'
+      ;
+ 
+-insertIntoWithColumns
+-     : INSERT OVERWRITE TABLE tableIdentifier insertColumns (partitionSpec (IF NOT EXISTS)?)?
+-     | INSERT INTO TABLE? tableIdentifier insertColumns partitionSpec?
+-        ;
+ insertInto
+-    : INSERT OVERWRITE TABLE tableIdentifier (partitionSpec (IF NOT EXISTS)?)?
+-    | INSERT INTO TABLE? tableIdentifier partitionSpec?
++    : INSERT OVERWRITE TABLE tableIdentifier insertColumns? (partitionSpec (IF NOT EXISTS)?)?
++    | INSERT INTO TABLE? tableIdentifier insertColumns? partitionSpec?
+     ;
+ 
+ partitionSpecLocation
+@@ -325,7 +321,7 @@
+     ;
+ 
+ queryNoWith
+-    : (insertInto|insertIntoWithColumns)? queryTerm queryOrganization                                              #singleInsertQuery
++    : insertInto? queryTerm queryOrganization                                              #singleInsertQuery
+     | fromClause multiInsertQueryBody+                                                     #multiInsertQuery
+     | deleteStatement                                                                      #delete
+     | updateStatement                                                                      #update
+@@ -374,7 +370,7 @@
+     ;
+ 
+ multiInsertQueryBody
+-    : (insertInto|insertIntoWithColumns)?
++    : insertInto?
+       querySpecification
+       queryOrganization
+     ;
+Index: sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/DataSourceStrategy.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/DataSourceStrategy.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/DataSourceStrategy.scala	(revision )
+@@ -147,7 +147,7 @@
+     // dynamic_partitioning_columns are partitioning columns that do not assigned
+     // values in the PARTITION clause (e.g. c in the above example).
+     case insert @ logical.InsertIntoTable(
+-      relation @ LogicalRelation(t: HadoopFsRelation, _, _), parts, query, overwrite, false, _, _)
++      relation @ LogicalRelation(t: HadoopFsRelation, _, _), parts, query, overwrite, false, _, _, _)
+       if query.resolved && parts.exists(_._2.isDefined) =>
+ 
+       val projectList = convertStaticPartitions(
+@@ -162,7 +162,7 @@
+ 
+ 
+     case i @ logical.InsertIntoTable(
+-           l @ LogicalRelation(t: HadoopFsRelation, _, table), _, query, overwrite, false, _, _)
++           l @ LogicalRelation(t: HadoopFsRelation, _, table), _, query, overwrite, false, _, _, _)
+         if query.resolved && t.schema.asNullable == query.schema.asNullable =>
+ 
+       // Sanity checks
+@@ -305,7 +305,7 @@
+   }
+ 
+   override def apply(plan: LogicalPlan): LogicalPlan = plan transform {
+-    case i @ logical.InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _)
++    case i @ logical.InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _, _)
+         if DDLUtils.isDatasourceTable(s.metadata) =>
+       i.copy(table = readDataSourceTable(sparkSession, s))
+ 
+@@ -352,7 +352,7 @@
+         None) :: Nil
+ 
+     case i @ logical.InsertIntoTable(l @ LogicalRelation(t: InsertableRelation, _, _),
+-      part, query, overwrite, false, _, _) if part.isEmpty =>
++      part, query, overwrite, false, _, _, _) if part.isEmpty =>
+       ExecutedCommandExec(InsertIntoDataSourceCommand(l, query, overwrite)) :: Nil
+ 
+     case _ => Nil
+Index: sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveMetastoreCatalog.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveMetastoreCatalog.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/hive/src/main/scala/org/apache/spark/sql/hive/HiveMetastoreCatalog.scala	(revision )
+@@ -306,7 +306,8 @@
+ 
+       plan transformUp {
+         // Write path
+-        case InsertIntoTable(r: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _)
++        case InsertIntoTable(r: MetastoreRelation, partition, child,
++              overwrite, ifNotExists, _, _, _)
+           // Inserting into partitioned table is not supported in Parquet data source (yet).
+           if !r.hiveQlTable.isPartitioned && shouldConvertMetastoreParquet(r) =>
+           InsertIntoTable(convertToParquetRelation(r), partition, child, overwrite, ifNotExists)
+@@ -344,7 +345,8 @@
+ 
+       plan transformUp {
+         // Write path
+-        case InsertIntoTable(r: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _)
++        case InsertIntoTable(r: MetastoreRelation, partition, child,
++              overwrite, ifNotExists, _, _, _)
+           // Inserting into partitioned table is not supported in Orc data source (yet).
+           if !r.hiveQlTable.isPartitioned && shouldConvertMetastoreOrc(r) =>
+           InsertIntoTable(convertToOrcRelation(r), partition, child, overwrite, ifNotExists)
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/parser/AstBuilder.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/parser/AstBuilder.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/parser/AstBuilder.scala	(revision )
+@@ -163,12 +163,29 @@
+       optionalMap(ctx.insertInto())(withInsertInto)
+   }
+ 
++
++  /**
++    * {@inheritDoc }
++    *
++    * <p>The default implementation returns the result of calling
++    * {@link #visitChildren} on {@code ctx}.</p>
++    */
++  override def visitInsertColumns(ctx: InsertColumnsContext): Seq[String] = {
++
++    if (null == ctx || ctx.identifierSeq() == null) {
++      return Seq.empty[String]
++    }
++    visitIdentifierSeq(ctx.identifierSeq()).map(_ trim).map(_ toLowerCase)
++  }
++
++
+   /**
+    * Add an INSERT INTO [TABLE]/INSERT OVERWRITE TABLE operation to the logical plan.
+    */
+   private def withInsertInto(
+       ctx: InsertIntoContext,
+       query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
++
+     val tableIdent = visitTableIdentifier(ctx.tableIdentifier)
+     val partitionKeys = Option(ctx.partitionSpec).map(visitPartitionSpec).getOrElse(Map.empty)
+ 
+@@ -181,6 +198,12 @@
+     val staticPartitionKeys: Map[String, String] =
+       partitionKeys.filter(_._2.nonEmpty).map(t => (t._1, t._2.get))
+ 
++    var insertColumns : Seq[String] = null;
++    if (null != ctx.insertColumns()) {
++      insertColumns = visitInsertColumns(ctx.insertColumns())
++    }
++
++
+     InsertIntoTable(
+       UnresolvedRelation(tableIdent, None),
+       partitionKeys,
+@@ -188,7 +211,8 @@
+       OverwriteOptions(overwrite, if (overwrite) staticPartitionKeys else Map.empty),
+       ctx.EXISTS != null,
+       ctx.tableIdentifier().table.getText,
+-      Option(ctx.tableIdentifier().db).map(_.getText))
++      Option(ctx.tableIdentifier().db).map(_.getText),
++      Option(insertColumns))
+   }
+ 
+   /**
+Index: sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/analysis/Analyzer.scala	(revision )
+@@ -461,7 +461,7 @@
+     }
+ 
+     def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
+-      case i @ InsertIntoTable(u: UnresolvedRelation, parts, child, _, _, _, _) if child.resolved =>
++      case i @ InsertIntoTable(u: UnresolvedRelation, parts, child, _, _, _, _,_) if child.resolved =>
+         i.copy(table = EliminateSubqueryAliases(lookupTableFromCatalog(u)))
+       case u: UnresolvedRelation =>
+         val table = u.tableIdentifier
+Index: sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/rules.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/rules.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/core/src/main/scala/org/apache/spark/sql/execution/datasources/rules.scala	(revision )
+@@ -17,11 +17,6 @@
+ 
+ package org.apache.spark.sql.execution.datasources
+ 
+-import java.util.regex.Pattern
+-
+-import scala.util.control.NonFatal
+-
+-import org.apache.spark.sql.{AnalysisException, SaveMode, SparkSession}
+ import org.apache.spark.sql.catalyst.TableIdentifier
+ import org.apache.spark.sql.catalyst.analysis._
+ import org.apache.spark.sql.catalyst.catalog.{BucketSpec, CatalogRelation, CatalogTable, SessionCatalog}
+@@ -33,6 +28,10 @@
+ import org.apache.spark.sql.internal.SQLConf
+ import org.apache.spark.sql.sources.{BaseRelation, InsertableRelation}
+ import org.apache.spark.sql.types.{AtomicType, StructType}
++import org.apache.spark.sql.{AnalysisException, SaveMode, SparkSession}
++
++import scala.collection.mutable.ListBuffer
++import scala.util.control.NonFatal
+ 
+ /**
+  * Try to replaces [[UnresolvedRelation]]s with [[ResolveDataSource]].
+@@ -205,19 +204,91 @@
+  * inserted have the correct data type and fields have the correct names.
+  */
+ case class PreprocessTableInsertion(conf: SQLConf) extends Rule[LogicalPlan] {
++
++  def locateColumns(insert: InsertIntoTable): Seq[Int] = {
++    val buf: ListBuffer[Int] = new ListBuffer[Int]
++    val iColumns = insert.insertColumns.get
++    val allColumns = insert.table.output.map(_.name.toLowerCase)
++    for (i <- 0 to (iColumns.length - 1)) {
++      val index = allColumns.indexOf(iColumns(i))
++      if (index > -1) {
++        buf += index
++      }
++    }
++    buf
++  }
++
++  private def checkColumnExisting(columnName: String,
++                          attributes: Seq[Attribute], tblName: String): Boolean = {
++    var i = 0
++    var flag = false
++    while(!flag && i < attributes.length) {
++      if (columnName.equalsIgnoreCase(attributes(i).name)) {
++        flag = true
++      }
++      i+=1
++    }
++    if (!flag) {
++      throw new AnalysisException(
++        s"Cannot insert into table $tblName because the column not found in table: " +
++          s"need column $columnName")
++    }
++
++    flag
++  }
++
++  private def recordInsertColumnPosition(insert: InsertIntoTable): Unit = {
++    val positions = locateColumns(insert).mkString(",")
++    logInfo(s"set spark.exe.insert.positions=$positions")
++    //      conf.setConfString("spark.exe.insert.columns", insertColumnsStr)
++    conf.setConfString("spark.exe.insert.positions", positions)
++  }
++
++  private def filterExceptedColumns(expectColumns: Seq[Attribute],
++                                    positions: Seq[Int]): Seq[Attribute] = {
++    val buf: ListBuffer[Attribute] = new ListBuffer[Attribute]
++    for (i <- 0 to (positions.length - 1)) {
++        buf += expectColumns(positions(i))
++    }
++    buf
++  }
++
++
++  private def checkDuplicateColumns(columns: Seq[String], tblName: String ): Unit = {
++    if (columns.length > columns.toSet.size) {
++      throw new AnalysisException(
++        s"Cannot insert into table $tblName because the insert columns include Duplicate columns")
++    }
++  }
++
+   private def preprocess(
+       insert: InsertIntoTable,
+       tblName: String,
+       partColNames: Seq[String]): InsertIntoTable = {
+ 
++
+     val normalizedPartSpec = PartitioningUtils.normalizePartitionSpec(
+       insert.partition, partColNames, tblName, conf.resolver)
+ 
+-    val expectedColumns = {
++    val specialColumnsLength = insert.insertColumnLength()
++
++    var expectedColumns = {
+       val staticPartCols = normalizedPartSpec.filter(_._2.isDefined).keySet
+       insert.table.output.filterNot(a => staticPartCols.contains(a.name))
+     }
+ 
++    if (specialColumnsLength > 0) {
++      insert.insertColumns.get.map(columnName =>
++                                    checkColumnExisting(columnName, insert.table.output, tblName))
++      checkDuplicateColumns(insert.insertColumns.get, tblName)
++
++      expectedColumns = filterExceptedColumns(expectedColumns, locateColumns(insert))
++      recordInsertColumnPosition(insert)
++    } else {
++      conf.setConfString("spark.exe.insert.positions", "")
++    }
++
++
+     if (expectedColumns.length != insert.child.schema.length) {
+       throw new AnalysisException(
+         s"Cannot insert into table $tblName because the number of columns are different: " +
+@@ -225,6 +296,10 @@
+           s"but query has ${insert.child.schema.length} columns.")
+     }
+ 
++//    logError("spark.exe.insert.columns = " + conf.getConfString("spark.exe.insert.columns"))
++//    logError("spark.exe.insert.positions = " + conf.getConfString("spark.exe.insert.positions"))
++
++
+     if (normalizedPartSpec.nonEmpty) {
+       if (normalizedPartSpec.size != partColNames.length) {
+         throw new AnalysisException(
+@@ -270,7 +345,7 @@
+   }
+ 
+   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
+-    case i @ InsertIntoTable(table, partition, child, _, _, _, _) if table.resolved && child.resolved =>
++    case i @ InsertIntoTable(table, partition, child, _, _, _, _, _) if table.resolved && child.resolved =>
+       table match {
+         case relation: CatalogRelation =>
+           val metadata = relation.catalogTable
+@@ -333,7 +408,7 @@
+         }
+ 
+       case logical.InsertIntoTable(
+-          l @ LogicalRelation(t: InsertableRelation, _, _), partition, query, _, _, _, _) =>
++          l @ LogicalRelation(t: InsertableRelation, _, _), partition, query, _, _, _, _, _) =>
+         // Right now, we do not support insert into a data source table with partition specs.
+         if (partition.nonEmpty) {
+           failAnalysis(s"Insert into a partition is not allowed because $l is not partitioned.")
+@@ -351,7 +426,7 @@
+         }
+ 
+       case logical.InsertIntoTable(
+-        LogicalRelation(r: HadoopFsRelation, _, _), part, query, _, _, _, _) =>
++        LogicalRelation(r: HadoopFsRelation, _, _), part, query, _, _, _, _, _) =>
+         // We need to make sure the partition columns specified by users do match partition
+         // columns of the relation.
+         val existingPartitionColumns = r.partitionSchema.fieldNames.toSet
+@@ -379,7 +454,7 @@
+           // OK
+         }
+ 
+-      case logical.InsertIntoTable(l: LogicalRelation, _, _, _, _, _, _) =>
++      case logical.InsertIntoTable(l: LogicalRelation, _, _, _, _, _, _, _) =>
+         // The relation in l is not an InsertableRelation.
+         failAnalysis(s"$l does not allow insertion.")
+ 
+Index: sql/hive/src/main/scala/org/apache/spark/sql/hive/hiveWriterContainers.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- sql/hive/src/main/scala/org/apache/spark/sql/hive/hiveWriterContainers.scala	(revision 4bbefdbeee165358b71e13e3a5dd6f4e8f338545)
++++ sql/hive/src/main/scala/org/apache/spark/sql/hive/hiveWriterContainers.scala	(revision )
+@@ -53,6 +53,7 @@
+ import org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter
+ 
+ import scala.collection.mutable
++import scala.collection.mutable.ListBuffer
+ 
+ /**
+  * Internal helper class that saves an RDD using a Hive OutputFormat.
+@@ -179,7 +180,16 @@
+       .asInstanceOf[StructObjectInspector]
+ 
+     val fieldOIs = standardOI.getAllStructFieldRefs.asScala.map(_.getFieldObjectInspector).toArray
+-    val dataTypes = inputSchema.map(_.dataType)
++    val fieldsLen = fieldOIs.length
++    val allDataTypes = table.catalogTable.schema.map(_.dataType)
++    val dataTypes: ListBuffer[DataType] = new ListBuffer[DataType]
++    for(index <- 0 to (fieldsLen - 1)) {
++      dataTypes += allDataTypes(index)
++    }
++//    val dataTypes = buf.toSeq
++//    val dataTypes = allDataTypes.filter({ index+=1; index < fieldsLen })
++//    val dataTypes = inputSchema.map(_.dataType)
++//    val dataTypes = fieldOIs.map(in => DataType.nameToType(in.getTypeName))
+     val wrappers = fieldOIs.zip(dataTypes).map { case (f, dt) => wrapperFor(f, dt) }
+     val outputData = new Array[Any](fieldOIs.length)
+     (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData)
+@@ -332,6 +342,11 @@
+ 
+   // this function is executed on executor side
+   def writeToFile(context: TaskContext, iterator: Iterator[InternalRow]): Unit = {
++    // for insert with column test
++    val insertPositions = conf.value.getInts("spark.exe.insert.positions")
++//    logError(s"read from conf: insert positions " + insertPositions.mkString(","));
++    // end for insert column test
++
+     val transaction_acid_flg = conf.value.get(SPARK_TRANSACTION_ACID, "false")
+     if (transaction_acid_flg.equalsIgnoreCase("true")) {
+       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
+@@ -340,8 +355,10 @@
+         table.tableDesc.getProperties.getProperty("partition_columns").nonEmpty) {
+         partitionPath = conf.value.get("spark.partition.value")
+       }
++//      val outPutPath = new Path(
++//           FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
+       val outPutPath = new Path(
+-           FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
++        FileOutputFormat.getOutputPath(conf.value).toString
+       )
+ 
+       val bucketColumnNames = table.catalogTable.
+@@ -362,7 +379,10 @@
+             standardOI, fieldOIs, rows, row)
+           var i = 0
+           while (i < fieldOIs.length) {
+-            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
++//            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
++            outputData(i) = {
++              buildOutputData(insertPositions, dataTypes, wrappers, row, i)
++            }
+             rows.add(outputData(i))
+             i += 1
+           }
+@@ -394,7 +414,9 @@
+       iterator.foreach { row =>
+         var i = 0
+         while (i < fieldOIs.length) {
+-          outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
++          outputData(i) = {
++            buildOutputData(insertPositions, dataTypes, wrappers, row, i)
++          }
+           i += 1
+         }
+         writer.write(serializer.serialize(outputData, standardOI))
+@@ -403,6 +425,30 @@
+     }
+   }
+ 
++  private def buildOutputData(insertPositions: Array[Int],
++                              dataTypes: ListBuffer[DataType],
++                              wrappers: Array[(Any) => Any], row: InternalRow, i: Int) = {
++    if (row.isNullAt(i)) {
++      null
++    } else {
++      if (insertPositions.isEmpty) {
++        wrappers(i)(row.get(i, dataTypes(i)))
++      } else {
++        val columnIndex = getInsertIndex(i, insertPositions)
++        if (-1 == columnIndex) {
++          null
++        } else {
++          wrappers(i)(row.get(columnIndex, dataTypes(i)))
++        }
++      }
++    }
++  }
++
++  def getInsertIndex(index: Int, positions: Array[Int]): Int = {
++    return positions.indexOf(index)
++
++  }
++
+   def closeUpdateRecord(updateRecordMap: mutable.Map[Integer, RecordUpdater]): Unit = {
+     updateRecordMap.keys.foreach(u => {
+       val updateRecord = updateRecordMap.get(u).get
