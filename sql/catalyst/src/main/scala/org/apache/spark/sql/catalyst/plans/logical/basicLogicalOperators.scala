@@ -455,10 +455,9 @@ case class Sort(
 
 case class ForClause(forClauseDetail: ForClauseDetail, child: LogicalPlan,
                      output: Seq[Attribute] = Seq.empty, xmlElems: Seq[String]) extends UnaryNode {
-//  override def output: Seq[Attribute] = {
-//    Seq(UnresolvedAttribute(Seq("xml_123456")).toAttribute)
-//    child.output
-//  }
+  override def simpleString: String = {
+    s"($forClauseDetail, projects=$output, xmlElemNames=$xmlElems)"
+  }
 }
 
 

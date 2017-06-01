@@ -83,6 +83,6 @@ case class ForClauseExec(forClauseDetail: ForClauseDetail, output: Seq[Attribute
   override def outputPartitioning: Partitioning = SinglePartition
 
   override def simpleString: String = {
-    s"(for clause detail:$forClauseDetail, projects: $output, child: $child)"
+    s"($forClauseDetail, projects=$output, xmlElemNames=$xmlElemNames)"
   }
 }
