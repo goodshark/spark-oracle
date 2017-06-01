@@ -61,13 +61,13 @@ public abstract class BaseStatement extends TreeNode {
         SparkResultSet sparkResultSet = new SparkResultSet(dataset);
         updateRowcount(sparkResultSet);
         if (isAddResult()) {
-            if (null != getForClause()) {
-                String ret = formatResultSet(sparkResultSet);
-                Dataset newDs = sparkSession.sql(new StringBuffer().append("SELECT '").append(ret).append("' AS xml").toString());
-                SparkResultSet newRs = new SparkResultSet(newDs);
-                getExecSession().addRs(newRs);
-                return newRs;
-            }
+//            if (null != getForClause()) {
+//                String ret = formatResultSet(sparkResultSet);
+//                Dataset newDs = sparkSession.sql(new StringBuffer().append("SELECT '").append(ret).append("' AS xml").toString());
+//                SparkResultSet newRs = new SparkResultSet(newDs);
+//                getExecSession().addRs(newRs);
+//                return newRs;
+//            }
             getExecSession().addRs(sparkResultSet);
         }
 
