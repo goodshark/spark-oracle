@@ -725,7 +725,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     // TODO only for test, print | DBMS_OUTPUT.put_line function call just only print args
     @Override
     public Object visitFunction_call(PlsqlParser.Function_callContext ctx) {
-        String name = ctx.routine_name().getText();
+        String name = ctx.routine_name().getText().toLowerCase();
         if (name.startsWith("print") || name.startsWith("dbms_output.put_line")) {
             FakeFunction function = new FakeFunction();
             visit(ctx.routine_name());
