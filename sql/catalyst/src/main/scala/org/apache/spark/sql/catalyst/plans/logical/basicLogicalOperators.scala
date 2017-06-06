@@ -454,12 +454,16 @@ case class Sort(
 }
 
 case class ForClause(forClauseDetail: ForClauseDetail, child: LogicalPlan,
-                     output: Seq[Attribute] = Seq.empty, xmlElems: Seq[String]) extends UnaryNode {
+                     output: Seq[Attribute] = Seq.empty, xmlElems: Seq[String] = Seq.empty) extends UnaryNode {
   override def simpleString: String = {
     s"($forClauseDetail, projects=$output, xmlElemNames=$xmlElems)"
   }
 }
 
+
+case class Unpivot(child: LogicalPlan, output: Seq[Attribute]) extends UnaryNode {
+
+}
 
 /** Factory for constructing new `Range` nodes. */
 object Range {

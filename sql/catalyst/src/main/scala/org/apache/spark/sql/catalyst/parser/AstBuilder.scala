@@ -300,14 +300,14 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     // pivot
     val pivotOp = withWindow.optionalMap(pivoted_table)(pivoted)
     // limit
-    pivotOp.optional(limit) {
+    val withLimit = pivotOp.optional(limit) {
       Limit(typedVisit(limit), pivotOp)
     }
 
     // LIMIT
-    val withLimit = withWindow.optional(limit) {
-      Limit(typedVisit(limit), withWindow)
-    }
+//    val withLimit = withWindow.optional(limit) {
+//      Limit(typedVisit(limit), withWindow)
+//    }
 
     // For Xml
     val withFor = withLimit.optional(for_clause) {
@@ -321,9 +321,9 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
             case UnresolvedAttribute(nameParts) => nameParts(0)
             case Alias(_, name) => name
             case UnresolvedAlias(_, _) => ""
+            case UnresolvedStar(_) => "*"
           }
         })
-
         xmlOutputs
       }
 

@@ -685,8 +685,20 @@ class Analyzer(
 
       case ForClause(forClauseDetail, child, _, xmlElems) if child.resolved => {
         val attr = AttributeReference("xml_path_result_column", StringType, false, Metadata.empty)().toAttribute
+        val withStartXmlElems = { if (xmlElems.length == 1 && xmlElems(0).equals("*")) {
+          child.output.map(attr => {
+            attr match {
+              case AttributeReference(name, _, _, _) => name
+//              case Alias(_, name) => name
+            }
+          })
+        } else {
+          xmlElems
+        }
+        }
 
-        ForClause(forClauseDetail, child, Seq(attr), xmlElems)
+
+        ForClause(forClauseDetail, child, Seq(attr), withStartXmlElems)
       }
 
       // A special case for Generate, because the output of Generate should not be resolved by
