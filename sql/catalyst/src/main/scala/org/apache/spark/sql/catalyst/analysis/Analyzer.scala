@@ -683,7 +683,7 @@ class Analyzer(
           ordering.map(order => resolveExpression(order, child).asInstanceOf[SortOrder])
         Sort(newOrdering, global, child)
 
-      case ForClause(forClauseDetail, child, _, xmlElems) if child.resolved => {
+      case p @ ForClause(forClauseDetail, child, _, xmlElems) if !p.analyzed && child.resolved => {
         val attr = AttributeReference("xml_path_result_column", StringType, false, Metadata.empty)().toAttribute
         val withStartXmlElems = { if (xmlElems.length == 1 && xmlElems(0).equals("*")) {
           child.output.map(attr => {
@@ -697,8 +697,9 @@ class Analyzer(
         }
         }
 
-
-        ForClause(forClauseDetail, child, Seq(attr), withStartXmlElems)
+        val newForClause = ForClause(forClauseDetail, child, Seq(attr), withStartXmlElems)
+        newForClause.setAnalyzed()
+        newForClause
       }
 
       // A special case for Generate, because the output of Generate should not be resolved by
