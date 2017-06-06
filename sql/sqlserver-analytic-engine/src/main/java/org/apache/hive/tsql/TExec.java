@@ -1773,7 +1773,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         TreeNode insertValuesNode = visitInsert_statement_value(ctx.insert_statement_value());
         if (null != ctx.for_clause()) {
-            insertStatement.setForClause(visitFor_clause(ctx.for_clause()));
+//            insertStatement.setForClause(visitFor_clause(ctx.for_clause()));
+            sql.append(visitFor_clause(ctx.for_clause()));
         }
         if (null != ctx.option_clause()) {
             visitOption_clause(ctx.option_clause());
@@ -1913,7 +1914,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException("cursor", locate(ctx));
         }
         if (null != ctx.for_clause()) {
-            updateStatement.setForClause(visitFor_clause(ctx.for_clause()));
+//            updateStatement.setForClause(visitFor_clause(ctx.for_clause()));
+            sql.append(visitFor_clause(ctx.for_clause()));
         }
         if (null != ctx.option_clause()) {
             visitOption_clause(ctx.option_clause());
@@ -2038,7 +2040,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
             addException(" cursor", locate(ctx));
         }
         if (null != ctx.for_clause()) {
-            deleteStatement.setForClause(visitFor_clause(ctx.for_clause()));
+//            deleteStatement.setForClause(visitFor_clause(ctx.for_clause()));
+            sql.append(visitFor_clause(ctx.for_clause()));
         }
         if (null != ctx.option_clause()) {
             visitOption_clause(ctx.option_clause());
@@ -2306,13 +2309,18 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
 
         sql.append(limitSql);
+
+        if (null != ctx.for_clause()) {
+//            selectStatement.setForClause(visitFor_clause(ctx.for_clause()));
+            sql.append(visitFor_clause(ctx.for_clause()));
+        }
+
         selectStatement.setSql(sql.toString());
         selectStatement.addVariables(localIdVariable);
         selectStatement.addResultSetVariables(resultSetVariable);
         selectStatement.addTableNames(tableNameList);
-        if (null != ctx.for_clause()) {
-            selectStatement.setForClause(visitFor_clause(ctx.for_clause()));
-        }
+
+
 
         addNode(selectStatement);
         pushStatement(selectStatement);
@@ -2321,40 +2329,41 @@ public class TExec extends TSqlBaseVisitor<Object> {
 
 
     @Override
-    public ForClause visitFor_clause(TSqlParser.For_clauseContext ctx) {
+    public String visitFor_clause(TSqlParser.For_clauseContext ctx) {
+        return null == ctx ? "" : " " + ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         //SqlStatement rs = new SqlStatement();
 //        addException(" for clause ", locate(ctx));
-        ForClause forClause = new ForClause();
-        if (null != ctx.XML()) {
-            forClause.setXformat(ForClause.XFORMAT.XML);
-        }
-        if (null != ctx.AUTO()) {
-            forClause.setXmlMode(ForClause.XMLMODE.AUTO);
-        }
-        if (null != ctx.xml_common_directives()) {
-            forClause.setDirectives(visitXml_common_directives(ctx.xml_common_directives()));
-        }
-
-        if (null != ctx.STRING()) {
-            forClause.setRow(StrUtils.trimQuot(ctx.STRING().getText()));
-        }
-
-        return forClause;
+//        ForClause forClause = new ForClause();
+//        if (null != ctx.XML()) {
+//            forClause.setXformat(ForClause.XFORMAT.XML);
+//        }
+//        if (null != ctx.AUTO()) {
+//            forClause.setXmlMode(ForClause.XMLMODE.AUTO);
+//        }
+//        if (null != ctx.xml_common_directives()) {
+//            forClause.setDirectives(visitXml_common_directives(ctx.xml_common_directives()));
+//        }
+//
+//        if (null != ctx.STRING()) {
+//            forClause.setRow(StrUtils.trimQuot(ctx.STRING().getText()));
+//        }
+//
+//        return forClause;
     }
 
 
-    @Override
-    public ForClause.DIRECTIVES visitXml_common_directives(TSqlParser.Xml_common_directivesContext ctx) {
-        ForClause.DIRECTIVES directives = ForClause.DIRECTIVES.BINARY;
-        if (null != ctx.ROOT()) {
-            directives = ForClause.DIRECTIVES.ROOT;
-        }
-        if (null != ctx.TYPE()) {
-            directives = ForClause.DIRECTIVES.TYPE;
-        }
-        return directives;
-
-    }
+//    @Override
+//    public ForClause.DIRECTIVES visitXml_common_directives(TSqlParser.Xml_common_directivesContext ctx) {
+//        ForClause.DIRECTIVES directives = ForClause.DIRECTIVES.BINARY;
+//        if (null != ctx.ROOT()) {
+//            directives = ForClause.DIRECTIVES.ROOT;
+//        }
+//        if (null != ctx.TYPE()) {
+//            directives = ForClause.DIRECTIVES.TYPE;
+//        }
+//        return directives;
+//
+//    }
 
     @Override
     public String visitOption_clause(TSqlParser.Option_clauseContext ctx) {

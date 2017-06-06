@@ -1,6 +1,5 @@
 package org.apache.hive.tsql.common;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.SystemVName;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.spark.sql.Dataset;
@@ -10,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,69 +59,12 @@ public abstract class BaseStatement extends TreeNode {
         SparkResultSet sparkResultSet = new SparkResultSet(dataset);
         updateRowcount(sparkResultSet);
         if (isAddResult()) {
-//            if (null != getForClause()) {
-//                String ret = formatResultSet(sparkResultSet);
-//                Dataset newDs = sparkSession.sql(new StringBuffer().append("SELECT '").append(ret).append("' AS xml").toString());
-//                SparkResultSet newRs = new SparkResultSet(newDs);
-//                getExecSession().addRs(newRs);
-//                return newRs;
-//            }
             getExecSession().addRs(sparkResultSet);
         }
 
         return sparkResultSet;
     }
 
-    private String formatResultSet(SparkResultSet sparkResultSet) {
-        StringBuffer sb = new StringBuffer();
-        try {
-
-            ForClause forClause = getForClause();
-            if (forClause.getDirectives() == ForClause.DIRECTIVES.ROOT) {
-                sb.append("<root>");
-            }
-            int columnSize = sparkResultSet.getColumnSize();
-            List<Column> columns = sparkResultSet.getColumns();
-            while (sparkResultSet.next()) {
-                Row row = sparkResultSet.fetchRow();
-                if (StringUtils.isNotBlank(forClause.getRow())) {
-                    sb.append("<").append(forClause.getRow()).append(">");
-                }
-
-                for (int i = 0; i < columnSize; i++) {
-                    sb.append("<").append(columns.get(i).getColumnName()).append(">")
-                            .append(row.getColumnVal(i)).append("</").append(columns.get(i).getColumnName()).append(">");
-                }
-                if (StringUtils.isNotBlank(forClause.getRow())) {
-                    sb.append("</").append(forClause.getRow()).append(">");
-                }
-            }
-            if (forClause.getDirectives() == ForClause.DIRECTIVES.ROOT) {
-                sb.append("</root>");
-            }
-
-
-//          newResult.addColumn(new Column("xml", ColumnDataType.STRING));
-//          newResult.addRow(new Object[]{sb.toString()});
-
-//            StructType st = new StructType().add(new StructField("c", StringType, true, Metadata.empty()));
-//            List list = new ArrayList<org.apache.spark.sql.Row>();
-//            list.add(new GenericInternalRow(new Object[]{sb.toString()}));
-//            list.add(new GenericRowWithSchema(new Object[]{sb.toString()}, st));
-//            Dataset ds = getExecSession().getSparkSession().createDataset(list, Encoders.STRING());
-
-//            Dataset<org.apache.spark.sql.Row> ds = getExecSession().getSparkSession().createDataFrame(list, st);
-//            SparkResultSet rs = new SparkResultSet();
-//            sparkResultSet.setDataset(ds);
-//            return rs;
-
-        } catch (Exception e) {
-            LOG.error("Format to xml", e);
-        }
-
-//        return new SparkResultSet();
-        return sb.toString();
-    }
 
     public void updateRowcount(SparkResultSet rs) {
         try {
