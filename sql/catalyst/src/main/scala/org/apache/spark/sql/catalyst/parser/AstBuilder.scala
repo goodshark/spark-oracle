@@ -315,6 +315,7 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
         val prjList = withOrder match {
           case Project(projectList, _) => projectList
           case Sort(_, _, child) => child.asInstanceOf[Project].projectList
+          case Distinct(child) => child.asInstanceOf[Project].projectList
         }
         val xmlOutputs = prjList.map(nameExpr => {
           nameExpr match {
