@@ -81,6 +81,7 @@ class Analyzer(
     Batch("Resolution", fixedPoint,
       ResolveTableValuedFunctions ::
       ResolveRelations ::
+      ResolveUnPivot ::
       ResolveReferences ::
       ResolveCreateNamedStruct ::
       ResolveDeserializer ::
@@ -114,6 +115,62 @@ class Analyzer(
     Batch("Cleanup", fixedPoint,
       CleanupAliases)
   )
+
+  object ResolveUnPivot extends Rule[LogicalPlan] {
+    def fileter(a: NamedExpression,
+                      valueColumn: Expression,
+                      unpivotColumn: Expression) : Boolean = {
+        a.name.equalsIgnoreCase(valueColumn.sql.replaceAll("`", "")) ||
+        a.name.equalsIgnoreCase(unpivotColumn.sql.replaceAll("`", ""))
+    }
+    def childOutFileter(a: Attribute, columns: Seq[Expression]) : Boolean = {
+      var rs = false
+      columns.foreach(c => {
+        if (c.sql.equalsIgnoreCase(a.name) || c.sql.equalsIgnoreCase("`" + a.name + "`")) {
+          rs = true
+        }
+      } )
+      rs
+    }
+    def getName(e: Expression): String = {
+      e.sql.replaceAll("`", "")
+    }
+    override def apply(plan: LogicalPlan): LogicalPlan = plan transform {
+      case p @ UnPivotedTableScan(valueColumn, unpivotColumn, columns, child) if !p.analyzed =>
+           val unpivotedRs = child match {
+             case Project(projectList, projectChild) if !child.resolved =>
+               var childOutPutMap: Map[String, DataType] = Map()
+               projectChild.output.foreach(o => {
+                 childOutPutMap = childOutPutMap. +(o.name -> o.dataType)
+               })
+               val newProjectList = projectList.filterNot(f =>
+                 fileter(f, valueColumn, unpivotColumn)).map(f =>
+                 AttributeReference(getName(f),
+                   childOutPutMap.get(getName(f)).get)())++ columns.map(
+                 c => AttributeReference(getName(c),
+                   childOutPutMap.get(getName(c)).get)())
+               val newChild = UnPivotedProject(newProjectList, projectChild)
+               val resolveValueCol: AttributeReference = resolveColumn(valueColumn)
+               val resolveUnpivotColumn: AttributeReference = resolveColumn(unpivotColumn)
+               val resolveColumns = projectChild.output.filter( c => childOutFileter(c, columns))
+
+               UnPivotedTableScan(resolveValueCol, resolveUnpivotColumn,
+                 resolveColumns, newChild)
+           }
+        unpivotedRs.setAnalyzed()
+        unpivotedRs
+    }
+
+    private def resolveColumn(valueColumn: Expression) = {
+      val resolveValueCol = valueColumn match {
+        case n: NamedExpression => AttributeReference(n.name, StringType)()
+        case _ => AttributeReference(valueColumn.sql, StringType)()
+      }
+      resolveValueCol
+    }
+  }
+
+
 
   /**
    * Analyze cte definitions and substitute child plan with analyzed cte definitions.
@@ -377,7 +434,6 @@ class Analyzer(
       case Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
         var singleAgg = aggregates.size == 1
         var rs = groupByExprs
-        logWarning("groupByExprs size is ==>" + groupByExprs.size)
         if (rs.size == 0) {
           var neadFilteColumns = Seq[String]()
            def getAggregateColumnName(seqE: Seq[Expression]) : Unit = {
@@ -404,81 +460,18 @@ class Analyzer(
               functionChild => getAggregateColumnName(functionChild.children)
             )
           })
-          logWarning(s"neadFilteColumns:${neadFilteColumns.toString()}")
           neadFilteColumns = neadFilteColumns :+ pivotColumn.asInstanceOf[AttributeReference].name
-          logWarning(s"neadFilteColumns add pivotColumn :${neadFilteColumns.toString()}")
           child.expressions.filterNot( c => {
             val cName = c.asInstanceOf[AttributeReference].name
             checkColumn(cName, neadFilteColumns)
           }).foreach( c => {
             val cn = c.asInstanceOf[AttributeReference].name
-            logWarning(s"groupByExprs ColumnName :${cn}")
             rs = rs :+ Alias(c, cn)()
           }
           )
         }
-        /* aa.++(Seq(OuterReference(a))
-        // OuterReference
-          // groupByExprs.add
-        // var rs = Seq[NamedExpression]()
-        logWarning(s"child output is ${child.output}")
-        aggregates.foreach(
-          a => a.asInstanceOf[AggregateExpression].aggregateFunction.inputAggBufferAttributes
-        )
-        logWarning(s"child expression ${child.expressions}")
-        child.expressions.foreach(e => {
-          logWarning(s"child expression for each e:  ${e.toString}"  )
-        } )
-        logWarning(s"pivotColumn is ${pivotColumn.treeString}")
-
-        val filterEx = child.expressions.filterNot( c => c.equals(pivotColumn))
-        val rs001 = child.expressions.filterNot( c => c.asInstanceOf[AttributeReference]
-          .name.equalsIgnoreCase(pivotColumn.asInstanceOf[AttributeReference].name))
-        rs001.foreach(e => {
-          logWarning(s"filterEx expression for each e:  ${e.toString}"  )
-        } )
-
-
-
-        var rs = groupByExprs
-        rs001.foreach(e => {
-          rs = rs :+ Alias(e, "test004")()
-        } )
-
-
-        groupByExprs.foreach( g => {
-          logWarning(s"class: ${g.getClass} => ${a.getClass}")
-          logWarning(s"treeString: ${g.treeString} => ${a.treeString}")
-          logWarning(s"toString: ${g.toString} => ${a.toString}")
-          logWarning(s"resolved: ${g.resolved} => ${a.resolved}")
-          logWarning(s"nodeName: ${g.nodeName} => ${a.nodeName}")
-          logWarning(s"exprId: ${g.exprId} => ${a.exprId}")
-          logWarning(s"simpleString: ${g.simpleString} => ${a.simpleString}")
-          logWarning(s"sql: ${g.sql} => ${a.sql}")
-          logWarning(s"name: ${g.name} => ${a.name}")
-          logWarning(s"prettyName: ${g.prettyName} => ${a.prettyName}")
-          logWarning(s"qualifiedName: ${g.qualifiedName} => ${a.qualifiedName}")
-          logWarning(s"metadata: ${g.metadata} => ${a.metadata}")
-        })
-       /* rs = rs :+ ResolvedStar(Seq(a))
-        rs = rs :+ ResolvedStar(Seq(b)) */
-
-       /*  rs = rs :+ Alias(a, a.name)()
-         rs = rs :+ Alias(b, b.name)() */
-
-        // val singleAgg = aggregates.size == 1
-        val singleAgg = rs.size == 1 */
         singleAgg = rs.size == 1
         def outputName(value: Literal, aggregate: Expression): String = {
-         /* if (singleAgg) {
-            value.toString
-          } else {
-            val suffix = aggregate match {
-              case n: NamedExpression => n.name
-              case _ => aggregate.sql
-            }
-            value + "_" + suffix
-          } */
           value.toString
         }
         if (aggregates.forall(a => PivotFirst.supportsDataType(a.dataType))) {
@@ -557,12 +550,15 @@ class Analyzer(
     }
 
     def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
-      case i @ InsertIntoTable(u: UnresolvedRelation, parts, child, _, _, _, _,_) if child.resolved =>
+      case i @ InsertIntoTable(u: UnresolvedRelation,
+      parts, child, _, _, _, _,_) if child.resolved =>
         i.copy(table = EliminateSubqueryAliases(lookupTableFromCatalog(u)))
       case u: UnresolvedRelation =>
         val table = u.tableIdentifier
-        if (table.database.isDefined && conf.runSQLonFile && !catalog.isTemporaryTable(table) &&
-            (!catalog.databaseExists(table.database.get) || !catalog.tableExists(table))) {
+        if (table.database.isDefined && conf.runSQLonFile &&
+          !catalog.isTemporaryTable(table) &&
+            (!catalog.databaseExists(table.database.get)
+              || !catalog.tableExists(table))) {
           // If the database part is specified, and we support running SQL directly on files, and
           // it's not a temporary view, and the table does not exist, then let's just return the
           // original UnresolvedRelation. It is possible we are matching a query like "select *
@@ -571,7 +567,9 @@ class Analyzer(
           // an exception from tableExists if the database does not exist.
           u
         } else {
-          lookupTableFromCatalog(u)
+          val rs = lookupTableFromCatalog(u)
+          logWarning(s"ResolveRelations logicalPlan is ${rs.treeString}")
+          rs
         }
     }
   }

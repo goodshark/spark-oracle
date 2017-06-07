@@ -384,6 +384,23 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
         execution.SortExec(sortExprs, global, planLater(child)) :: Nil
       case logical.ForClause(forClauseDetail, child, output, xmlElems) =>
         execution.ForClauseExec(forClauseDetail, output, planLater(child), xmlElems) :: Nil
+      case unpivot @ logical.UnPivotedTableScan(resolveValueCol,
+      resolveUnpivotColumn, resolveColumns, child) =>
+        execution.UnPivotedTableScanExec(unpivot.output, resolveValueCol, resolveUnpivotColumn,
+          resolveColumns, planLater(child)):: Nil
+      case logical.UnPivotedProject(projectList, child) =>
+        var newProjectList = Seq[NamedExpression]()
+        projectList.foreach( p => {
+          child.output.foreach(c => {
+            if (c.name.equalsIgnoreCase(p.name)||
+              c.name.equalsIgnoreCase( p.name.replaceAll("`", "" )) ) {
+              val a = AttributeReference(c.name, c.dataType)()
+              a.asInstanceOf[AttributeReference].exprId = c.exprId
+              newProjectList = newProjectList :+ a
+            }
+          })
+        })
+        execution.ProjectExec(newProjectList, planLater(child)) :: Nil
       case logical.Project(projectList, child) =>
         execution.ProjectExec(projectList, planLater(child)) :: Nil
       case logical.Filter(condition, child) =>

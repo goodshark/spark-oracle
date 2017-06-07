@@ -440,7 +440,10 @@ pivot_clause
     :'(' namedExpressionSeq FOR '('pivot_column=expression ')' IN value_column=constantList ')'
     ;
 unpivoted_table
-    :UNPIVOT namedExpressionSeq
+    :UNPIVOT unpivot_clause (AS? strictIdentifier)?
+    ;
+unpivot_clause
+    : '(' value_column=expression FOR '('pivot_column=expression ')' IN '('namedExpressionSeq ')' ')'
     ;
 
 multiInsertQueryBody

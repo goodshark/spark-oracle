@@ -22,7 +22,7 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, UnresolvedAttribute}
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes
-import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.{Attribute, _}
 import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.types._
@@ -688,6 +688,52 @@ case class Pivot(
     case _ => pivotValues.flatMap{ value =>
       aggregates.map(agg => AttributeReference(value + "_" + agg.sql, agg.dataType)())
     }
+  }
+}
+
+case class  Unpivoted(valueColumn: Expression,
+                       unpivotColumn: Expression,
+                       columns: Seq[Expression],
+                       child: LogicalPlan ) extends UnaryNode {
+  override def output: Seq[Attribute] = child.output
+}
+
+case class UnPivotedProject(projectList: Seq[NamedExpression],
+                            child: LogicalPlan ) extends UnaryNode {
+  override def output: Seq[Attribute] = {
+    projectList.map(_.toAttribute)
+  }
+  override def references: AttributeSet = inputSet
+}
+
+case class UnPivotedTableScan(valueColumn: Expression,
+                              unpivotColumn: Expression,
+                              columns: Seq[Expression],
+                              child: LogicalPlan) extends UnaryNode  {
+  override def references: AttributeSet = inputSet
+  override lazy val resolved: Boolean = true
+
+  def getName(e: Expression): String = {
+    e.sql.replaceAll("`", "")
+  }
+  override def output: Seq[Attribute] = {
+    var valueColumnDataType: DataType = {
+      val colName = columns.toIterator.next().sql.split("\\.")(1).replaceAll("`", "")
+      child.output.find( f => f.name.equalsIgnoreCase(colName)).get.dataType
+    }
+    def fileterOutPut(a: Attribute) : Boolean = {
+      var f = false
+      columns.foreach(c => {
+          if (c.sql.contains(a.name.replaceAll("`", ""))) {
+            f = true
+            valueColumnDataType = a.dataType
+          }
+      })
+      f
+    }
+    child.output.filterNot(f => fileterOutPut(f)):+
+    AttributeReference(getName(valueColumn),
+      valueColumnDataType)():+ AttributeReference(getName(unpivotColumn), StringType)()
   }
 }
 

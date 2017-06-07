@@ -19,18 +19,21 @@ package org.apache.spark.sql.execution
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
-
 import org.apache.spark.SparkException
 import org.apache.spark.rdd.{PartitionwiseSampledRDD, RDD}
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.{Expression, _}
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode, ExpressionCanonicalizer}
 import org.apache.spark.sql.catalyst.plans.physical._
+import org.apache.spark.sql.execution.exchange.ShuffleExchange
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.ui.SparkListenerDriverAccumUpdates
-import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.{DataType, LongType, StringType, StructType}
+import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.ThreadUtils
 import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
+
+import scala.collection.Iterator
 
 /** Physical plan for Project. */
 case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
@@ -82,6 +85,88 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
 
   override def outputPartitioning: Partitioning = child.outputPartitioning
 }
+
+case class UnPivotedTableScanExec(outputSchem: Seq[Attribute],
+                                  valueColumn: Expression,
+                                  unpivotColumn: Expression,
+                                  columns: Seq[Expression],
+                                  child: SparkPlan) extends UnaryExecNode {
+  override def output: Seq[Attribute] = {
+    outputSchem
+  }
+
+  def getColumns: Set[String] = {
+    var cols = Set[String]()
+    columns.foreach( c => {
+        cols = cols + c.asInstanceOf[AttributeReference].name
+    })
+    cols
+  }
+
+  def getRowValue(colIndex: Integer, currentRowValue: InternalRow,
+                  columnLen: Integer, childOutPut: Seq[Attribute]): Seq[Any] = {
+    var v = Seq[Any]()
+    val columnsArray = columns.toArray
+    val columnName = columnsArray(colIndex)
+    var colMap: Map[String, Any] = Map()
+    for (i <- 0 to (columnLen - 1)) {
+      val value = currentRowValue.get(i, childOutPut(i).dataType)
+      val colName = childOutPut(i).name
+      colMap = colMap. +(colName -> value)
+    }
+    outputSchem.foreach(out => {
+      if (colMap.contains(out.name)) {
+        v = v:+ colMap.get(out.name).get
+      } else if (valueColumn.asInstanceOf[AttributeReference]
+        .name.equalsIgnoreCase(out.name)) {
+        v = v :+  colMap.get(columnName.asInstanceOf[AttributeReference].name).get
+      } else {
+        v = v :+  UTF8String.fromString(columnName.asInstanceOf[AttributeReference].name)
+      }
+    })
+    v
+  }
+
+  protected override def doExecute(): RDD[InternalRow] = {
+    val childOutPut = child.output
+    val columnLen = childOutPut.size
+    val childRdd = child.execute()
+
+    childRdd.mapPartitions { iter =>
+      val proj = UnsafeProjection.create(schema)
+      val colsize: Integer = columns.size
+      var colIndex: Integer = 0
+      var currentRowValue: InternalRow = {
+          if (iter.hasNext) {
+            iter.next()
+          } else {
+            null
+          }
+        }
+
+      val rowIterator = new Iterator[InternalRow] {
+        def hasNext: Boolean = {
+          currentRowValue != null && colIndex < colsize
+        }
+        def next(): InternalRow = {
+          if (!hasNext) {
+            throw new NoSuchElementException
+          }
+          val v = getRowValue(colIndex, currentRowValue, columnLen, childOutPut)
+          val colRowValue = proj.apply(InternalRow.fromSeq(v))
+          colIndex = colIndex + 1
+          if ( colIndex == colsize && iter.hasNext ) {
+            colIndex = 0
+            currentRowValue = iter.next()
+          }
+          colRowValue
+        }
+      }
+      rowIterator
+    }
+  }
+}
+
 
 
 /** Physical plan for Filter. */

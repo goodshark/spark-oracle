@@ -299,10 +299,13 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     val withWindow = withOrder.optionalMap(windows)(withWindows)
     // pivot
     val pivotOp = withWindow.optionalMap(pivoted_table)(pivoted)
+
+    val unPivotOp = pivotOp.optionalMap(unpivoted_table())(unpivoted)
     // limit
-    val withLimit = pivotOp.optional(limit) {
+    val withLimit = unPivotOp.optional(limit) {
       Limit(typedVisit(limit), pivotOp)
     }
+
 
     // LIMIT
 //    val withLimit = withWindow.optional(limit) {
@@ -334,6 +337,20 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
 
     withFor
   }
+
+  private def unpivoted(ctx: Unpivoted_tableContext,
+                        query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
+
+    val valueColumn = expressionForPivot(ctx.unpivot_clause().value_column)
+    val unpivotColumn = expressionForPivot(ctx.unpivot_clause().pivot_column)
+    val namedExpressionSeq = ctx.unpivot_clause().namedExpressionSeq()
+    val columns = Option(namedExpressionSeq).toSeq
+      .flatMap(_.namedExpression.asScala)
+      .map(typedVisit[Expression])
+    UnPivotedTableScan(valueColumn, unpivotColumn, columns, query )
+  }
+
+
 
 
   private def pivoted(ctx: Pivoted_tableContext,
