@@ -724,7 +724,8 @@ case class UnPivotedTableScan(valueColumn: Expression,
     def fileterOutPut(a: Attribute) : Boolean = {
       var f = false
       columns.foreach(c => {
-          if (c.sql.contains(a.name.replaceAll("`", ""))) {
+          if (c.asInstanceOf[AttributeReference].name.
+            equalsIgnoreCase(a.asInstanceOf[AttributeReference].name)) {
             f = true
             valueColumnDataType = a.dataType
           }

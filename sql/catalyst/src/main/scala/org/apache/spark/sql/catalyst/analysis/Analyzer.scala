@@ -81,6 +81,7 @@ class Analyzer(
     Batch("Resolution", fixedPoint,
       ResolveTableValuedFunctions ::
       ResolveRelations ::
+        ResolvePivot ::
       ResolveUnPivot ::
       ResolveReferences ::
       ResolveCreateNamedStruct ::
@@ -88,7 +89,7 @@ class Analyzer(
       ResolveNewInstance ::
       ResolveUpCast ::
       ResolveGroupingAnalytics ::
-      ResolvePivot ::
+     // ResolvePivot ::
       ResolveOrdinalInOrderByAndGroupBy ::
       ResolveMissingReferences ::
       ExtractGenerator ::
@@ -133,7 +134,7 @@ class Analyzer(
       rs
     }
     def getName(e: Expression): String = {
-      e.sql.replaceAll("`", "")
+      e.sql.replaceAll("`", "").toLowerCase()
     }
     override def apply(plan: LogicalPlan): LogicalPlan = plan transform {
       case p @ UnPivotedTableScan(valueColumn, unpivotColumn, columns, child) if !p.analyzed =>
@@ -141,7 +142,7 @@ class Analyzer(
              case Project(projectList, projectChild) if !child.resolved =>
                var childOutPutMap: Map[String, DataType] = Map()
                projectChild.output.foreach(o => {
-                 childOutPutMap = childOutPutMap. +(o.name -> o.dataType)
+                 childOutPutMap = childOutPutMap. +(o.name.toLowerCase -> o.dataType)
                })
                val newProjectList = projectList.filterNot(f =>
                  fileter(f, valueColumn, unpivotColumn)).map(f =>
@@ -431,7 +432,7 @@ class Analyzer(
     def apply(plan: LogicalPlan): LogicalPlan = plan transform {
       case p: Pivot if !p.childrenResolved | !p.aggregates.forall(_.resolved)
         | !p.groupByExprs.forall(_.resolved) | !p.pivotColumn.resolved => p
-      case Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
+      case p @ Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
         var singleAgg = aggregates.size == 1
         var rs = groupByExprs
         if (rs.size == 0) {
@@ -460,8 +461,9 @@ class Analyzer(
               functionChild => getAggregateColumnName(functionChild.children)
             )
           })
-          neadFilteColumns = neadFilteColumns :+ pivotColumn.asInstanceOf[AttributeReference].name
-          child.expressions.filterNot( c => {
+         neadFilteColumns = neadFilteColumns :+ pivotColumn.asInstanceOf[AttributeReference].name
+          logWarning(s"pivot child outPut is ${child.output}")
+           child.output.filterNot( c => {
             val cName = c.asInstanceOf[AttributeReference].name
             checkColumn(cName, neadFilteColumns)
           }).foreach( c => {
@@ -469,6 +471,7 @@ class Analyzer(
             rs = rs :+ Alias(c, cn)()
           }
           )
+          logWarning(s"group by is ==> ${rs}")
         }
         singleAgg = rs.size == 1
         def outputName(value: Literal, aggregate: Expression): String = {

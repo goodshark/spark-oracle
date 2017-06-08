@@ -347,7 +347,10 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     val columns = Option(namedExpressionSeq).toSeq
       .flatMap(_.namedExpression.asScala)
       .map(typedVisit[Expression])
-    UnPivotedTableScan(valueColumn, unpivotColumn, columns, query )
+    val unpivot = UnPivotedTableScan(valueColumn, unpivotColumn, columns, query )
+     /* .withNewChildren(query.children)
+    query.withNewChildren(Seq(unpivot)) */
+    unpivot
   }
 
 
@@ -366,9 +369,14 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       .flatMap(_.namedExpression.asScala)
       .map(typedVisit[Expression])
     val groupByExprs = Seq[NamedExpression]()
-    Pivot(groupByExprs, pivotColumn,
+    /* Pivot(groupByExprs, pivotColumn,
       pivotValues,
-      aggregates, query)
+      aggregates, query) */
+
+    val piv = Pivot(groupByExprs, pivotColumn,
+      pivotValues,
+      aggregates, query).withNewChildren(query.children)
+    query.withNewChildren(Seq(piv))
   }
 
 
@@ -491,6 +499,17 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
         val withProject = if (aggregation != null) {
           withAggregation(aggregation, namedExpressions, withFilter)
         } else if (namedExpressions.nonEmpty) {
+          /* val a = ctx.parent.parent.parent.getChild(1).
+            asInstanceOf[QueryOrganizationContext].pivoted_table()
+          val constantList = a.pivot_clause().value_column
+
+          val expression2 = Option(constantList).toSeq
+            .flatMap(_.namedExpression.asScala)
+            .map(typedVisit[Expression])
+          namedExpressions = namedExpressions ++ expression2.map{
+            case e: NamedExpression => e
+            case e: Expression => UnresolvedAlias(e)
+          } */
           Project(namedExpressions, withFilter)
         } else {
           withFilter

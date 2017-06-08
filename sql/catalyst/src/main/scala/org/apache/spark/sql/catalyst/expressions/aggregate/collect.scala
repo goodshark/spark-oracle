@@ -19,12 +19,12 @@ package org.apache.spark.sql.catalyst.expressions.aggregate
 
 import scala.collection.generic.Growable
 import scala.collection.mutable
-
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.GenericArrayData
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types._
+import org.apache.spark.unsafe.types.UTF8String
 
 /**
  * The Collect aggregate function collects all seen expression values into a list of values.
@@ -134,4 +134,72 @@ case class CollectSet(
   override def prettyName: String = "collect_set"
 
   override protected[this] val buffer: mutable.HashSet[Any] = mutable.HashSet.empty
+}
+/**
+  * Concat a list of elements.in a group.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(expr) - Concat a list of elements.in a group.")
+case class CollectGroupXMLPath(
+                                cols: Seq[Expression],
+                                mutableAggBufferOffset: Int = 0,
+                                inputAggBufferOffset: Int = 0) extends Collect {
+
+
+  def this(cols: Seq[Expression]) = this(cols, 0, 0)
+
+  override val child = null
+
+  override def children: Seq[Expression] = cols
+
+  override def nullable: Boolean = true
+
+  override def dataType: DataType = StringType
+
+  override def inputTypes: Seq[AbstractDataType] = Seq.fill(children.size)(AnyDataType)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+    val allOK = cols.forall(child =>
+      !child.dataType.existsRecursively(_.isInstanceOf[MapType]))
+    if (allOK) {
+      TypeCheckResult.TypeCheckSuccess
+    } else {
+      TypeCheckResult.TypeCheckFailure("group_xmlpath() cannot have map type data")
+    }
+  }
+
+  override def withNewMutableAggBufferOffset(newMutableAggBufferOffset: Int): ImperativeAggregate =
+    copy(mutableAggBufferOffset = newMutableAggBufferOffset)
+
+  override def withNewInputAggBufferOffset(newInputAggBufferOffset: Int): ImperativeAggregate =
+    copy(inputAggBufferOffset = newInputAggBufferOffset)
+
+  override def prettyName: String = "group_xmlpath"
+
+  override protected[this] val buffer: mutable.ArrayBuffer[Any] = mutable.ArrayBuffer.empty
+
+  protected[this] val strbuffer: StringBuilder = new StringBuilder
+
+  override def initialize(b: InternalRow): Unit = {
+    buffer.clear()
+    strbuffer.clear()
+  }
+
+  override def update(b: InternalRow, input: InternalRow): Unit = {
+    //scalastyle:off
+    System.out.println("update input row:" + input)
+    strbuffer.append("<row>")
+    cols.map(ch =>
+      strbuffer.append("<col>").append(ch.eval(input)).append("</col>")
+    )
+    strbuffer.append("</row>")
+  }
+
+  override def merge(buffer: InternalRow, input: InternalRow): Unit = {
+    sys.error("group_xmlpath cannot be used in partial aggregations.")
+  }
+
+  override def eval(input: InternalRow): Any = {
+    UTF8String.fromString(strbuffer.toString())
+  }
 }
