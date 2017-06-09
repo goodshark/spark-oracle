@@ -270,7 +270,12 @@ abstract class AggregationIterator(
     expressionAggInitialProjection.target(buffer)(EmptyRow)
     var i = 0
     while (i < allImperativeAggregateFunctions.length) {
-      allImperativeAggregateFunctions(i).initialize(buffer)
+      val func = allImperativeAggregateFunctions(i)
+      func match {
+        case CollectGroupXMLPath(_, _, _) => func.asInstanceOf[CollectGroupXMLPath].
+          initialize(buffer, inputAttributes)
+        case _ => func.initialize(buffer)
+      }
       i += 1
     }
   }

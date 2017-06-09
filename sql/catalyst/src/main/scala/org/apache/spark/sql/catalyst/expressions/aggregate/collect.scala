@@ -17,23 +17,25 @@
 
 package org.apache.spark.sql.catalyst.expressions.aggregate
 
-import scala.collection.generic.Growable
-import scala.collection.mutable
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.GenericArrayData
-import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
+import scala.collection.generic.Growable
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
 /**
- * The Collect aggregate function collects all seen expression values into a list of values.
- *
- * The operator is bound to the slower sort based aggregation path because the number of
- * elements (and their memory usage) can not be determined in advance. This also means that the
- * collected elements are stored on heap, and that too many elements can cause GC pauses and
- * eventually Out of Memory Errors.
- */
+  * The Collect aggregate function collects all seen expression values into a list of values.
+  *
+  * The operator is bound to the slower sort based aggregation path because the number of
+  * elements (and their memory usage) can not be determined in advance. This also means that the
+  * collected elements are stored on heap, and that too many elements can cause GC pauses and
+  * eventually Out of Memory Errors.
+  */
 abstract class Collect extends ImperativeAggregate {
 
   val child: Expression
@@ -83,14 +85,14 @@ abstract class Collect extends ImperativeAggregate {
 }
 
 /**
- * Collect a list of elements.
- */
+  * Collect a list of elements.
+  */
 @ExpressionDescription(
   usage = "_FUNC_(expr) - Collects and returns a list of non-unique elements.")
 case class CollectList(
-    child: Expression,
-    mutableAggBufferOffset: Int = 0,
-    inputAggBufferOffset: Int = 0) extends Collect {
+                        child: Expression,
+                        mutableAggBufferOffset: Int = 0,
+                        inputAggBufferOffset: Int = 0) extends Collect {
 
   def this(child: Expression) = this(child, 0, 0)
 
@@ -106,14 +108,14 @@ case class CollectList(
 }
 
 /**
- * Collect a set of unique elements.
- */
+  * Collect a set of unique elements.
+  */
 @ExpressionDescription(
   usage = "_FUNC_(expr) - Collects and returns a set of unique elements.")
 case class CollectSet(
-    child: Expression,
-    mutableAggBufferOffset: Int = 0,
-    inputAggBufferOffset: Int = 0) extends Collect {
+                       child: Expression,
+                       mutableAggBufferOffset: Int = 0,
+                       inputAggBufferOffset: Int = 0) extends Collect {
 
   def this(child: Expression) = this(child, 0, 0)
 
@@ -135,6 +137,7 @@ case class CollectSet(
 
   override protected[this] val buffer: mutable.HashSet[Any] = mutable.HashSet.empty
 }
+
 /**
   * Concat a list of elements.in a group.
   */
@@ -158,6 +161,9 @@ case class CollectGroupXMLPath(
 
   override def inputTypes: Seq[AbstractDataType] = Seq.fill(children.size)(AnyDataType)
 
+
+  override def aggBufferAttributes: Seq[AttributeReference] = super.aggBufferAttributes
+
   override def checkInputDataTypes(): TypeCheckResult = {
     val allOK = cols.forall(child =>
       !child.dataType.existsRecursively(_.isInstanceOf[MapType]))
@@ -180,6 +186,22 @@ case class CollectGroupXMLPath(
 
   protected[this] val strbuffer: StringBuilder = new StringBuilder
 
+  private val columnNames: ListBuffer[String] = new ListBuffer[String]
+
+
+
+  def initialize(b: InternalRow, inputAttributes: Seq[Attribute]): Unit = {
+    if (columnNames.length == 0) {
+      inputAttributes.map(attr => {
+        columnNames += attr.name
+      })
+
+
+    }
+
+    initialize(b)
+  }
+
   override def initialize(b: InternalRow): Unit = {
     buffer.clear()
     strbuffer.clear()
@@ -187,12 +209,32 @@ case class CollectGroupXMLPath(
 
   override def update(b: InternalRow, input: InternalRow): Unit = {
     //scalastyle:off
-    System.out.println("update input row:" + input)
-    strbuffer.append("<row>")
-    cols.map(ch =>
-      strbuffer.append("<col>").append(ch.eval(input)).append("</col>")
-    )
-    strbuffer.append("</row>")
+
+    val rootLabel = cols(columnNames.length + 1).toString.trim
+    val hasRootLabel = rootLabel.length > 0
+    if (hasRootLabel) {
+      strbuffer.append("<").append(rootLabel).append(">")
+    }
+
+    val rowLabel = cols(columnNames.length).toString.trim
+    val hasRowLabel = rowLabel.length > 0
+    if (hasRowLabel) {
+      strbuffer.append("<").append(rowLabel).append(">")
+    }
+
+    for (i <- 0 to (columnNames.length - 1)) {
+      cols(i) match {
+        case col: BoundReference => strbuffer.append("<").append(columnNames(i)).append(">")
+          .append(col.eval(input)).append("</").append(columnNames(i)).append(">")
+        case _ => strbuffer.append(cols(i).eval(input))
+      }
+    }
+    if (hasRowLabel) {
+      strbuffer.append("</").append(rowLabel).append(">")
+    }
+    if (hasRootLabel) {
+      strbuffer.append("</").append(rootLabel).append(">")
+    }
   }
 
   override def merge(buffer: InternalRow, input: InternalRow): Unit = {
