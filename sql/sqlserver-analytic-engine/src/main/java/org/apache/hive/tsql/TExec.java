@@ -2321,7 +2321,6 @@ public class TExec extends TSqlBaseVisitor<Object> {
         selectStatement.addTableNames(tableNameList);
 
 
-
         addNode(selectStatement);
         pushStatement(selectStatement);
         return selectStatement;
@@ -2638,6 +2637,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
             selectIntoBean.setSourceTableName(getTbNameFromTableSourceContext(ctx.table_sources()));
             rs.append(fromTb).append(Common.SPACE);
         }
+        if (null != ctx.pivoted_table()) {
+            rs.append(visitPivoted_table(ctx.pivoted_table()));
+        }
+        if (null != ctx.unpivoted_table()) {
+            rs.append(visitUnpivoted_table(ctx.unpivoted_table()));
+        }
         if (null != ctx.WHERE()) {
             rs.append(ctx.WHERE().getText()).append(Common.SPACE);
             rs.append(visitSearch_condition(ctx.search_condition(0)).toString()).append(Common.SPACE);
@@ -2684,6 +2689,80 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         querySpecificationBean.setSql(intoTableSql + rs.toString());
         return querySpecificationBean;
+    }
+
+/*    pivoted_table
+    : PIVOT  pivot_clause as_table_alias?
+    ;
+    pivot_clause
+    :'(' aggregate_windowed_function FOR pivot_column=expression  IN value_column=column_name_list ')'
+    ;
+    unpivoted_table
+    :UNPIVOT unpivot_clause as_table_alias?
+    ;
+    unpivot_clause
+    : '(' value_column=id FOR pivot_column=id  IN '('column_name_list ')' ')'
+    ;*/
+
+    @Override
+    public String visitUnpivoted_table(TSqlParser.Unpivoted_tableContext ctx) {
+        StringBuffer str = new StringBuffer();
+        str.append(" unpivot ");
+        str.append(visitUnpivot_clause(ctx.unpivot_clause()));
+        str.append(Common.SPACE);
+        str.append(visitAs_table_alias(ctx.as_table_alias()));
+        str.append(Common.SPACE);
+        return str.toString();
+    }
+
+    @Override
+    public String visitUnpivot_clause(TSqlParser.Unpivot_clauseContext ctx) {
+        StringBuffer str = new StringBuffer();
+        str.append(" (");
+        str.append(visitId(ctx.value_column));
+        str.append(" for ");
+        str.append("(");
+        str.append(visitId(ctx.pivot_column));
+        str.append(")");
+        str.append(Common.SPACE);
+        str.append(" IN ");
+        str.append(" ( ");
+        str.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
+        str.append(")");
+        str.append(" )");
+        return str.toString();
+    }
+
+    @Override
+    public String visitPivoted_table(TSqlParser.Pivoted_tableContext ctx) {
+        StringBuffer str = new StringBuffer();
+        str.append("  pivot ");
+        str.append(visitPivot_clause(ctx.pivot_clause()));
+        if (null != ctx.as_table_alias()) {
+            str.append(Common.SPACE).append(visitAs_table_alias(ctx.as_table_alias()));
+        }
+        str.append(Common.SPACE);
+        return str.toString();
+    }
+
+    @Override
+    public String visitPivot_clause(TSqlParser.Pivot_clauseContext ctx) {
+        StringBuffer str = new StringBuffer();
+        str.append("(");
+        str.append(visitAggregate_windowed_function(ctx.aggregate_windowed_function()).getSql());
+        popStatement();
+        str.append(Common.SPACE);
+        str.append(" for ");
+        str.append("(");
+        str.append(visitId(ctx.pivot_column));
+        str.append(")");
+        str.append(Common.SPACE);
+        str.append(" in ");
+        str.append("( ");
+        str.append(StrUtils.concat(visitColumn_name_list(ctx.column_name_list())));
+        str.append(") ");
+        str.append(") ");
+        return str.toString();
     }
 
     @Override
@@ -4081,7 +4160,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             return columnBean;
         }
         if (null != ctx.table_name()) {
-            String tableName = visitTable_name(ctx.table_name()).getRealFullFuncName();
+            String tableName = visitTable_name(ctx.table_name()).getRealFuncName();
             rs.append(tableName).append(".");
         }
         if (null != ctx.IDENTITY() || null != ctx.ROWGUID()) {

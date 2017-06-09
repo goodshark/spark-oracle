@@ -20,12 +20,12 @@ package org.apache.spark.sql.catalyst.parser
 import java.sql.{Date, Timestamp}
 import javax.xml.bind.DatatypeConverter
 
+import org.antlr.v4.runtime.misc.Interval
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 import org.antlr.v4.runtime.tree.{ParseTree, RuleNode, TerminalNode}
-
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
@@ -360,11 +360,15 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
                            query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
     val pivotColumn = expressionForPivot(ctx.pivot_clause().pivot_column)
     var pivotValues = Seq[Literal]()
-    val constantList = ctx.pivot_clause().constantList()
-    constantList.constant().asScala.foreach(c => {
-      pivotValues = pivotValues :+ Literal(visitStringConstant(c))
+    val value_column = ctx.pivot_clause().namedExpressionSeq(1)
+    value_column.namedExpression().asScala.foreach(c => {
+      val expressionContext = c.expression()
+      val sql = expressionContext.start.getInputStream().getText(
+        new Interval(expressionContext.start.getStartIndex(),
+          expressionContext.stop.getStopIndex())).replaceAll("`", "")
+      pivotValues = pivotValues :+ Literal(sql)
     })
-    val namedExpressionSeq = ctx.pivot_clause().namedExpressionSeq()
+    val namedExpressionSeq = ctx.pivot_clause().namedExpressionSeq(0)
     val aggregates = Option(namedExpressionSeq).toSeq
       .flatMap(_.namedExpression.asScala)
       .map(typedVisit[Expression])

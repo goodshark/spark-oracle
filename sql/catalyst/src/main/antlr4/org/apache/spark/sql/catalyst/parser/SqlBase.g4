@@ -437,7 +437,7 @@ pivoted_table
     : PIVOT  pivot_clause (AS? strictIdentifier)?
     ;
 pivot_clause
-    :'(' namedExpressionSeq FOR '('pivot_column=expression ')' IN value_column=constantList ')'
+    :'(' namedExpressionSeq FOR '('pivot_column=expression ')' IN '(' value_column=namedExpressionSeq ')' ')'
     ;
 unpivoted_table
     :UNPIVOT unpivot_clause (AS? strictIdentifier)?
@@ -1057,6 +1057,7 @@ IDXPROPERTIES:'IDXPROPERTIES';
 STRING
     : '\'' ( ~('\''|'\\') | ('\\' .) )* '\''
     | '\"' ( ~('\"'|'\\') | ('\\' .) )* '\"'
+   /* | '`' ( ~('\''|'\\') | ('\\' .) )* '`'*/
     ;
 
 BIGINT_LITERAL

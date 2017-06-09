@@ -857,10 +857,26 @@ query_specification
       // https://msdn.microsoft.com/zh-cn/library/ms188029.aspx
       (INTO table_name)?
       (FROM table_sources)?
+      pivoted_table?
+      unpivoted_table?
       (WHERE where=search_condition)?
       // https://msdn.microsoft.com/zh-cn/library/ms177673.aspx
       (GROUP BY group_by_item (',' group_by_item)*)?
       (HAVING having=search_condition)?
+    ;
+
+//ADD FOR PIVOTED_TABLE , unpivoted_table
+pivoted_table
+    : PIVOT  pivot_clause as_table_alias?
+    ;
+pivot_clause
+    :'(' aggregate_windowed_function FOR pivot_column=id  IN '(' value_column=column_name_list ')' ')'
+    ;
+unpivoted_table
+    :UNPIVOT unpivot_clause as_table_alias?
+    ;
+unpivot_clause
+    : '(' value_column=id FOR pivot_column=id  IN '('column_name_list ')' ')'
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms188385.aspx
