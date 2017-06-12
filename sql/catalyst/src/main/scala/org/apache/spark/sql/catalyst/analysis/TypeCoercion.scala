@@ -310,7 +310,11 @@ object TypeCoercion {
       case a @ BinaryArithmetic(left @ StringType(), right @ StringType()) =>
         if (a.symbol.equalsIgnoreCase("+")) {
           if (!a.applyRule) {
-            val rs = a.makeCopy(Array(Cast(left, StringType), Cast(right, StringType)))
+            // val rs = a.makeCopy(Array(Cast(left, StringType), Cast(right, StringType)))
+            var e = Seq[Expression]()
+            e = e :+ left
+            e = e :+ right
+            val rs = Concat(e)
             rs.applyRule = true
             rs
           } else {
