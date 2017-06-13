@@ -2260,6 +2260,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             SelectIntoBean selectIntoBean = queryExpressionBean.getQuerySpecificationBean().getSelectIntoBean();
             if (withExpression && null != selectIntoBean) {
                 if (StringUtils.isNotBlank(clusterByColumnName)) {
+                    clusterByColumnName = splitClusterColumnName(clusterByColumnName);
                     selectIntoBean.setClusterByColumnName(clusterByColumnName);
                 } else {
                     selectIntoBean.setSourceTableName(fromTableName);
@@ -2597,7 +2598,12 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return tableName;
     }
 
-
+    private  String splitClusterColumnName(String colName){
+            if(colName.contains(".")){
+                return  colName.split("\\.")[1];
+            }
+            return colName;
+    }
     @Override
     public QuerySpecificationBean visitQuery_specification(TSqlParser.Query_specificationContext ctx) {
         QuerySpecificationBean querySpecificationBean = new QuerySpecificationBean();
@@ -2621,6 +2627,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
             querySpecificationBean.setSelectIntoBean(selectIntoBean);
             if (procFlag && !columns.isEmpty() && null != columns.get(0)) {
                 String clusterByColumnName = columns.get(0).getRealColumnName();
+                clusterByColumnName = splitClusterColumnName(clusterByColumnName);
                 selectIntoBean.setClusterByColumnName(clusterByColumnName);
                 if (StringUtils.isNotBlank(clusterByColumnName)) {
                     intoTableSql = "create table " + tableName + String.format(Common.crudStr, StrUtils.addBackQuote(clusterByColumnName)) + " as ";

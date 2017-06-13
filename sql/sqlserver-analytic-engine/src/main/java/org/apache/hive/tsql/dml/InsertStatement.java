@@ -91,6 +91,9 @@ public class InsertStatement extends SqlStatement {
                 while (sparkResultSet.next()) {
                     sql.append("(");
                     Row row = sparkResultSet.fetchRow();
+                    if(null== row){
+                        throw new Exception("it has not resultSet to insert ");
+                    }
                     for (int i = 0; i < columnSize; i++) {
                         if (i != 0 && i != columnSize) {
                             sql.append(",");

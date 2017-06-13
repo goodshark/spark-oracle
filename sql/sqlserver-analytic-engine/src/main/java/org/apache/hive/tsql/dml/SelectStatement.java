@@ -104,22 +104,18 @@ public class SelectStatement extends SqlStatement {
             row = resultSet.fetchRow();
         }
         for (int i = 0; i < resultSetVariable.size(); i++) {
-            LOG.info("var :" + resultSetVariable.get(i) + " equals:" + row.getColumnVal(i));
+            // LOG.info("var :" + resultSetVariable.get(i) + " equals:" + row.getColumnVal(i));
             getExecSession().getVariableContainer().setVarValue(resultSetVariable.get(i), row.getColumnVal(i));
         }
     }
 
     public void init() throws Exception {
         selectIntoExec();
-        LOG.info("11===>" + execSQL);
         execSQL = getSql();
-        LOG.info("22===>" + execSQL);
         execSQL = replaceVariable(execSQL, localIdVariableName);
-        LOG.info("33===>" + execSQL);
         replaceTableNames();
-        LOG.info("44===>" + execSQL);
         replaceCrudClusterByColumn();
-        LOG.info("55===>" + execSQL);
+
     }
 
 
@@ -153,14 +149,14 @@ public class SelectStatement extends SqlStatement {
     private void replaceCrudClusterByColumn() throws Exception {
 
         boolean a = (null != selectIntoBean);
-        LOG.info("========>" + a);
+        //LOG.info("========>" + a);
         String clusterByColumn = "";
         if (null != selectIntoBean) {
             clusterByColumn = selectIntoBean.getClusterByColumnName();
             if (StringUtils.isBlank(clusterByColumn)) {
-                LOG.info("current sql is " + execSQL);
-                LOG.info("create crud table : clusterbyColumnName:" + selectIntoBean.getClusterByColumnName());
-                LOG.info("create crud table : fromTb:" + selectIntoBean.getSourceTableName());
+                //LOG.info("current sql is " + execSQL);
+                //LOG.info("create crud table : clusterbyColumnName:" + selectIntoBean.getClusterByColumnName());
+               // LOG.info("create crud table : fromTb:" + selectIntoBean.getSourceTableName());
                 String fromTableName = selectIntoBean.getSourceTableName();
                 if (fromTableName.contains(".")) {
                     fromTableName = fromTableName.split("\\.")[1];
