@@ -263,6 +263,16 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
     import ctx._
 
+    // pivot
+    val withPivot = if (null!=ctx.pivoted_table()) {
+      pivoted(ctx.pivoted_table(), query)
+    } else {
+      query
+    }
+    // unpivot
+    val withUnPivotOp = withPivot.optionalMap(unpivoted_table())(unpivoted)
+
+
     // Handle ORDER BY, SORT BY, DISTRIBUTE BY, and CLUSTER BY clause.
     val withOrder = if (
       !order.isEmpty && sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
@@ -294,23 +304,17 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       throw new ParseException(
         "Combination of ORDER BY/SORT BY/DISTRIBUTE BY/CLUSTER BY is not supported", ctx)
     }
+    val withOrderAndPivot = withOrder.withNewChildren(Seq(withUnPivotOp))
+
 
     // WINDOWS
-    val withWindow = withOrder.optionalMap(windows)(withWindows)
-    // pivot
-    val pivotOp = withWindow.optionalMap(pivoted_table)(pivoted)
+    val withWindow = withOrderAndPivot.optionalMap(windows)(withWindows)
 
-    val unPivotOp = pivotOp.optionalMap(unpivoted_table())(unpivoted)
     // limit
-    val withLimit = unPivotOp.optional(limit) {
-      Limit(typedVisit(limit), unPivotOp)
+    val withLimit = withWindow.optional(limit) {
+      Limit(typedVisit(limit), withWindow)
     }
 
-
-    // LIMIT
-//    val withLimit = withWindow.optional(limit) {
-//      Limit(typedVisit(limit), withWindow)
-//    }
 
     // For Xml
     val withFor = withLimit.optional(for_clause) {
