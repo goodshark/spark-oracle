@@ -34,6 +34,8 @@ import org.apache.spark.sql.catalyst.trees.TreeNodeRef
 import org.apache.spark.sql.catalyst.util.toPrettySQL
 import org.apache.spark.sql.types._
 
+import scala.util.control.Breaks
+
 /**
  * A trivial [[Analyzer]] with a dummy [[SessionCatalog]] and [[EmptyFunctionRegistry]].
  * Used for testing when all relations are already filled in and the analyzer needs only
@@ -82,13 +84,14 @@ class Analyzer(
       ResolveTableValuedFunctions ::
       ResolveRelations ::
         ResolvePivot ::
-      ResolveUnPivot ::
+        ResolveUnPivot ::
       ResolveReferences ::
       ResolveCreateNamedStruct ::
       ResolveDeserializer ::
       ResolveNewInstance ::
       ResolveUpCast ::
       ResolveGroupingAnalytics ::
+
      // ResolvePivot ::
       ResolveOrdinalInOrderByAndGroupBy ::
       ResolveMissingReferences ::
@@ -124,21 +127,36 @@ class Analyzer(
         a.name.equalsIgnoreCase(valueColumn.sql.replaceAll("`", "")) ||
         a.name.equalsIgnoreCase(unpivotColumn.sql.replaceAll("`", ""))
     }
+
     def childOutFileter(a: Attribute, columns: Seq[Expression]) : Boolean = {
-      var rs = false
-      columns.foreach(c => {
-        if (c.sql.equalsIgnoreCase(a.name) || c.sql.equalsIgnoreCase("`" + a.name + "`")) {
-          rs = true
-        }
-      } )
+      var rs: Boolean = false
+          for (c <- columns) {
+            if (getName(c).equalsIgnoreCase(a.name )) {
+              rs = true
+            }
+          }
       rs
     }
     def getName(e: Expression): String = {
-      e.sql.replaceAll("`", "").toLowerCase()
+      if (e.sql.contains(".")) {
+        e.sql.split("\\.")(1).replaceAll("`", "").toLowerCase()
+      } else {
+        e.sql.replaceAll("`", "").toLowerCase()
+      }
     }
+
+  /*  def apply(plan: LogicalPlan): LogicalPlan = plan transform {
+      case p: Pivot if !p.childrenResolved | !p.aggregates.forall(_.resolved)
+        | !p.groupByExprs.forall(_.resolved) | !p.pivotColumn.resolved => p
+      case p @ Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
+
+*/
     override def apply(plan: LogicalPlan): LogicalPlan = plan transform {
+     /*   case p: UnPivotedTableScan if !p.childrenResolved | !p.valueColumn.resolved
+          | !p.columns.forall(_.resolved) | !p.unpivotColumn.resolved =>
+          p */
       case p @ UnPivotedTableScan(valueColumn, unpivotColumn, columns, child) if !p.analyzed =>
-           val unpivotedRs = child match {
+           /* val unpivotedRs = child match {
              case Project(projectList, projectChild) if !child.resolved =>
                var childOutPutMap: Map[String, DataType] = Map()
                projectChild.output.foreach(o => {
@@ -159,7 +177,23 @@ class Analyzer(
                  resolveColumns, newChild)
            }
         unpivotedRs.setAnalyzed()
+        unpivotedRs */
+
+        val valueColumnDataType: DataType = {
+          val colName = getName(columns.toIterator.next())
+          child.output.find( f => f.name.equalsIgnoreCase(colName)).get.dataType
+        }
+        val resolveValueCol: AttributeReference = valueColumn match {
+          case n: NamedExpression => AttributeReference(n.name, valueColumnDataType)()
+          case _ => AttributeReference(valueColumn.sql, valueColumnDataType)()
+        }
+        val resolveUnpivotColumn: AttributeReference = resolveColumn(unpivotColumn)
+        val resolveColumns = child.output.filter( c => childOutFileter(c, columns))
+        val unpivotedRs = UnPivotedTableScan(resolveValueCol, resolveUnpivotColumn,
+          resolveColumns, child)
+        unpivotedRs.setAnalyzed()
         unpivotedRs
+
     }
 
     private def resolveColumn(valueColumn: Expression) = {

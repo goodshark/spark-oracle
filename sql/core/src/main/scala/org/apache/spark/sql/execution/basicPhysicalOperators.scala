@@ -115,10 +115,11 @@ case class UnPivotedTableScanExec(outputSchem: Seq[Attribute],
       colMap = colMap. +(colName -> value)
     }
     outputSchem.foreach(out => {
-      if (colMap.contains(out.name)) {
-        v = v:+ colMap.get(out.name).get
+      val outPutSchemName = out.name.toLowerCase
+      if (colMap.contains(outPutSchemName)) {
+        v = v:+ colMap.get(outPutSchemName).get
       } else if (valueColumn.asInstanceOf[AttributeReference]
-        .name.equalsIgnoreCase(out.name)) {
+        .name.equalsIgnoreCase(outPutSchemName)) {
         v = v :+  colMap.get(columnName.asInstanceOf[AttributeReference].name.toLowerCase()).get
       } else {
         v = v :+  UTF8String.fromString(columnName.asInstanceOf[AttributeReference].name)

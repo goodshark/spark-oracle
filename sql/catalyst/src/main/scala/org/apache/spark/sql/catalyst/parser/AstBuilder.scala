@@ -348,9 +348,9 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       .flatMap(_.namedExpression.asScala)
       .map(typedVisit[Expression])
     val unpivot = UnPivotedTableScan(valueColumn, unpivotColumn, columns, query )
-     /* .withNewChildren(query.children)
-    query.withNewChildren(Seq(unpivot)) */
-    unpivot
+      .withNewChildren(query.children)
+    query.withNewChildren(Seq(unpivot))
+    // unpivot
   }
 
 

@@ -714,27 +714,47 @@ case class UnPivotedTableScan(valueColumn: Expression,
   override lazy val resolved: Boolean = true
 
   def getName(e: Expression): String = {
-    e.sql.replaceAll("`", "")
+    if (e.sql.contains(".")) {
+      e.sql.split("\\.")(1).replaceAll("`", "").toLowerCase()
+    } else {
+      e.sql.replaceAll("`", "").toLowerCase()
+    }
   }
+
   override def output: Seq[Attribute] = {
-    var valueColumnDataType: DataType = {
-      val colName = columns.toIterator.next().sql.split("\\.")(1).replaceAll("`", "")
+    val valueColumnDataType: DataType = {
+      val colName = getName(columns.toIterator.next())
       child.output.find( f => f.name.equalsIgnoreCase(colName)).get.dataType
     }
+
     def fileterOutPut(a: Attribute) : Boolean = {
       var f = false
       columns.foreach(c => {
           if (c.asInstanceOf[AttributeReference].name.
             equalsIgnoreCase(a.asInstanceOf[AttributeReference].name)) {
             f = true
-            valueColumnDataType = a.dataType
           }
       })
       f
     }
-    child.output.filterNot(f => fileterOutPut(f)):+
-    AttributeReference(getName(valueColumn),
-      valueColumnDataType)():+ AttributeReference(getName(unpivotColumn), StringType)()
+    var valueColumnAttr: AttributeReference = null
+    if (valueColumn.isInstanceOf[UnresolvedAttribute]) {
+      valueColumnAttr = AttributeReference(getName(valueColumn),
+        valueColumnDataType)()
+    } else if (valueColumn.isInstanceOf[AttributeReference]) {
+      valueColumnAttr = valueColumn.asInstanceOf[AttributeReference]
+    }
+
+    var unpivotColumnAttr: AttributeReference = null
+    if (unpivotColumn.isInstanceOf[UnresolvedAttribute]) {
+      unpivotColumnAttr = AttributeReference(getName(unpivotColumn),
+        StringType)()
+    } else if (unpivotColumn.isInstanceOf[AttributeReference]) {
+      unpivotColumnAttr = unpivotColumn.asInstanceOf[AttributeReference]
+    }
+    val rs = child.output.filterNot(f => fileterOutPut(f)):+
+    valueColumnAttr :+ unpivotColumnAttr
+    rs
   }
 }
 
