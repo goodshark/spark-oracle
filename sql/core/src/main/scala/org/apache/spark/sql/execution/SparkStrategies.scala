@@ -388,19 +388,6 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
       resolveUnpivotColumn, resolveColumns, child) =>
         execution.UnPivotedTableScanExec(unpivot.output, resolveValueCol, resolveUnpivotColumn,
           resolveColumns, planLater(child)):: Nil
-      case logical.UnPivotedProject(projectList, child) =>
-        var newProjectList = Seq[NamedExpression]()
-        projectList.foreach( p => {
-          child.output.foreach(c => {
-            if (c.name.equalsIgnoreCase(p.name)||
-              c.name.equalsIgnoreCase( p.name.replaceAll("`", "" )) ) {
-              val a = AttributeReference(c.name, c.dataType)()
-              a.asInstanceOf[AttributeReference].exprId = c.exprId
-              newProjectList = newProjectList :+ a
-            }
-          })
-        })
-        execution.ProjectExec(newProjectList, planLater(child)) :: Nil
       case logical.Project(projectList, child) =>
         execution.ProjectExec(projectList, planLater(child)) :: Nil
       case logical.Filter(condition, child) =>

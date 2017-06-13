@@ -83,16 +83,16 @@ class Analyzer(
     Batch("Resolution", fixedPoint,
       ResolveTableValuedFunctions ::
       ResolveRelations ::
-        ResolvePivot ::
-        ResolveUnPivot ::
+       // ResolvePivot ::
+      //  ResolveUnPivot ::
       ResolveReferences ::
       ResolveCreateNamedStruct ::
       ResolveDeserializer ::
       ResolveNewInstance ::
       ResolveUpCast ::
       ResolveGroupingAnalytics ::
-
-     // ResolvePivot ::
+      ResolveUnPivot ::
+      ResolvePivot ::
       ResolveOrdinalInOrderByAndGroupBy ::
       ResolveMissingReferences ::
       ExtractGenerator ::
@@ -155,30 +155,8 @@ class Analyzer(
      /*   case p: UnPivotedTableScan if !p.childrenResolved | !p.valueColumn.resolved
           | !p.columns.forall(_.resolved) | !p.unpivotColumn.resolved =>
           p */
-      case p @ UnPivotedTableScan(valueColumn, unpivotColumn, columns, child) if !p.analyzed =>
-           /* val unpivotedRs = child match {
-             case Project(projectList, projectChild) if !child.resolved =>
-               var childOutPutMap: Map[String, DataType] = Map()
-               projectChild.output.foreach(o => {
-                 childOutPutMap = childOutPutMap. +(o.name.toLowerCase -> o.dataType)
-               })
-               val newProjectList = projectList.filterNot(f =>
-                 fileter(f, valueColumn, unpivotColumn)).map(f =>
-                 AttributeReference(getName(f),
-                   childOutPutMap.get(getName(f)).get)())++ columns.map(
-                 c => AttributeReference(getName(c),
-                   childOutPutMap.get(getName(c)).get)())
-               val newChild = UnPivotedProject(newProjectList, projectChild)
-               val resolveValueCol: AttributeReference = resolveColumn(valueColumn)
-               val resolveUnpivotColumn: AttributeReference = resolveColumn(unpivotColumn)
-               val resolveColumns = projectChild.output.filter( c => childOutFileter(c, columns))
-
-               UnPivotedTableScan(resolveValueCol, resolveUnpivotColumn,
-                 resolveColumns, newChild)
-           }
-        unpivotedRs.setAnalyzed()
-        unpivotedRs */
-
+      case p @ UnPivotedTableScan(valueColumn, unpivotColumn, columns, child) if !p.analyzed
+        && p.childrenResolved =>
         val valueColumnDataType: DataType = {
           val colName = getName(columns.toIterator.next())
           child.output.find( f => f.name.equalsIgnoreCase(colName)).get.dataType

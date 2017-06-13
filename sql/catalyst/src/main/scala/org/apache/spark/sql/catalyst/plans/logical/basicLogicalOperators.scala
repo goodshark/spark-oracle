@@ -698,21 +698,11 @@ case class  Unpivoted(valueColumn: Expression,
   override def output: Seq[Attribute] = child.output
 }
 
-case class UnPivotedProject(projectList: Seq[NamedExpression],
-                            child: LogicalPlan ) extends UnaryNode {
-  override def output: Seq[Attribute] = {
-    projectList.map(_.toAttribute)
-  }
-  override def references: AttributeSet = inputSet
-}
 
 case class UnPivotedTableScan(valueColumn: Expression,
                               unpivotColumn: Expression,
                               columns: Seq[Expression],
                               child: LogicalPlan) extends UnaryNode  {
-  override def references: AttributeSet = inputSet
-  override lazy val resolved: Boolean = true
-
   def getName(e: Expression): String = {
     if (e.sql.contains(".")) {
       e.sql.split("\\.")(1).replaceAll("`", "").toLowerCase()
