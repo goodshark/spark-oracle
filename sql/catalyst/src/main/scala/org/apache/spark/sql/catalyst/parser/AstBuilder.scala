@@ -303,7 +303,7 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     val unPivotOp = pivotOp.optionalMap(unpivoted_table())(unpivoted)
     // limit
     val withLimit = unPivotOp.optional(limit) {
-      Limit(typedVisit(limit), pivotOp)
+      Limit(typedVisit(limit), unPivotOp)
     }
 
 
