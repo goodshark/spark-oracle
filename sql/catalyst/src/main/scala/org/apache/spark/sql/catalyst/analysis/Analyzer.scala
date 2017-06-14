@@ -83,7 +83,7 @@ class Analyzer(
     Batch("Resolution", fixedPoint,
       ResolveTableValuedFunctions ::
       ResolveRelations ::
-       // ResolvePivot ::
+        ResolvePivot ::
       //  ResolveUnPivot ::
       ResolveReferences ::
       ResolveCreateNamedStruct ::
@@ -92,7 +92,7 @@ class Analyzer(
       ResolveUpCast ::
       ResolveGroupingAnalytics ::
       ResolveUnPivot ::
-      ResolvePivot ::
+      // ResolvePivot ::
       ResolveOrdinalInOrderByAndGroupBy ::
       ResolveMissingReferences ::
       ExtractGenerator ::
