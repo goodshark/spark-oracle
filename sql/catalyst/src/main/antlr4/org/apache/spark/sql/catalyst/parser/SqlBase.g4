@@ -422,14 +422,14 @@ xml_common_directives
     ;
 
 queryOrganization
-    : (ORDER BY order+=sortItem (',' order+=sortItem)*)?
+    : pivoted_table?
+      unpivoted_table?
+      (ORDER BY order+=sortItem (',' order+=sortItem)*)?
       (CLUSTER BY clusterBy+=expression (',' clusterBy+=expression)*)?
       (DISTRIBUTE BY distributeBy+=expression (',' distributeBy+=expression)*)?
       (SORT BY sort+=sortItem (',' sort+=sortItem)*)?
       windows?
       (LIMIT limit=expression)?
-      pivoted_table?
-      unpivoted_table?
       for_clause?
     ;
 //ADD FOR PIVOTED_TABLE , unpivoted_table

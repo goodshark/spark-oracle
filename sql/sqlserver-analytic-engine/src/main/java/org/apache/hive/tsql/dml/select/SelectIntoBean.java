@@ -14,6 +14,8 @@ public class SelectIntoBean extends BaseBean {
 
     private String clusterByColumnName;
 
+    private  boolean procFlag;
+
 
 
 
@@ -40,5 +42,13 @@ public class SelectIntoBean extends BaseBean {
 
     public void setClusterByColumnName(String clusterByColumnName) {
         this.clusterByColumnName = clusterByColumnName;
+    }
+
+    public boolean isProcFlag() {
+        return procFlag;
+    }
+
+    public void setProcFlag(boolean procFlag) {
+        this.procFlag = procFlag;
     }
 }

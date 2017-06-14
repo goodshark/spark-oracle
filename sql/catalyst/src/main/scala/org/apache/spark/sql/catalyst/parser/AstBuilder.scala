@@ -270,45 +270,16 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       query
     }
     // unpivot
-    val withUnPivotOp = withPivot.optionalMap(unpivoted_table())(unpivoted)
+    val withUnPivot = withPivot.optionalMap(unpivoted_table())(unpivoted)
 
 
     // Handle ORDER BY, SORT BY, DISTRIBUTE BY, and CLUSTER BY clause.
-    val withOrder = if (
-      !order.isEmpty && sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
-      // ORDER BY ...
-      Sort(order.asScala.map(visitSortItem), global = true, query)
-    } else if (order.isEmpty && !sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
-      // SORT BY ...
-      Sort(sort.asScala.map(visitSortItem), global = false, query)
-    } else if (order.isEmpty && sort.isEmpty && !distributeBy.isEmpty && clusterBy.isEmpty) {
-      // DISTRIBUTE BY ...
-      RepartitionByExpression(expressionList(distributeBy), query)
-    } else if (order.isEmpty && !sort.isEmpty && !distributeBy.isEmpty && clusterBy.isEmpty) {
-      // SORT BY ... DISTRIBUTE BY ...
-      Sort(
-        sort.asScala.map(visitSortItem),
-        global = false,
-        RepartitionByExpression(expressionList(distributeBy), query))
-    } else if (order.isEmpty && sort.isEmpty && distributeBy.isEmpty && !clusterBy.isEmpty) {
-      // CLUSTER BY ...
-      val expressions = expressionList(clusterBy)
-      Sort(
-        expressions.map(SortOrder(_, Ascending)),
-        global = false,
-        RepartitionByExpression(expressions, query))
-    } else if (order.isEmpty && sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
-      // [EMPTY]
-      query
-    } else {
-      throw new ParseException(
-        "Combination of ORDER BY/SORT BY/DISTRIBUTE BY/CLUSTER BY is not supported", ctx)
-    }
-    val withOrderAndPivot = withOrder.withNewChildren(Seq(withUnPivotOp))
+    val withOrder = withUnPivot.optionalMap(ctx)(getOrderLogicalPlan)
+    // val withOrderAndPivot = withOrder.withNewChildren(Seq(withUnPivotOp))
 
 
     // WINDOWS
-    val withWindow = withOrderAndPivot.optionalMap(windows)(withWindows)
+    val withWindow = withOrder.optionalMap(windows)(withWindows)
 
     // limit
     val withLimit = withWindow.optional(limit) {
@@ -340,6 +311,44 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     }
 
     withFor
+  }
+
+  private def getOrderLogicalPlan(ctx: QueryOrganizationContext,
+                                  query: LogicalPlan) : LogicalPlan = withOrigin(ctx) {
+    val order = ctx.order
+    val sort = ctx.sort
+    val distributeBy = ctx.distributeBy
+    val clusterBy = ctx.clusterBy
+    if (
+      !order.isEmpty && sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
+      // ORDER BY ...
+      Sort(order.asScala.map(visitSortItem), global = true, query)
+    } else if (order.isEmpty && !sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
+      // SORT BY ...
+      Sort(sort.asScala.map(visitSortItem), global = false, query)
+    } else if (order.isEmpty && sort.isEmpty && !distributeBy.isEmpty && clusterBy.isEmpty) {
+      // DISTRIBUTE BY ...
+      RepartitionByExpression(expressionList(distributeBy), query)
+    } else if (order.isEmpty && !sort.isEmpty && !distributeBy.isEmpty && clusterBy.isEmpty) {
+      // SORT BY ... DISTRIBUTE BY ...
+      Sort(
+        sort.asScala.map(visitSortItem),
+        global = false,
+        RepartitionByExpression(expressionList(distributeBy), query))
+    } else if (order.isEmpty && sort.isEmpty && distributeBy.isEmpty && !clusterBy.isEmpty) {
+      // CLUSTER BY ...
+      val expressions = expressionList(clusterBy)
+      Sort(
+        expressions.map(SortOrder(_, Ascending)),
+        global = false,
+        RepartitionByExpression(expressions, query))
+    } else if (order.isEmpty && sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
+      // [EMPTY]
+      query
+    } else {
+      throw new ParseException(
+        "Combination of ORDER BY/SORT BY/DISTRIBUTE BY/CLUSTER BY is not supported", ctx)
+    }
   }
 
   private def unpivoted(ctx: Unpivoted_tableContext,

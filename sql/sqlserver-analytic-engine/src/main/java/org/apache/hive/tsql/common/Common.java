@@ -52,5 +52,7 @@ public class Common {
     public static final String SHOW_TABLES ="showTables" ;
 
 
-    public static final String crudStr = "  CLUSTERED BY (%s) INTO 1 BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\")";
+    public static final String CLUSTER_BY_COL_NAME="@_CLUSTER_BY_NAME_@";
+    public static final String crudStr = "  CLUSTERED BY (" + CLUSTER_BY_COL_NAME +
+            ") INTO 1 BUCKETS STORED AS ORC TBLPROPERTIES (\"transactional\"=\"true\")";
 }

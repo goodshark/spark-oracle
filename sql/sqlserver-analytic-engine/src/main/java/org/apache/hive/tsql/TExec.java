@@ -2258,6 +2258,9 @@ public class TExec extends TSqlBaseVisitor<Object> {
         QueryExpressionBean queryExpressionBean = visitQuery_expression(ctx.query_expression());
         if (null != queryExpressionBean.getQuerySpecificationBean()) {
             SelectIntoBean selectIntoBean = queryExpressionBean.getQuerySpecificationBean().getSelectIntoBean();
+            if (selectIntoBean != null) {
+                selectIntoBean.setProcFlag(procFlag);
+            }
             if (withExpression && null != selectIntoBean) {
                 if (StringUtils.isNotBlank(clusterByColumnName)) {
                     clusterByColumnName = splitClusterColumnName(clusterByColumnName);
@@ -2598,12 +2601,13 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return tableName;
     }
 
-    private  String splitClusterColumnName(String colName){
-            if(colName.contains(".")){
-                return  colName.split("\\.")[1];
-            }
-            return colName;
+    private String splitClusterColumnName(String colName) {
+        if (StringUtils.isNotBlank(colName) && colName.contains(".")) {
+            return colName.split("\\.")[1];
+        }
+        return colName;
     }
+
     @Override
     public QuerySpecificationBean visitQuery_specification(TSqlParser.Query_specificationContext ctx) {
         QuerySpecificationBean querySpecificationBean = new QuerySpecificationBean();
@@ -2630,7 +2634,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 clusterByColumnName = splitClusterColumnName(clusterByColumnName);
                 selectIntoBean.setClusterByColumnName(clusterByColumnName);
                 if (StringUtils.isNotBlank(clusterByColumnName)) {
-                    intoTableSql = "create table " + tableName + String.format(Common.crudStr, StrUtils.addBackQuote(clusterByColumnName)) + " as ";
+                    intoTableSql = "create table " + tableName + Common.crudStr.replaceAll(Common.CLUSTER_BY_COL_NAME, StrUtils.addBackQuote(clusterByColumnName)) + " as ";
                 } else {
                     intoTableSql = "create table " + tableName + Common.SPACE + Common.crudStr + " as ";
                 }
@@ -2729,7 +2733,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         str.append(visitId(ctx.value_column));
         str.append(" for ");
         str.append("(");
-        str.append(visitId(ctx.pivot_column));
+        str.append(StrUtils.replaceAllBracketToQuit(visitId(ctx.pivot_column)));
         str.append(")");
         str.append(Common.SPACE);
         str.append(" IN ");
@@ -2761,7 +2765,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         str.append(Common.SPACE);
         str.append(" for ");
         str.append("(");
-        str.append(visitId(ctx.pivot_column));
+        str.append(StrUtils.replaceAllBracketToQuit(visitId(ctx.pivot_column)));
         str.append(")");
         str.append(Common.SPACE);
         str.append(" in ");
@@ -3709,7 +3713,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         SqlStatement rs = new SqlStatement();
         StringBuffer sql = new StringBuffer();
         if (null != ctx.table_name()) {
-            sql.append(visitTable_name(ctx.table_name()).getRealFullFuncName());
+            sql.append(visitTable_name(ctx.table_name()).getRealFuncName());
             sql.append(".");
         }
         sql.append(StrUtils.replaceAllBracketToQuit(visitId(ctx.id()))).append(Common.SPACE);
