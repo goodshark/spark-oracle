@@ -1,10 +1,13 @@
 package org.apache.hive.plsql;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 import org.apache.hive.basesql.TreeBuilder;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
+import org.apache.hive.plsql.dml.OracleSelectStatement;
+import org.apache.hive.plsql.dml.fragment.*;
 import org.apache.hive.plsql.function.FakeFunction;
 import org.apache.hive.plsql.function.Function;
 import org.apache.hive.plsql.function.ProcedureCall;
@@ -12,16 +15,16 @@ import org.apache.hive.tsql.another.DeclareStatement;
 import org.apache.hive.tsql.another.SetStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
-import org.apache.hive.tsql.common.ExpressionBean;
-import org.apache.hive.tsql.common.MD5Util;
-import org.apache.hive.tsql.common.OperatorSign;
-import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
+import org.apache.hive.tsql.ddl.CreateTableStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
+import org.apache.spark.sql.catalyst.expressions.Exp;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,13 +44,13 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return treeBuilder.getExceptions();
     }
 
-    @Override
+    /*@Override
     public Object visitData_manipulation_language_statements(PlsqlParser.Data_manipulation_language_statementsContext ctx) {
         // TODO test only
         String sql = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return null;
-    }
+    }*/
 
     @Override
     public Object visitCompilation_unit(PlsqlParser.Compilation_unitContext ctx) {
@@ -821,5 +824,220 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             val.setDataType(Var.DataType.FLOAT);
         }
         return val;
+    }
+
+    private String genTableColString(List<PlsqlParser.Column_nameContext> colCtxs,
+                                     List<PlsqlParser.Type_specContext> typeCtxs) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < colCtxs.size(); i++) {
+            String colName = colCtxs.get(i).getText();
+            Var.DataType type = (Var.DataType) visit(typeCtxs.get(i));
+            String typeName = type.toString();
+            sb.append(colName).append(Common.SPACE).append(typeName);
+            if (i < colCtxs.size() - 1)
+                sb.append(", ");
+        }
+        return sb.toString();
+    }
+
+    @Override
+    public Object visitCreate_table(PlsqlParser.Create_tableContext ctx) {
+        String tableName = ctx.tableview_name().getText();
+        CreateTableStatement createTableStatement = new CreateTableStatement(tableName);
+        String colString = genTableColString(ctx.column_name(), ctx.type_spec());
+        createTableStatement.setColumnDefs(colString);
+        treeBuilder.pushStatement(createTableStatement);
+        return createTableStatement;
+    }
+
+    @Override
+    public Object visitSelect_statement(PlsqlParser.Select_statementContext ctx) {
+        OracleSelectStatement selectStatement = new OracleSelectStatement(Common.SELECT);
+        if (ctx.subquery_factoring_clause() != null) {
+            visit(ctx.subquery_factoring_clause());
+            SqlStatement withStatement = (SqlStatement) treeBuilder.popStatement();
+            selectStatement.setWithQueryStatement(withStatement);
+        }
+        visit(ctx.subquery());
+        SqlStatement subqueryStmt = (SqlStatement) treeBuilder.popStatement();
+        selectStatement.setQueryBlockStatement(subqueryStmt);
+        if (ctx.for_update_clause() != null) {
+            visit(ctx.for_update_clause());
+            SqlStatement forStmt = (SqlStatement) treeBuilder.popStatement();
+            selectStatement.setForClauseStatement(forStmt);
+        }
+        if (ctx.order_by_clause() != null) {
+            visit(ctx.order_by_clause());
+            SqlStatement orderStmt = (SqlStatement) treeBuilder.popStatement();
+            selectStatement.setOrderByStatement(orderStmt);
+        }
+        treeBuilder.pushStatement(selectStatement);
+        return selectStatement;
+    }
+
+    @Override
+    public Object visitSubquery(PlsqlParser.SubqueryContext ctx) {
+        // TODO
+        SubqueryFragment subqueryFragment = new SubqueryFragment();
+        visit(ctx.subquery_basic_elements());
+        SqlStatement basicStmt = (SqlStatement) treeBuilder.popStatement();
+        subqueryFragment.setBasicElement(basicStmt);
+        for (PlsqlParser.Subquery_operation_partContext opCtx: ctx.subquery_operation_part()) {
+            visit(opCtx);
+            SqlStatement opStmt = (SqlStatement) treeBuilder.popStatement();
+            subqueryFragment.addOperation(opStmt);
+        }
+        treeBuilder.pushStatement(subqueryFragment);
+        return subqueryFragment;
+    }
+
+    @Override
+    public Object visitQuery_block(PlsqlParser.Query_blockContext ctx) {
+        QueryBlockFragment queryBlockFragment = new QueryBlockFragment();
+        for (PlsqlParser.Selected_elementContext eleCtx: ctx.selected_element()) {
+            visit(eleCtx);
+            SqlStatement element = (SqlStatement) treeBuilder.popStatement();
+            queryBlockFragment.addElement(element);
+        }
+        visit(ctx.from_clause());
+        SqlStatement fromFrag = (SqlStatement) treeBuilder.popStatement();
+        queryBlockFragment.setFromClause(fromFrag);
+        if (ctx.where_clause() != null) {
+            visit(ctx.where_clause());
+            SqlStatement whereFrag = (SqlStatement) treeBuilder.popStatement();
+            queryBlockFragment.setWhereClause(whereFrag);
+        }
+        treeBuilder.pushStatement(queryBlockFragment);
+        return queryBlockFragment;
+    }
+
+    @Override
+    public Object visitSelected_element(PlsqlParser.Selected_elementContext ctx) {
+        SelectElementFragment elementFragment = new SelectElementFragment();
+        ExpressionStatement col = (ExpressionStatement) visit(ctx.select_list_elements());
+        elementFragment.setCol(col);
+        if (ctx.column_alias() != null) {
+            String colAlias = (String) visit(ctx.column_alias());
+            elementFragment.setColAlias(colAlias);
+        }
+        treeBuilder.pushStatement(elementFragment);
+        return elementFragment;
+    }
+
+    @Override
+    public Object visitSelect_list_elements(PlsqlParser.Select_list_elementsContext ctx) {
+        if (ctx.expression() != null) {
+            visit(ctx.expression());
+            ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
+            return es;
+        }
+        if (ctx.tableview_name() != null) {
+            String colStr = getFullSql(ctx.tableview_name());
+            Var var = new Var(null, colStr, Var.DataType.STRING);
+            ExpressionBean expressionBean = new ExpressionBean();
+            expressionBean.setVar(var);
+            ExpressionStatement expressionStatement = new ExpressionStatement(expressionBean);
+            return expressionStatement;
+        }
+        return null;
+    }
+
+    @Override
+    public Object visitColumn_alias(PlsqlParser.Column_aliasContext ctx) {
+        return getFullSql(ctx);
+    }
+
+    @Override
+    public Object visitFrom_clause(PlsqlParser.From_clauseContext ctx) {
+        FromClauseFragment fromClauseFragment = new FromClauseFragment();
+        visit(ctx.table_ref_list());
+        SqlStatement sourceStmt = (SqlStatement) treeBuilder.popStatement();
+        fromClauseFragment.setSourceFrag(sourceStmt);
+        treeBuilder.pushStatement(fromClauseFragment);
+        return fromClauseFragment;
+    }
+
+    @Override
+    public Object visitTable_ref_list(PlsqlParser.Table_ref_listContext ctx) {
+        CommonFragment commonFragment = new CommonFragment();
+        for (PlsqlParser.Table_refContext refCtx: ctx.table_ref()) {
+            visit(refCtx);
+            SqlStatement stmt = (SqlStatement) treeBuilder.popStatement();
+            commonFragment.addFragment(stmt);
+        }
+        treeBuilder.pushStatement(commonFragment);
+        return commonFragment;
+    }
+
+    @Override
+    public Object visitTable_ref(PlsqlParser.Table_refContext ctx) {
+        CommonFragment commonFragment = new CommonFragment();
+        visit(ctx.table_ref_aux());
+        SqlStatement refStmt = (SqlStatement) treeBuilder.popStatement();
+        commonFragment.addFragment(refStmt);
+        for (PlsqlParser.Join_clauseContext joinCtx: ctx.join_clause()) {
+            visit(joinCtx);
+        }
+        treeBuilder.pushStatement(commonFragment);
+        return commonFragment;
+    }
+
+    @Override
+    public Object visitTable_ref_aux(PlsqlParser.Table_ref_auxContext ctx) {
+        CommonFragment commonFragment = new CommonFragment();
+        if (ctx.dml_table_expression_clause() != null) {
+            if (ctx.ONLY() == null) {
+                visit(ctx.dml_table_expression_clause());
+                SqlStatement stmt = (SqlStatement) treeBuilder.popStatement();
+                commonFragment.addFragment(stmt);
+            } else {
+            }
+        } else if (ctx.table_ref() != null) {
+        }
+        treeBuilder.pushStatement(commonFragment);
+        return commonFragment;
+    }
+
+    @Override
+    public Object visitDml_table_expression_clause(PlsqlParser.Dml_table_expression_clauseContext ctx) {
+        SqlStatement sqlStatement = null;
+        if (ctx.tableview_name() != null) {
+            sqlStatement = genSqlStringFragment(getFullSql(ctx.tableview_name()));
+        } else if (ctx.select_statement() != null) {
+            visit(ctx.select_statement());
+            CommonFragment commonFragment = new CommonFragment();
+            commonFragment.addFragment(genSqlStringFragment("("));
+            SqlStatement stmt = (SqlStatement) treeBuilder.popStatement();
+            commonFragment.addFragment(stmt);
+            commonFragment.addFragment(genSqlStringFragment(")"));
+            sqlStatement = commonFragment;
+        } else {
+            // table_collection_expression != null
+        }
+        treeBuilder.pushStatement(sqlStatement);
+        return sqlStatement;
+    }
+
+    @Override
+    public Object visitWhere_clause(PlsqlParser.Where_clauseContext ctx) {
+        WhereClauseFragment whereClauseFragment = new WhereClauseFragment();
+        if (ctx.expression() != null) {
+            visit(ctx.expression());
+            SqlStatement exprStmt = (SqlStatement) treeBuilder.popStatement();
+            whereClauseFragment.setCondition(exprStmt);
+        }
+        treeBuilder.pushStatement(whereClauseFragment);
+        return whereClauseFragment;
+    }
+
+    private SqlStatement genSqlStringFragment(String str) {
+        SqlStatement sqlStatement = new SqlStatement();
+        sqlStatement.setSql(str);
+        return sqlStatement;
+    }
+
+    private String getFullSql(ParserRuleContext ctx) {
+        return ctx.start.getInputStream().getText(
+                new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
     }
 }
