@@ -943,7 +943,7 @@ explain_statement
     ;
 
 select_statement
-    : subquery_factoring_clause? subquery (for_update_clause | order_by_clause)*
+    : subquery_factoring_clause? subquery (for_update_clause | order_by_clause)?
     ;
 
 // $<Select - Specific Clauses
