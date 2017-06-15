@@ -231,7 +231,7 @@ case class CollectGroupXMLPath(
       strbuffer.append("<").append(rowLabel).append(">")
     }
 
-    for (i <- 0 to columnNames.length) {
+    for (i <- 0 to (columnNames.length -1)) {
       cols(i) match {
         case col: BoundReference => strbuffer.append("<").append(columnNames(i)).append(">")
           .append(col.eval(input)).append("</").append(columnNames(i)).append(">")
