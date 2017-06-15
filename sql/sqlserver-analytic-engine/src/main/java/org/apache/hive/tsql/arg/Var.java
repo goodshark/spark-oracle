@@ -3,6 +3,7 @@ package org.apache.hive.tsql.arg;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.common.ExpressionComputer;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.util.DateUtil;
 import org.apache.hive.tsql.util.StrUtils;
 
@@ -460,6 +461,42 @@ public class Var implements Serializable {
             e.printStackTrace();
         }
         return varValue == null ? null : varValue.toString();
+    }
+
+    public String getSql() {
+        if (varValue != null)
+            return varValue.toString();
+        if (expr != null) {
+            return expr.getSql();
+        }
+        return "";
+    }
+
+    public String getOriginalSql() {
+        if (varName != null)
+            return varName;
+        if (varValue != null)
+            return varValue.toString();
+        if (expr != null)
+            return ((ExpressionStatement) expr).getOriginalSql();
+        return "";
+    }
+
+    public String getFinalSql() throws Exception {
+        if (varName != null) {
+            if (isExecuted && varValue != null)
+                return varValue.toString();
+            else if (expr != null) {
+                return ((ExpressionStatement) expr).getFinalSql();
+            } else {
+                return varName;
+            }
+        } else if (varValue != null) {
+            return varValue.toString();
+        } else if (expr != null) {
+            return ((ExpressionStatement) expr).getFinalSql();
+        }
+        return "";
     }
 }
 
