@@ -1281,6 +1281,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 if (currentChar == '\'') {
                     enclosure = currentChar;
                     sb.append('\'');
+                } else {
+                    sb.append(currentChar);
                 }
             } else if (enclosure == currentChar) {
                 if (currentChar == '\'' && (i + 2) < strLength) {
