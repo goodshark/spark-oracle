@@ -257,6 +257,11 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
       val fromClause = statement.fromClauseForUpdate()
       sb.append(fromClause.start.getInputStream().getText(
         new Interval(fromClause.start.getStartIndex(), fromClause.stop.getStopIndex())))
+       // delete from t11 from t12 where t11.id = t12.id
+      // 这样的情况需要在from 后面再追加t11表
+      appendUpdateTable(fromClause, sb, db + "." + tb, sessionState.catalog.getCurrentDatabase)
+
+
     } else {
       sb.append(db)
       sb.append(".")
@@ -282,6 +287,30 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     logInfo(s" paser  update sql ====> " + sb.toString())
     sb.toString()
   }
+
+ def appendUpdateTable(fromClause: FromClauseForUpdateContext,
+                       sb: StringBuilder, updateTable: String, currentDb: String) : Unit = {
+   val relations = fromClause.relationUpate()
+   var tableSet: Set[String] = Set()
+   for (i <- 0 until( relations.size())) {
+     val table = relations.get(i).tableNameUpdate().tableIdentifier()
+     if (table.identifier().size()==2) {
+        tableSet += (table.identifier(0).getText.toLowerCase
+          + "." + table.identifier(1).getText.toLowerCase )
+     } else {
+       tableSet += (currentDb + "." + table.identifier(0).getText.toLowerCase)
+     }
+   }
+   logWarning( s"fromClusss table set is => ${tableSet}" )
+   if (!tableSet.contains(updateTable)) {
+     sb.append(" ," )
+     sb.append(updateTable)
+     sb.append(" ")
+   }
+
+ }
+
+
 
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
