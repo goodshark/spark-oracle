@@ -27,37 +27,11 @@ import org.apache.spark.sql.execution.streaming.{StateStoreRestoreExec, StateSto
  */
 object AggUtils {
 
-  /**
-    * WARNING, add extra scalaquery column to grouping expression
-    * @param groupingExpressions
-    * @param aggregateExpressions
-    * @param resultExpressions
-    * @return
-    */
-  def extraAttribute(
-       groupingExpressions: Seq[NamedExpression],
-       aggregateExpressions: Seq[AggregateExpression],
-       resultExpressions: Seq[NamedExpression]): Seq[NamedExpression] = {
-    // attribute in result expressions, but not in aggregateExpressions and resultExpressions
-    val refAttr = resultExpressions.collect {
-      case e: AttributeReference => e
-      case Alias(e: AttributeReference, _) => e
-    }
-    refAttr.filterNot { e =>
-      groupingExpressions.exists(_.semanticEquals(e)) ||
-        aggregateExpressions.exists(_.resultId.equals(e.exprId))
-      // Seq.empty[NamedExpression]
-    }
-  }
-
   def planAggregateWithoutPartial(
-      groupingExpressions1: Seq[NamedExpression],
+      groupingExpressions: Seq[NamedExpression],
       aggregateExpressions: Seq[AggregateExpression],
       resultExpressions: Seq[NamedExpression],
       child: SparkPlan): Seq[SparkPlan] = {
-
-    val extra = extraAttribute(groupingExpressions1, aggregateExpressions, resultExpressions)
-    val groupingExpressions = groupingExpressions1 ++ extra
 
     val completeAggregateExpressions = aggregateExpressions.map(_.copy(mode = Complete))
     val completeAggregateAttributes = completeAggregateExpressions.map(_.resultAttribute)
@@ -104,15 +78,13 @@ object AggUtils {
   }
 
   def planAggregateWithoutDistinct(
-      groupingExpressions1: Seq[NamedExpression],
+      groupingExpressions: Seq[NamedExpression],
       aggregateExpressions: Seq[AggregateExpression],
       resultExpressions: Seq[NamedExpression],
       child: SparkPlan): Seq[SparkPlan] = {
     // Check if we can use HashAggregate.
 
     // 1. Create an Aggregate Operator for partial aggregations.
-    val extra = extraAttribute(groupingExpressions1, aggregateExpressions, resultExpressions)
-    val groupingExpressions = groupingExpressions1 ++ extra
 
     val groupingAttributes = groupingExpressions.map(_.toAttribute)
     val partialAggregateExpressions = aggregateExpressions.map(_.copy(mode = Partial))
@@ -150,7 +122,7 @@ object AggUtils {
   }
 
   def planAggregateWithOneDistinct(
-      groupingExpressions1: Seq[NamedExpression],
+      groupingExpressions: Seq[NamedExpression],
       functionsWithDistinct: Seq[AggregateExpression],
       functionsWithoutDistinct: Seq[AggregateExpression],
       resultExpressions: Seq[NamedExpression],
@@ -162,10 +134,6 @@ object AggUtils {
     // [COUNT(DISTINCT foo), MAX(DISTINCT foo)], but [COUNT(DISTINCT bar), COUNT(DISTINCT foo)] is
     // disallowed because those two distinct aggregates have different column expressions.
 
-    val extra = extraAttribute(groupingExpressions1,
-      functionsWithDistinct++functionsWithoutDistinct,
-      resultExpressions)
-    val groupingExpressions = groupingExpressions1 ++ extra
 
     val distinctExpressions = functionsWithDistinct.head.aggregateFunction.children
     val namedDistinctExpressions = distinctExpressions.map {
