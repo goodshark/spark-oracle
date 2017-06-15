@@ -188,17 +188,24 @@ case class CollectGroupXMLPath(
 
   private val columnNames: ListBuffer[String] = new ListBuffer[String]
 
-
-
-  def initialize(b: InternalRow, inputAttributes: Seq[Attribute]): Unit = {
+  def initialize(b: InternalRow, inputAttributes: Seq[Attribute],
+                 groupAttributes: Seq[Attribute]): Unit = {
+    val groupColumns: ListBuffer[String] = new ListBuffer[String]
+    if (groupColumns.length == 0) {
+      groupAttributes.map(attr => {
+        groupColumns += attr.name
+      })
+    }
+    val inputOverflow = inputAttributes.length > (cols.length - 2)
     if (columnNames.length == 0) {
-      inputAttributes.map(attr => {
+      { if (inputOverflow) {
+        inputAttributes.filterNot(input => groupColumns.contains(input.name))
+      } else {
+        inputAttributes
+      }}.map(attr => {
         columnNames += attr.name
       })
-
-
     }
-
     initialize(b)
   }
 
@@ -224,7 +231,7 @@ case class CollectGroupXMLPath(
       strbuffer.append("<").append(rowLabel).append(">")
     }
 
-    for (i <- 0 to (cols.length - 3)) {
+    for (i <- 0 to columnNames.length) {
       cols(i) match {
         case col: BoundReference => strbuffer.append("<").append(columnNames(i)).append(">")
           .append(col.eval(input)).append("</").append(columnNames(i)).append(">")

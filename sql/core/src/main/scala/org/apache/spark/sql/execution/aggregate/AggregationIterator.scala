@@ -273,7 +273,7 @@ abstract class AggregationIterator(
       val func = allImperativeAggregateFunctions(i)
       func match {
         case CollectGroupXMLPath(_, _, _) => func.asInstanceOf[CollectGroupXMLPath].
-          initialize(buffer, inputAttributes)
+          initialize(buffer, inputAttributes, groupingAttributes)
         case _ => func.initialize(buffer)
       }
       i += 1
