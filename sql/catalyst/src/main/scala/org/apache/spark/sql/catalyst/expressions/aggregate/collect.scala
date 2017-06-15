@@ -202,27 +202,29 @@ case class CollectGroupXMLPath(
     initialize(b)
   }
 
+  val rootLabel = cols(cols.length - 1).toString.trim
+
   override def initialize(b: InternalRow): Unit = {
     buffer.clear()
+
     strbuffer.clear()
+
+    if (rootLabel.length > 0) {
+      strbuffer.append("<").append(rootLabel).append(">")
+    }
   }
 
   override def update(b: InternalRow, input: InternalRow): Unit = {
     //scalastyle:off
+    val colsLen = cols.length
 
-    val rootLabel = cols(columnNames.length + 1).toString.trim
-    val hasRootLabel = rootLabel.length > 0
-    if (hasRootLabel) {
-      strbuffer.append("<").append(rootLabel).append(">")
-    }
-
-    val rowLabel = cols(columnNames.length).toString.trim
+    val rowLabel = cols(colsLen - 2).toString.trim
     val hasRowLabel = rowLabel.length > 0
     if (hasRowLabel) {
       strbuffer.append("<").append(rowLabel).append(">")
     }
 
-    for (i <- 0 to (columnNames.length - 1)) {
+    for (i <- 0 to (cols.length - 3)) {
       cols(i) match {
         case col: BoundReference => strbuffer.append("<").append(columnNames(i)).append(">")
           .append(col.eval(input)).append("</").append(columnNames(i)).append(">")
@@ -232,9 +234,7 @@ case class CollectGroupXMLPath(
     if (hasRowLabel) {
       strbuffer.append("</").append(rowLabel).append(">")
     }
-    if (hasRootLabel) {
-      strbuffer.append("</").append(rootLabel).append(">")
-    }
+
   }
 
   override def merge(buffer: InternalRow, input: InternalRow): Unit = {
@@ -242,6 +242,10 @@ case class CollectGroupXMLPath(
   }
 
   override def eval(input: InternalRow): Any = {
+    if (rootLabel.length > 0) {
+      strbuffer.append("</").append(rootLabel).append(">")
+    }
+
     UTF8String.fromString(strbuffer.toString())
   }
 }
