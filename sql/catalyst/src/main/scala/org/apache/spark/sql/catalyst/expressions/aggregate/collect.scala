@@ -196,15 +196,40 @@ case class CollectGroupXMLPath(
         groupColumns += attr.name
       })
     }
+
+    val isIf = cols(0).isInstanceOf[If]
+
     val inputOverflow = inputAttributes.length > (cols.length - 2)
     if (columnNames.length == 0) {
       { if (inputOverflow) {
-        inputAttributes.filterNot(input => groupColumns.contains(input.name))
+        val withoutIf = inputAttributes.filterNot(input => groupColumns.contains(input.name))
+        if (isIf) {
+          withoutIf.filter(!_.name.equals("gid"))
+        } else {
+          withoutIf
+        }
+
       } else {
         inputAttributes
-      }}.map(attr => {
-        columnNames += attr.name
+      }
+      }.map(attr => {
+        columnNames += {
+          val index = attr.name.indexOf(".")
+          if (-1 != index) {
+            val colName = attr.name.substring(index + 2, attr.name.length - 1)
+            if (colName.indexOf(",") == -1) {
+              colName
+            } else {
+              ""
+            }
+          } else {
+            attr.name
+          }
+        }
+
       })
+
+
     }
     initialize(b)
   }
@@ -233,8 +258,12 @@ case class CollectGroupXMLPath(
 
     for (i <- 0 to (columnNames.length -1)) {
       cols(i) match {
-        case col: BoundReference => strbuffer.append("<").append(columnNames(i)).append(">")
-          .append(col.eval(input)).append("</").append(columnNames(i)).append(">")
+        case col: BoundReference  => {
+          buildXml(input, i, col)
+        }
+        case col: If  => {
+          buildXml(input, i, col)
+      }
         case _ => strbuffer.append(cols(i).eval(input))
       }
     }
@@ -242,6 +271,17 @@ case class CollectGroupXMLPath(
       strbuffer.append("</").append(rowLabel).append(">")
     }
 
+  }
+
+
+  private def buildXml(input: InternalRow, i: Int, col: Expression) = {
+    if (columnNames(i).length > 0) {
+      strbuffer.append("<").append(columnNames(i)).append(">")
+    }
+    strbuffer.append(col.eval(input))
+    if (columnNames(i).length > 0) {
+      strbuffer.append("</").append(columnNames(i)).append(">")
+    }
   }
 
   override def merge(buffer: InternalRow, input: InternalRow): Unit = {
