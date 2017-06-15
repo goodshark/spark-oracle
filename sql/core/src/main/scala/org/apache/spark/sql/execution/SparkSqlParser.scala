@@ -61,7 +61,7 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder {
   def parseTableName(tbName: TableNameUpdateContext,
                      tableNames: mutable.HashMap[String, TableIdentifier]) = {
     if (null != tbName.strictIdentifier()) {
-      logInfo(s" tablealias name is " + tbName.strictIdentifier().getText)
+      // logInfo(s" tablealias name is " + tbName.strictIdentifier().getText)
       tableNames += (tbName.strictIdentifier().getText
         -> visitTableIdentifier(tbName.tableIdentifier()))
     }

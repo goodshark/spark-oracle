@@ -86,8 +86,8 @@ public class SelectStatement extends SqlStatement {
 
     public void updateResultVar(SparkResultSet resultSet) throws Exception {
         List<String> filedNames = resultSet.getFiledName();
-        LOG.info("resultSetVariable:" + resultSetVariable.toString());
-        LOG.info("filedNames:" + filedNames.toString());
+        // LOG.info("resultSetVariable:" + resultSetVariable.toString());
+        // LOG.info("filedNames:" + filedNames.toString());
 
 
         if (resultSetVariable.size() != filedNames.size()) {
@@ -129,7 +129,7 @@ public class SelectStatement extends SqlStatement {
             //如果是局部临时表，需要删除
             if (tmpTableNameUtils.checkIsTmpTable(tableName)) {
                 String realTableName = getExecSession().getRealTableName(tableName);
-                LOG.info("realTableName:" + realTableName + ",orcTableName:" + tableName);
+                // LOG.info("realTableName:" + realTableName + ",orcTableName:" + tableName);
                 if (!StringUtils.equals(tableName, realTableName)) {
                     sql = replaceTableName(tableName, sql);
                     commitStatement(sql);
@@ -153,9 +153,9 @@ public class SelectStatement extends SqlStatement {
         if (null != selectIntoBean && selectIntoBean.isProcFlag()) {
             clusterByColumn = selectIntoBean.getClusterByColumnName();
             if (StringUtils.isBlank(clusterByColumn)) {
-                LOG.info("current sql is " + execSQL);
-                LOG.info("create crud table : clusterbyColumnName:" + selectIntoBean.getClusterByColumnName());
-                LOG.info("create crud table : fromTb:" + selectIntoBean.getSourceTableName());
+                //LOG.info("current sql is " + execSQL);
+                //LOG.info("create crud table : clusterbyColumnName:" + selectIntoBean.getClusterByColumnName());
+                //LOG.info("create crud table : fromTb:" + selectIntoBean.getSourceTableName());
                 String fromTableName = selectIntoBean.getSourceTableName();
                 fromTableName = getExecSession().getRealTableName(fromTableName);
                 TableIdentifier tableIdeentifier = null;
@@ -163,7 +163,7 @@ public class SelectStatement extends SqlStatement {
                     if (fromTableName.contains(".")) {
                         String tableName = fromTableName.split("\\.")[1];
                         final String dbName = fromTableName.split("\\.")[0];
-                        LOG.info("create crud table : dbName:" + dbName);
+                       // LOG.info("create crud table : dbName:" + dbName);
                         Option<String> database = new Option<String>() {
                             @Override
                             public String get() {
@@ -195,8 +195,6 @@ public class SelectStatement extends SqlStatement {
                                 return false;
                             }
                         };
-                        LOG.info("database is ==>" + database);
-                        LOG.info("database get is ==>" + database.get());
                         tableIdeentifier = new TableIdentifier(tableName, database);
                     } else {
                         tableIdeentifier = new TableIdentifier(fromTableName);
@@ -213,9 +211,6 @@ public class SelectStatement extends SqlStatement {
                     throw new Exception(" create  crud table: " + selectIntoBean.getIntoTableName() + " failed.");
                 }
             }
-            LOG.info("execSql is ===>" + execSQL);
-            LOG.info("StrUtils.addBackQuote(clusterByColumn) is ===>" + StrUtils.addBackQuote(clusterByColumn));
-            LOG.info("start exec String.Format------------");
             execSQL = execSQL.replaceAll(Common.CLUSTER_BY_COL_NAME, StrUtils.addBackQuote(clusterByColumn));
         }
     }
