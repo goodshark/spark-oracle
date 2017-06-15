@@ -64,4 +64,7 @@ public enum OperatorSign {
         return null;
     }
 
+    public String getOperator() {
+        return operator;
+    }
 }
