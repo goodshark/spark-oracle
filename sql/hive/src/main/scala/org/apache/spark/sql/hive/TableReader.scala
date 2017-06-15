@@ -105,7 +105,7 @@ class HadoopTableReader(
     } else if (dataType.equalsIgnoreCase("short")) {
       rs = "tinyint"
     }
-    logInfo("dataType src is " + dataType + "is + " + rs)
+   // logInfo("dataType src is " + dataType + "is + " + rs)
     rs
   }
   override def makeRDDForTable(hiveTable: HiveTable): RDD[InternalRow] =
