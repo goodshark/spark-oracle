@@ -1244,11 +1244,11 @@ public class TExec extends TSqlBaseVisitor<Object> {
             }
             sb.append(s).append(Common.SPACE);
             var.setDataType(Var.DataType.STRING);
-            var.setVarValue(sb.toString());
+            var.setVarValue(transformSQLString(sb.toString()));
         } else if (null != ctx.BINARY()) {
             sb.append(ctx.STRING().getText());
             var.setDataType(Var.DataType.BINARY);
-            var.setVarValue(sb.toString());
+            var.setVarValue(transformSQLString(sb.toString()));
         } else {
             var.setDataType(Var.DataType.FLOAT);
             if (null != ctx.sign()) {
@@ -1265,11 +1265,43 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 sb.append(ctx.FLOAT().getText());
             }
             //sign? dollar='$' (DECIMAL | FLOAT)       // money 暂时按float类型处理
-            var.setVarValue(sb.toString());
+            var.setVarValue(transformSQLString(sb.toString()));
         }
         return var;
     }
 
+    private String transformSQLString(String b){
+        StringBuilder sb = new StringBuilder();
+        char enclosure = 0;
+        int i = 0;
+        int strLength = b.length();
+        while (i < strLength) {
+            char currentChar = b.charAt(i);
+            if (enclosure == 0) {
+                if (currentChar == '\'') {
+                    enclosure = currentChar;
+                    sb.append('\'');
+                }
+            } else if (enclosure == currentChar) {
+                if (currentChar == '\'' && (i + 2) < strLength) {
+                    char next = b.charAt(i + 1);
+                    if(next == '\''){
+                        i += 1;
+                        sb.append("\\\'");
+                    }
+                } else {
+                    enclosure = 0;
+                    sb.append('\'');
+                }
+            } else if (currentChar == '\\') {
+                sb.append("\\\\");
+            } else {
+                sb.append(currentChar);
+            }
+            i += 1;
+        }
+        return sb.toString();
+    }
 
     @Override
     public FuncName visitTable_name(TSqlParser.Table_nameContext ctx) {
