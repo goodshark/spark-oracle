@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.arg.Var;
@@ -86,6 +87,14 @@ public abstract class TreeNode implements Serializable {
 
     public String getSql() {
         return sql;
+    }
+
+    public String getOriginalSql() {
+        return "";
+    }
+
+    public String getFinalSql() throws Exception {
+        return "";
     }
 
     public void setSql(String sql) {
@@ -197,12 +206,16 @@ public abstract class TreeNode implements Serializable {
         this.execSession.getVariableContainer().deleteVar(varName);
     }
 
-    public void addFunc(Procedure function) {
+    public void addFunc(CommonProcedureStatement function) {
         this.execSession.getVariableContainer().addProcFunc(function);
     }
 
-    public Procedure findFunc(String funcName) {
+    public CommonProcedureStatement findFunc(String funcName) {
         return this.execSession.getVariableContainer().findFunc(funcName);
+    }
+
+    public CommonProcedureStatement findFunc(String funcName, List<Var> procs) {
+        return this.execSession.getVariableContainer().findFunc(funcName, procs);
     }
 
     /**

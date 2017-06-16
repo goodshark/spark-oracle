@@ -5,6 +5,8 @@ import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.LogicNode;
 
+import java.util.Set;
+
 /**
  * Created by dengrb1 on 4/20 0020.
  */
@@ -44,13 +46,19 @@ public abstract class NonSeqStatement extends BaseStatement {
                 return pNode;
             } else {
                 WhileStatement loopStmt = (WhileStatement) pNode;
-                if (!loopStmt.isLabelSearched()) {
-                    loopStmt.searchAllLabels();
-                }
                 if (loopStmt.existLabel(label))
                     return pNode;
                 else
                     return findPairLoop(pNode);
+                /*WhileStatement loopStmt = (WhileStatement) pNode;
+                if (!loopStmt.isLabelSearched()) {
+                    Set<String> labels = loopStmt.searchAllLabels();
+                    loopStmt.setLabelSearched(labels);
+                }
+                if (loopStmt.existLabel(label))
+                    return pNode;
+                else
+                    return findPairLoop(pNode);*/
             }
         }
     }

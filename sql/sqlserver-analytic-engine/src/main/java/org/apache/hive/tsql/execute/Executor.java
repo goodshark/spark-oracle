@@ -130,7 +130,11 @@ public class Executor {
     }
 
     public void enterBlock(TreeNode node) {
-        session.enterScope(node);
+        // TODO test only
+//        String engine = session.getSparkSession().conf().get("spark.sql.analytical.engine");
+        String engine = "oracle";
+        if (engine.equalsIgnoreCase("oracle"))
+            session.enterScope(node);
     }
 
     public void leaveBlock() {
@@ -289,6 +293,9 @@ public class Executor {
         TreeNode stmt = null;
         while (!stack.empty()) {
             stmt = stack.pop();
+            // remember pop the scope
+            if (stmt.getNodeType() == TreeNode.Type.BORDER)
+                leaveBlock();
             if (stmt.getNodeType() == TreeNode.Type.WHILE && breakStatement.isPair(stmt))
                 break;
         }
@@ -448,6 +455,9 @@ public class Executor {
         TreeNode node = null;
         while (!stack.empty()) {
             node = stack.pop();
+            // remember to pop scope
+            if (node.getNodeType() == TreeNode.Type.BORDER)
+                leaveBlock();
             if (node.getNodeType() == TreeNode.Type.TRY && node.isSkipable()) {
                 List<TreeNode> list = node.getChildrenNodes();
                 if (list.size() != 2)

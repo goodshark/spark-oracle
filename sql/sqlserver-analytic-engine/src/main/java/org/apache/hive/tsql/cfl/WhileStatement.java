@@ -14,11 +14,11 @@ public class WhileStatement extends BaseStatement {
 
     private LogicNode condtionNode = null;
     // store index variables in loop: for i in 1..10
-    private Map<String, Var> varMap = new HashMap<>();
+//    private Map<String, Var> varMap = new HashMap<>();
     // store labels with while
-    private Set<String> labels = new HashSet<>();
+//    private Set<String> labels = new HashSet<>();
     // check labels belong to while is searched
-    private boolean labelSearched = false;
+//    private boolean labelSearched = false;
 
     public WhileStatement() {
     }
@@ -50,20 +50,26 @@ public class WhileStatement extends BaseStatement {
         return 0;
     }
 
-    public void setLabelSearched() {
+    /*public void setLabelSearched(Set<String> labs) {
         labelSearched = true;
+        labels.addAll(labs);
     }
 
     public boolean isLabelSearched() {
         return labelSearched;
-    }
+    }*/
 
-    public boolean existLabel(String name) {
+    /*public boolean existLabel(String name) {
         return labels.contains(name);
-    }
+    }*/
 
-    public void searchAllLabels() {
+    /*public void searchAllLabels() {
+        labelSearched = true;
         TreeNode pNode = getParentNode();
+        // a normal CFL-node in AST tree always has a parent node
+        if (pNode == null) {
+            return;
+        }
         List<TreeNode> childList = pNode.getChildrenNodes();
         // label always before whileStmt
         for (TreeNode child: childList) {
@@ -78,12 +84,11 @@ public class WhileStatement extends BaseStatement {
                 }
             }
         }
-        labelSearched = true;
-    }
+    }*/
 
-    public void setLoopIndexVar(Var index) {
+    /*public void setLoopIndexVar(Var index) {
         varMap.put(index.getVarName(), index);
-    }
+    }*/
 
     public BaseStatement createStatement() {
         return null;

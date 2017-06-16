@@ -30,7 +30,7 @@ public class GotoStatement extends BaseStatement {
     }
 
     public void setLabel(String name) {
-        label = name;
+        label = name.toLowerCase();
     }
 
     public String getLabel() {

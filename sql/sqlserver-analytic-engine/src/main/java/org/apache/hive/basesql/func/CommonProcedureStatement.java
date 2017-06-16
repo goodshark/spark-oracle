@@ -1,39 +1,39 @@
-package org.apache.hive.tsql.func;
+package org.apache.hive.basesql.func;
 
-import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.func.FuncName;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by zhongdg1 on 2016/12/12.
+ * Created by dengrb1 on 5/25 0025.
  */
-public class Procedure extends CommonProcedureStatement implements Serializable {
-    public Procedure(FuncName name) {
-        this(name, false, null);
-    }
-
-    public Procedure(FuncName name, boolean isGlobal, String md5) {
-        super(name, isGlobal, md5);
-    }
-
-    /*private static final long serialVersionUID = 1227077492869753299L;
+public abstract class CommonProcedureStatement implements Serializable {
+    private static final long serialVersionUID = 1227077492869753299L;
     private FuncName name;
     private boolean isGlobal;
     private String md5;
     private String dbName;
 
-    //    private List<Var> inputs;
-//    private List<Var> outputs;
     private List<Var> inAndOutputs;
     private TreeNode sqlClauses;
     private String procSql;
     private int procSource = 0;// 来源，0表示内存 1表示从数据库读取
     private int leastArguments = 0;
 
+    public CommonProcedureStatement(FuncName name) {
+        this(name, false, null);
+    }
+
+    public CommonProcedureStatement(FuncName name, boolean isGlobal, String md5) {
+        this.name = name;
+        this.isGlobal = isGlobal;
+        this.md5 = md5;
+        inAndOutputs = new ArrayList<Var>();
+    }
 
     public void setLeastArguments() {
         int count = 0;
@@ -46,19 +46,6 @@ public class Procedure extends CommonProcedureStatement implements Serializable 
 
     public int getLeastArguments() {
         return leastArguments;
-    }
-
-    public Procedure(FuncName name) {
-        this(name, false, null);
-    }
-
-    public Procedure(FuncName name, boolean isGlobal, String md5) {
-        this.name = name;
-        this.isGlobal = isGlobal;
-        this.md5 = md5;
-//        inputs = new ArrayList<Var>();
-//        outputs = new ArrayList<Var>();
-        inAndOutputs = new ArrayList<Var>();
     }
 
     public void addInAndOutputs(Var var) {
@@ -104,22 +91,6 @@ public class Procedure extends CommonProcedureStatement implements Serializable 
         this.md5 = md5;
     }
 
-//    public List<Var> getInputs() {
-//        return inputs;
-//    }
-//
-//    public void setInputs(List<Var> inputs) {
-//        this.inputs = inputs;
-//    }
-//
-//    public List<Var> getOutputs() {
-//        return outputs;
-//    }
-//
-//    public void setOutputs(List<Var> outputs) {
-//        this.outputs = outputs;
-//    }
-
     public FuncName getName() {
         return name;
     }
@@ -142,5 +113,5 @@ public class Procedure extends CommonProcedureStatement implements Serializable 
 
     public String getProcSql() {
         return procSql;
-    }*/
+    }
 }

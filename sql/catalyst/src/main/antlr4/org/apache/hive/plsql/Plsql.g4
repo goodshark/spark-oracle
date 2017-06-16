@@ -133,7 +133,7 @@ create_package
 // $<Create Package - Specific Clauses
 
 package_body
-    : BODY package_name (IS | AS) package_obj_body* (BEGIN seq_of_statements | END package_name?)
+    : BODY package_name (IS | AS) package_obj_body* ((BEGIN seq_of_statements END package_name?) | END package_name?)
     ;
 
 package_spec
@@ -770,11 +770,11 @@ between_bound
     ;
 
 lower_bound
-    : concatenation
+    : expression
     ;
 
 upper_bound
-    : concatenation
+    : expression
     ;
 
 null_statement
@@ -790,7 +790,9 @@ return_statement
     ;
 
 function_call
-    : CALL? routine_name function_argument?
+//    : CALL? routine_name function_argument?
+    : CALL? routine_name '(' (execute_argument (',' execute_argument)*)? ')' keep_clause?
+//    : CALL? routine_name '(' (execute_argument ((',' | '||') execute_argument)*)? ')' keep_clause?
     ;
 
 body
@@ -867,7 +869,7 @@ open_statement
     ;
 
 fetch_statement
-    : FETCH cursor_name (it1=INTO variable_name (',' variable_name )* | BULK COLLECT INTO variable_name (',' variable_name )*)
+    : FETCH cursor_name (it1=INTO variable_name (',' variable_name )* | BULK COLLECT INTO variable_name (',' variable_name )* (LIMIT expression)?)
     ;
 
 open_for_statement
@@ -941,7 +943,7 @@ explain_statement
     ;
 
 select_statement
-    : subquery_factoring_clause? subquery (for_update_clause | order_by_clause)*
+    : subquery_factoring_clause? subquery (for_update_clause | order_by_clause)?
     ;
 
 // $<Select - Specific Clauses
@@ -1375,8 +1377,34 @@ condition
     ;
 
 expression
-    : cursor_expression
-    | logical_or_expression
+    : cursor_expression                                     #cursor_expression_alias
+    | id_expression ('.' id_expression)*                    #id_expression_alias
+    | constant                                              #constant_alias
+    | function_call                                         #function_call_alias
+    | case_statement                                        #case_statement_alias
+    | '(' expression ')'                                    #expression_nested_alias
+    | expression op=('*' | '/' | '%') expression            #binary_expression_alias
+    | unary_expression                                      #unary_expression_alias
+//    | op=('+' | '-') expression
+    | expression op=('+' | '-') expression                  #binary_expression_alias
+//    | concatenation
+    | logical_and_expression (OR logical_and_expression)*   #bool_condition_alias
+    | negated_expression (AND negated_expression)*          #bool_condition_alias
+    | expression op=('||' | '|') expression                 #binary_expression_alias
+    | logical_or_expression                                 #complex_expression_alias
+    ;
+
+// only for logic condition (avoid nested left-recursive)
+sub_expression
+    : id_expression ('.' id_expression)*                    #id_expression_subalias
+    | constant                                              #constant_subalias
+    | function_call                                         #function_call_subalias
+    | case_statement                                        #case_statement_subalias
+    | sub_expression op=('*' | '/' | '%') sub_expression    #binary_expression_subalias
+    | unary_expression                                      #unary_expression_subalias
+//    | op=('+' | '-') new_expression
+    | sub_expression op=('||' | '|') sub_expression         #binary_expression_subalias
+    | sub_expression op=('+' | '-') sub_expression          #binary_expression_subalias
     ;
 
 logical_or_expression
@@ -1419,7 +1447,7 @@ relational_expression
     ;
 
 compound_expression
-    : concatenation
+    : sub_expression
       (NOT? (IN in_elements | BETWEEN between_elements | like_type concatenation like_escape_part?))?
     ;
 relational_operator
@@ -1447,6 +1475,8 @@ in_elements
 between_elements
     : concatenation AND concatenation
     ;
+
+
 
 concatenation
     : additive_expression (concatenation_op additive_expression)*
@@ -1946,7 +1976,11 @@ keep_clause
     ;
 
 function_argument
-    : '(' argument? (',' argument )* ')' keep_clause?
+    : '(' (id_expression '=>')? argument? (',' (id_expression '=>')? argument )* ')' keep_clause?
+    ;
+
+execute_argument
+    : (id_expression '=>')? argument
     ;
 
 function_argument_analytic
@@ -1965,7 +1999,9 @@ respect_or_ignore_nulls
 
 argument
 //    : (id '=' '>')? expression
-    : concatenation
+//    : concatenation
+//    : sub_expression
+    : expression
     ;
 
 type_spec

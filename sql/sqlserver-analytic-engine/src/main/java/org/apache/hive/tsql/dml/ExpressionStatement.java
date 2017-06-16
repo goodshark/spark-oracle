@@ -2,6 +2,7 @@ package org.apache.hive.tsql.dml;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.*;
+import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.util.StrUtils;
 
 import java.io.Serializable;
@@ -17,6 +18,8 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
 
 
     private static final long serialVersionUID = -7592904882343118467L;
+
+    public ExpressionStatement() {}
 
     public ExpressionStatement(ExpressionBean expressionBean) {
         this.expressionBean = expressionBean;
@@ -63,6 +66,12 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                 } else if (children.size() == 1) {
                     OperatorSign operatorSign = expressionBean.getOperatorSign();
                     TreeNode baseStatement = children.get(0);
+                    // full bool expression
+                    if (operatorSign == OperatorSign.COMPLEX_BOOL) {
+                        baseStatement.execute();
+                        boolean bool = ((LogicNode) baseStatement).getBool();
+                        return new Var("bool result", bool, Var.DataType.BOOLEAN);
+                    }
                     //baseStatement.setExecSession(getExecSession());
                     baseStatement.execute();
                     Var childrenVar = (Var) baseStatement.getRs().getObject(0);
@@ -153,7 +162,9 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                         case XOR:
                             var = leftChildrenVar.operatorXor(rightChildrenVar);
                             break;
-
+                        case CONCAT:
+                            var = leftChildrenVar.operatorConcat(rightChildrenVar);
+                            break;
                     }
                     return var;
                 }
@@ -190,7 +201,7 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
          * @return
          * @throws SQLException
          */
-        private Var variableComputer(Var var) throws Exception {
+        /*private Var variableComputer(Var var) throws Exception {
             if (var == null || var.getDataType() != Var.DataType.VAR) {
                 return Var.Null;
             }
@@ -210,14 +221,16 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                 return var;
             }
             if (var.getValueType() == Var.ValueType.EXPRESSION) {
-                BaseStatement baseStatement = (BaseStatement) var.getExpr();
-                //baseStatement.setExecSession(getExecSession());
+                TreeNode baseStatement = var.getExpr();
+                if (baseStatement == null)
+                    return var;
+                baseStatement.setExecSession(getExecSession());
                 baseStatement.execute();
                 Var baseVar = (Var) baseStatement.getRs().getObject(0);
                 var.setVarValue(baseVar.getVarValue());
             }
             return var;
-        }
+        }*/
 
 
     }
@@ -235,4 +248,112 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
         this.expressionBean = expressionBean;
     }
 
+    private Var variableComputer(Var var) throws Exception {
+        if (var == null || var.getDataType() != Var.DataType.VAR) {
+            return Var.Null;
+        }
+        String varName = var.getVarName();
+
+        //两个@表示系统变量，一个@表示普通变量
+        if (varName.indexOf("@@") != -1) {
+            var = findSystemVar(varName);
+        } else {
+            var = findVar(varName);
+        }
+        if (null == var) {
+            return Var.Null;
+        }
+        //如果计算过，直接取值
+        if (var.isExecuted()) {
+            return var;
+        }
+        if (var.getValueType() == Var.ValueType.EXPRESSION) {
+            TreeNode baseStatement = var.getExpr();
+            if (baseStatement == null)
+                return var;
+            baseStatement.setExecSession(getExecSession());
+            baseStatement.execute();
+            Var baseVar = (Var) baseStatement.getRs().getObject(0);
+            var.setVarValue(baseVar.getVarValue());
+        }
+        return var;
+    }
+
+    @Override
+    public String getSql() {
+        String sql = super.getSql();
+        if (sql != null)
+            return sql;
+        List<TreeNode> childs = getChildrenNodes();
+        OperatorSign sign = expressionBean.getOperatorSign();
+        if (childs.size() == 0) {
+            sql = expressionBean.getVar().getSql();
+        } else if (childs.size() == 1) {
+            ExpressionStatement es = (ExpressionStatement) childs.get(0);
+            String varSql = es.getSql();
+            if (sign == OperatorSign.BRACKET)
+                sql = " ( " + varSql + " ) ";
+            sql = sign.getOperator() + varSql;
+        } else if (childs.size() == 2) {
+            ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
+            ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
+            sql = leftEs.getSql() + " " + sign.getOperator() + " " + rightEs.getSql();
+        }
+        super.setSql(sql);
+        return sql;
+    }
+
+    public String getOriginalSql() {
+        String sql = super.getSql();
+        if (sql != null)
+            return sql;
+        List<TreeNode> childs = getChildrenNodes();
+        OperatorSign sign = expressionBean.getOperatorSign();
+        if (childs.size() == 0) {
+            sql = expressionBean.getVar().getOriginalSql();
+        } else if (childs.size() == 1) {
+            ExpressionStatement es = (ExpressionStatement) childs.get(0);
+            String varSql = es.getOriginalSql();
+            if (sign == OperatorSign.BRACKET)
+                sql = " ( " + varSql + " ) ";
+            sql = sign.getOperator() + varSql;
+        } else if (childs.size() == 2) {
+            ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
+            ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
+            sql = leftEs.getOriginalSql() + " " + sign.getOperator() + " " + rightEs.getOriginalSql();
+        }
+        super.setSql(sql);
+        return sql;
+    }
+
+    @Override
+    public String getFinalSql() throws Exception {
+        String sql = "";
+        List<TreeNode> childs = getChildrenNodes();
+        OperatorSign sign = expressionBean.getOperatorSign();
+        if (childs.size() == 0) {
+            Var singleVar = expressionBean.getVar();
+            if (singleVar.getDataType() == Var.DataType.VAR) {
+                Var finalVar = variableComputer(singleVar);
+                if (finalVar != null && finalVar.getDataType() != Var.DataType.NULL) {
+                    sql = finalVar.getFinalSql();
+                } else {
+                    sql = singleVar.getFinalSql();
+                }
+            } else {
+                sql = singleVar.getFinalSql();
+            }
+        } else if (childs.size() == 1) {
+            ExpressionStatement es = (ExpressionStatement) childs.get(0);
+            String varSql = es.getFinalSql();
+            if (sign == OperatorSign.BRACKET)
+                sql = " ( " + varSql + " ) ";
+            sql = sign.getOperator() + varSql;
+        } else if (childs.size() == 2) {
+            ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
+            ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
+            sql = leftEs.getFinalSql() + " " + sign.getOperator() + " " + rightEs.getFinalSql();
+        }
+        return sql;
+    }
 }
