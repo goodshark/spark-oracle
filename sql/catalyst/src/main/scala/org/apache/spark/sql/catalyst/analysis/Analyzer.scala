@@ -75,8 +75,6 @@ class Analyzer(
   val extendedResolutionRules: Seq[Rule[LogicalPlan]] = Nil
 
   lazy val batches: Seq[Batch] = Seq(
-    Batch("ScalaSubquery", Once,
-      AliasScalaSubquery),
     Batch("Substitution", fixedPoint,
       CTESubstitution,
       WindowsSubstitution,
@@ -107,13 +105,13 @@ class Analyzer(
         ResolveNaturalAndUsingJoin ::
         ExtractWindowExpressions ::
         GlobalAggregates ::
+        GroupingScalaSubquery::
         ResolveAggregateFunctions ::
         TimeWindowing ::
         ResolveInlineTables ::
         TypeCoercion.typeCoercionRules ++
           extendedResolutionRules : _*),
     Batch("Nondeterministic", Once,
-      GroupingScalaSubquery,
       PullOutNondeterministic),
     Batch("UDF", Once,
       HandleNullInputsForUDF),
@@ -186,40 +184,37 @@ class Analyzer(
     }
   }
 
+  object GroupingScalaSubquery extends Rule[LogicalPlan] {
 
-  /**
-    * haha
-    */
-  object AliasScalaSubquery extends Rule[LogicalPlan] {
-    def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators  {
-      case p =>
-        p.transformExpressionsUp {
-          case a @ Alias(_: ScalarSubquery, _) => a
-          case s: ScalarSubquery => Alias( s, "scalasubquery_" + NamedExpression.newExprId.id)()
+    def apply(plan: LogicalPlan): LogicalPlan = {
+      val subqueriesAlias = ArrayBuffer.empty[NamedExpression]
+      if ( plan.resolved && plan.isInstanceOf[Aggregate]) {
+        plan.transformAllExpressions {
+          case a @ Alias( ss : ScalarSubquery, _) if ss.children.nonEmpty =>
+            subqueriesAlias += a.toAttribute
+            a
+        }
+      }
+      if ( subqueriesAlias.isEmpty ) {
+        // need not reslove any more .
+        plan
+      } else {
+        plan resolveOperators {
+          case agg @ Aggregate( grouping, aggExpr, child ) =>
+            val extrAttr: Seq[NamedExpression] = aggExpr.collect {
+              case e: Attribute if !grouping.exists(_.semanticEquals(e))=> e.asInstanceOf[NamedExpression]
+            }
+            if ( extrAttr.isEmpty ) {
+              plan
+            } else {
+              val attrInSubQuery: Seq[NamedExpression] = extrAttr.collect {
+                case expr if subqueriesAlias.exists(_.semanticEquals(expr)) => expr
+              }
+              Aggregate(grouping ++ attrInSubQuery, aggExpr, child)
+            }
           case o => o
         }
-    }
-  }
-  object GroupingScalaSubquery extends Rule[LogicalPlan] {
-    def isExist( alias: String, grouping: Seq[Expression] ): Boolean = {
-      grouping.exists {
-        case expr: UnresolvedAttribute => expr.name.equals(alias)
-        case _ => false
       }
-    }
-    def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators  {
-      case p @ Aggregate(grouping, agg, child) =>
-        val scalaqueryAlias : Seq[Expression] = agg.flatMap { expr =>
-          expr.collect[Expression] {
-            case a @ Alias( _: ScalarSubquery, aname) if !isExist(aname, grouping) =>  a
-          }
-        }
-        if ( scalaqueryAlias.nonEmpty ) {
-          Aggregate( grouping ++ scalaqueryAlias, agg, child )
-        } else {
-          p
-        }
-      case o => o
     }
   }
 
