@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.ddl;
 
+import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.dbservice.ProcService;
 import org.apache.hive.tsql.func.Procedure;
@@ -9,7 +10,7 @@ import org.apache.hive.tsql.func.Procedure;
  */
 public class CreateProcedureStatement extends BaseStatement {
     private static final String STATEMENT_NAME = "_CSP_";
-    private Procedure function;
+    private CommonProcedureStatement function;
 
     public enum Action {
         CREATE,ALTER
@@ -17,7 +18,7 @@ public class CreateProcedureStatement extends BaseStatement {
 
     private Action action;
 
-    public CreateProcedureStatement(Procedure function,Action action) {
+    public CreateProcedureStatement(CommonProcedureStatement function, Action action) {
         super(STATEMENT_NAME);
         this.function = function;
         this.action=action;
@@ -25,7 +26,11 @@ public class CreateProcedureStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
-
+        // oracle procedure can be created in block
+        if (getExecSession().getCurrentScope() != null) {
+            addFunc(function);
+            return 0;
+        }
         switch (action){
             case CREATE:
                 /**
