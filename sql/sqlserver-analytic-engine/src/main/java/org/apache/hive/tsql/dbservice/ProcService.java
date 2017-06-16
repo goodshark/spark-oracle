@@ -1,6 +1,7 @@
 package org.apache.hive.tsql.dbservice;
 
 
+import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.spark.sql.SparkSession;
@@ -39,7 +40,7 @@ public class ProcService {
         password = sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD);
     }
 
-    public int createProc(Procedure procedure) throws Exception {
+    public int createProc(CommonProcedureStatement procedure) throws Exception {
         String procName = procedure.getName().getFullFuncName();
         int count = getCountByName(procName);
         LOG.info("count is ===>" + count);
