@@ -1281,6 +1281,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
                 if (currentChar == '\'') {
                     enclosure = currentChar;
                     sb.append('\'');
+                } else {
+                    sb.append(currentChar);
                 }
             } else if (enclosure == currentChar) {
                 if (currentChar == '\'' && (i + 2) < strLength) {
@@ -1341,7 +1343,8 @@ public class TExec extends TSqlBaseVisitor<Object> {
         if (procFlag && ctx.crud_table() == null) {
             String column = columnDefs.contains(",") ? columnDefs.split(",")[0] : columnDefs;
             column = column.split(" ")[0];
-            createTableStatement.setCrudStr(String.format(Common.crudStr, column));
+            String crudStr = Common.crudStr.replaceAll(Common.CLUSTER_BY_COL_NAME, StrUtils.addBackQuote(column));
+            createTableStatement.setCrudStr(crudStr);
         }
         if (null != ctx.ON() || null != ctx.TEXTIMAGE_ON()) {
             addException(" filegroup", locate(ctx));
