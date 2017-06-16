@@ -89,6 +89,14 @@ public abstract class TreeNode implements Serializable {
         return sql;
     }
 
+    public String getOriginalSql() {
+        return "";
+    }
+
+    public String getFinalSql() throws Exception {
+        return "";
+    }
+
     public void setSql(String sql) {
         this.sql = sql;
     }

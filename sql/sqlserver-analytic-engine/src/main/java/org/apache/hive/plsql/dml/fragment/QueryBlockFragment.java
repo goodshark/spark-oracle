@@ -80,7 +80,12 @@ public class QueryBlockFragment extends SqlStatement {
         }
         if (fromClause != null) {
             fromClause.setExecSession(getExecSession());
-            sb.append(fromClause.getFinalSql());
+            sb.append(fromClause.getFinalSql()).append(" ");
+        }
+
+        if (whereClause != null) {
+            whereClause.setExecSession(getExecSession());
+            sb.append(whereClause.getFinalSql()).append(" ");
         }
         return sb.toString();
     }

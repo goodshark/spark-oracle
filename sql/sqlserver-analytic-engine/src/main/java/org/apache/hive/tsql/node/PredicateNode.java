@@ -1,10 +1,7 @@
 package org.apache.hive.tsql.node;
 
 import org.apache.hive.tsql.arg.Var;
-import org.apache.hive.tsql.common.BaseStatement;
-import org.apache.hive.tsql.common.ColumnDataType;
-import org.apache.hive.tsql.common.SparkResultSet;
-import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.exception.CompareException;
 import org.apache.hive.tsql.exception.WrongArgNumberException;
 import org.apache.hive.tsql.util.StrUtils;
@@ -129,10 +126,10 @@ public class PredicateNode extends LogicNode {
     private boolean compareExists(boolean exec) throws Exception {
         if (exprList.size() != 1)
             return false;
-        BaseStatement expr = (BaseStatement) exprList.get(0);
+        SqlStatement expr = (SqlStatement) exprList.get(0);
 
         if (!exec) {
-            predicateStr = "EXISTS (" + expr.getSql() + " ) ";
+            predicateStr = "EXISTS (" + expr.getFinalSql() + " ) ";
             return true;
         }
 
@@ -160,7 +157,7 @@ public class PredicateNode extends LogicNode {
         TreeNode leftExpr = exprList.get(0);
         TreeNode rightExpr = exprList.get(1);
         if (!exec) {
-            predicateStr = leftExpr.getSql() + " " + origialOp + " " + rightExpr.getSql();
+            predicateStr = leftExpr.getFinalSql() + " " + origialOp + " " + rightExpr.getFinalSql();
             return true;
         }
         leftExpr.execute();
@@ -253,8 +250,8 @@ public class PredicateNode extends LogicNode {
     private boolean compareAll(boolean exec) throws Exception {
         if (exprList.size() != 2)
             throw new WrongArgNumberException("compare ALL");
-        BaseStatement leftExpr = (BaseStatement) exprList.get(0);
-        BaseStatement rightExpr = (BaseStatement) exprList.get(1);
+        SqlStatement leftExpr = (SqlStatement) exprList.get(0);
+        SqlStatement rightExpr = (SqlStatement) exprList.get(1);
 
         if (!exec) {
             predicateStr = leftExpr.getSql() + " " + origialOp + " ALL (" + rightExpr.getSql() + ")";
@@ -279,8 +276,8 @@ public class PredicateNode extends LogicNode {
     private boolean compareSome(boolean exec) throws Exception {
         if (exprList.size() != 2)
             return false;
-        BaseStatement leftExpr = (BaseStatement) exprList.get(0);
-        BaseStatement rightExpr = (BaseStatement) exprList.get(1);
+        SqlStatement leftExpr = (SqlStatement) exprList.get(0);
+        SqlStatement rightExpr = (SqlStatement) exprList.get(1);
         if (!exec) {
             predicateStr = leftExpr.getSql() + " " + origialOp + " SOME (" + rightExpr.getSql() + ")";
             return true;
@@ -303,8 +300,8 @@ public class PredicateNode extends LogicNode {
     private boolean compareAny(boolean exec) throws Exception {
         if (exprList.size() != 2)
             return false;
-        BaseStatement leftExpr = (BaseStatement) exprList.get(0);
-        BaseStatement rightExpr = (BaseStatement) exprList.get(1);
+        SqlStatement leftExpr = (SqlStatement) exprList.get(0);
+        SqlStatement rightExpr = (SqlStatement) exprList.get(1);
         if (!exec) {
             predicateStr = leftExpr.getSql() + " " + origialOp + " ANY (" + rightExpr.getSql() + ")";
             return true;
@@ -372,12 +369,12 @@ public class PredicateNode extends LogicNode {
     private boolean compareIn(boolean exec) throws Exception {
         if (exprList.size() != 2)
             return false;
-        BaseStatement leftExpr = (BaseStatement) exprList.get(0);
-        BaseStatement rightExpr = (BaseStatement) exprList.get(1);
+        SqlStatement leftExpr = (SqlStatement) exprList.get(0);
+        SqlStatement rightExpr = (SqlStatement) exprList.get(1);
 
         if (!exec) {
             String not = notComp ? " NOT" : "";
-            predicateStr = leftExpr.getSql() + not + " IN " + "(" + rightExpr.getSql() + ")";
+            predicateStr = leftExpr.getFinalSql() + not + " IN " + "(" + rightExpr.getFinalSql() + ")";
             return true;
         }
 
@@ -481,7 +478,7 @@ public class PredicateNode extends LogicNode {
         TreeNode expr = exprList.get(0);
         if (!exec) {
             String not = notComp ? " NOT" : "";
-            predicateStr = expr.getSql() + " IS" + not + " NULL ";
+            predicateStr = expr.getFinalSql() + " IS" + not + " NULL ";
             return true;
         }
 
@@ -509,7 +506,7 @@ public class PredicateNode extends LogicNode {
 
         if (!exec) {
             String not = notComp ? " NOT" : "";
-            predicateStr = strExpr.getSql() + not + " LIKE " + patternStrExpr.getSql();
+            predicateStr = strExpr.getFinalSql() + not + " LIKE " + patternStrExpr.getFinalSql();
             if (escapeStrExpr != null)
                 predicateStr += " ESCAPE " + escapeStrExpr.getSql();
             return true;
@@ -681,5 +678,21 @@ public class PredicateNode extends LogicNode {
             return null;
         }
         return predicateStr;
+    }
+
+    // compatible with ExpressionStatement
+    @Override
+    public String getSql() {
+        return toString();
+    }
+
+    @Override
+    public String getOriginalSql() {
+        return toString();
+    }
+
+    @Override
+    public String getFinalSql() throws Exception {
+        return toString();
     }
 }

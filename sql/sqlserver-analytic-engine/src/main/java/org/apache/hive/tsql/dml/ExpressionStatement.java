@@ -19,6 +19,8 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
 
     private static final long serialVersionUID = -7592904882343118467L;
 
+    public ExpressionStatement() {}
+
     public ExpressionStatement(ExpressionBean expressionBean) {
         this.expressionBean = expressionBean;
     }
