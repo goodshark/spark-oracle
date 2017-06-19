@@ -157,8 +157,9 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitType_spec(PlsqlParser.Type_specContext ctx) {
         String typeName = "";
         if (ctx.datatype() != null) {
-            // receive from native_datatype_element
-            typeName = (String) visit(ctx.datatype());
+            // receive from native_datatype_element only, abandon precision_part
+//            typeName = (String) visit(ctx.datatype());
+            typeName = (String) visitNative_datatype_element(ctx.datatype().native_datatype_element());
         }
         switch (typeName.toUpperCase()) {
             case "BINARY_INTEGER":
