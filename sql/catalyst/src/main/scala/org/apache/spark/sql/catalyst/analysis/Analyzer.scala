@@ -633,9 +633,7 @@ class Analyzer(
           // an exception from tableExists if the database does not exist.
           u
         } else {
-          val rs = lookupTableFromCatalog(u)
-          logWarning(s"ResolveRelations logicalPlan is ${rs.treeString}")
-          rs
+          lookupTableFromCatalog(u)
         }
     }
   }
