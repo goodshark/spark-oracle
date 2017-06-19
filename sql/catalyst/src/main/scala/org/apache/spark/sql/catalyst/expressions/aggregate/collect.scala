@@ -26,7 +26,6 @@ import org.apache.spark.unsafe.types.UTF8String
 
 import scala.collection.generic.Growable
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 /**
   * The Collect aggregate function collects all seen expression values into a list of values.
@@ -186,102 +185,42 @@ case class CollectGroupXMLPath(
 
   protected[this] val strbuffer: StringBuilder = new StringBuilder
 
-  private val columnNames: ListBuffer[String] = new ListBuffer[String]
+  private var columnNames: Seq[(String, String)] = Seq.fill(cols.length)(("", ""))
 
-  def initialize(b: InternalRow, inputAttributes: Seq[Attribute],
-                 groupAttributes: Seq[Attribute]): Unit = {
-    val groupColumns: ListBuffer[String] = new ListBuffer[String]
-    if (groupColumns.length == 0) {
-      groupAttributes.map(attr => {
-        groupColumns += attr.name
-      })
-    }
+  private var rootSpec = ("<ROOT>", "</ROOT>")
+  private var rowSpec = ("<ROW>", "</ROW>")
 
-    val isIf = cols(0).isInstanceOf[If]
-
-    val inputOverflow = inputAttributes.length > (cols.length - 2)
-    if (columnNames.length == 0) {
-      { if (inputOverflow) {
-        val withoutIf = inputAttributes.filterNot(input => groupColumns.contains(input.name))
-        if (isIf) {
-          withoutIf.filter(!_.name.equals("gid"))
-        } else {
-          withoutIf
-        }
-
-      } else {
-        inputAttributes
-      }
-      }.map(attr => {
-        columnNames += {
-          val index = attr.name.indexOf(".")
-          if (-1 != index) {
-            val colName = attr.name.substring(index + 2, attr.name.length - 1)
-            if (colName.indexOf(",") == -1) {
-              colName
-            } else {
-              ""
-            }
-          } else {
-            attr.name
-          }
-        }
-
-      })
-
-
-    }
-    initialize(b)
-  }
-
-  val rootLabel = cols(cols.length - 1).toString.trim
 
   override def initialize(b: InternalRow): Unit = {
     buffer.clear()
 
     strbuffer.clear()
 
-    if (rootLabel.length > 0) {
-      strbuffer.append("<").append(rootLabel).append(">")
+    initializeColNames
+
+    strbuffer.append(rootSpec._1)
+  }
+  private def initializeColNames = {
+    cols.last match {
+      case Literal(v, d)  if d.isInstanceOf[ArrayType] =>
+        val av = v.asInstanceOf[GenericArrayData]
+        val names = av.array.map( _.toString.trim )
+        val namepair = names.map(e => if ( e.length > 0 ) (s"<$e>", s"</$e>") else ("", "")).toSeq
+        rootSpec = namepair(0)
+        rowSpec = namepair(1)
+        columnNames = namepair.slice(2, namepair.length)
+      case _ =>
     }
   }
 
   override def update(b: InternalRow, input: InternalRow): Unit = {
-    //scalastyle:off
-    val colsLen = cols.length
-
-    val rowLabel = cols(colsLen - 2).toString.trim
-    val hasRowLabel = rowLabel.length > 0
-    if (hasRowLabel) {
-      strbuffer.append("<").append(rowLabel).append(">")
+    strbuffer.append(rowSpec._1)
+    for( i <- 0 to ( cols.length - 2) ) {
+      strbuffer.append(columnNames(i)._1)
+        .append(cols(i).eval(input))
+        .append(columnNames(i)._2)
     }
-
-    for (i <- 0 to (columnNames.length -1)) {
-      cols(i) match {
-        case col: BoundReference  => {
-          buildXml(input, i, col)
-        }
-        case col: If  => {
-          buildXml(input, i, col)
-      }
-        case _ => strbuffer.append(cols(i).eval(input))
-      }
-    }
-    if (hasRowLabel) {
-      strbuffer.append("</").append(rowLabel).append(">")
-    }
-
-  }
-
-
-  private def buildXml(input: InternalRow, i: Int, col: Expression) = {
-    if (columnNames(i).length > 0) {
-      strbuffer.append("<").append(columnNames(i)).append(">")
-    }
-    strbuffer.append(col.eval(input))
-    if (columnNames(i).length > 0) {
-      strbuffer.append("</").append(columnNames(i)).append(">")
-    }
+    strbuffer.append(rowSpec._2)
   }
 
   override def merge(buffer: InternalRow, input: InternalRow): Unit = {
@@ -289,10 +228,7 @@ case class CollectGroupXMLPath(
   }
 
   override def eval(input: InternalRow): Any = {
-    if (rootLabel.length > 0) {
-      strbuffer.append("</").append(rootLabel).append(">")
-    }
-
+    strbuffer.append(rootSpec._2)
     UTF8String.fromString(strbuffer.toString())
   }
 }
