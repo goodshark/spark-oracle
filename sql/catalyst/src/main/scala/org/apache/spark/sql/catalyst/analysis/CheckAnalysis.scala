@@ -25,6 +25,7 @@ import org.apache.spark.sql.catalyst.plans.UsingJoin
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.types._
 
+
 /**
  * Throws user facing errors when passed invalid queries that fail to analyze.
  */
@@ -248,7 +249,8 @@ trait CheckAnalysis extends PredicateHelper {
                     "Add to group by or wrap in first() (or first_value) if you don't care " +
                     "which value you get.")
               case e if groupingExprs.exists(_.semanticEquals(e)) => // OK
-              case e: ScalarSubquery => // OK , we do not check ScalaSubquery, as we consider it as Constant.
+              // OK , we do not check ScalaSubquery, as we consider it as Constant.
+              case e: ScalarSubquery => //ok
               case e => e.children.foreach(checkValidAggregateExpression)
             }
 
@@ -331,16 +333,34 @@ trait CheckAnalysis extends PredicateHelper {
         }
 
         operator match {
-          case o if o.children.nonEmpty && o.missingInput.nonEmpty =>
-            val missingAttributes = o.missingInput.mkString(",")
-            val input = o.inputSet.mkString(",")
-            val withoutXml = o.missingInput.filterNot(attr =>
-                              attr.name.equalsIgnoreCase("xml_path_result_column"))
+          case agg @ Aggregate(grouping, aggExpr, _) if agg.missingInput.nonEmpty =>
+            val subqueriesAlias: Seq[Attribute] = aggExpr.flatMap { expr =>
+              expr.flatMap {
+                case a @ ScalarSubquery(splan, children, _) if children.nonEmpty =>
+                  val childAttr: Seq[Expression] = children.flatMap { ex =>
+                    ex.collect[Attribute] {
+                      case t : AttributeReference => t
+                    }
+                  }
+                  splan.output
+                case _ => Nil
+              }
+            }
+            val withoutXml = agg.missingInput.filterNot( expr =>
+              subqueriesAlias.exists(_.semanticEquals(expr)))
             if (withoutXml.size > 0) {
+              val missingAttributes = agg.missingInput.mkString(",")
+              val input = agg.inputSet.mkString(",")
               failAnalysis(
                 s"resolved attribute(s) $missingAttributes missing from $input " +
                   s"in operator ${operator.simpleString}, withoutXml $withoutXml")
             }
+          case o if o.children.nonEmpty && o.missingInput.nonEmpty =>
+            val missingAttributes = o.missingInput.mkString(",")
+            val input = o.inputSet.mkString(",")
+              failAnalysis(
+                s"resolved attribute(s) $missingAttributes missing from $input " +
+                  s"in operator ${operator.simpleString}")
 
 
           case p @ Project(exprs, _) if containsMultipleGenerators(exprs) =>

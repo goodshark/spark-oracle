@@ -289,25 +289,9 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
 
     // For Xml
     val withFor = withLimit.optional(for_clause) {
-      val xmlElemNames = {
-        val prjList = withOrder match {
-          case Project(projectList, _) => projectList
-          case Sort(_, _, child) => child.asInstanceOf[Project].projectList
-          case Distinct(child) => child.asInstanceOf[Project].projectList
-        }
-        val xmlOutputs = prjList.map(nameExpr => {
-          nameExpr match {
-            case UnresolvedAttribute(nameParts) => nameParts(0)
-            case Alias(_, name) => name
-            case UnresolvedAlias(_, _) => ""
-            case UnresolvedStar(_) => "*"
-          }
-        })
-        xmlOutputs
-      }
 
       ForClause(visitFor_clause(for_clause()), withLimit,
-        Seq(UnresolvedAttribute(Seq("xml_path_result_column")).toAttribute), xmlElemNames)
+        Seq(UnresolvedAttribute(Seq("xml_path_result_column")).toAttribute), Seq.empty[String])
     }
 
     withFor
