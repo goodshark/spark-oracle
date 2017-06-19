@@ -72,7 +72,19 @@ public class LogicNode extends TreeNode {
             return 0;
         }
 
+        // short path
         left.execute();
+        if (left.getBool()) {
+            setBool(true);
+        } else {
+            right.execute();
+            if (right.getBool())
+                setBool(true);
+            else
+                setBool(false);
+        }
+        return 0;
+        /*left.execute();
         right.execute();
         if (left.getBool() || right.getBool()) {
             setBool(true);
@@ -80,10 +92,10 @@ public class LogicNode extends TreeNode {
         } else {
             setBool(false);
             return 0;
-        }
+        }*/
     }
 
-    private int executeAnd(List<TreeNode> list, boolean exec) throws Exception{
+    private int executeAnd(List<TreeNode> list, boolean exec) throws Exception {
         if (list.size() != 2)
             return -1;
         LogicNode left = (LogicNode) list.get(0);
@@ -94,7 +106,19 @@ public class LogicNode extends TreeNode {
             return 0;
         }
 
+        // short path
         left.execute();
+        if (!left.getBool()) {
+            setBool(false);
+        } else {
+            right.execute();
+            if (right.getBool())
+                setBool(true);
+            else
+                setBool(false);
+        }
+        return 0;
+        /*left.execute();
         right.execute();
         if (left.getBool() && right.getBool()) {
             setBool(true);
@@ -102,7 +126,7 @@ public class LogicNode extends TreeNode {
         } else {
             setBool(false);
             return 0;
-        }
+        }*/
     }
 
     private int executeNot(List<TreeNode> list, boolean exec)  throws Exception {
