@@ -747,7 +747,7 @@ class Analyzer(
 
       case p @ ForClause( forClauseDetail, child, _, colnames) if !p.analyzed && child.resolved =>
         val isDistinct = child.isInstanceOf[Distinct]
-        val sRoot = if ( forClauseDetail.forXmlClause.hasRoot ) "ROOT" else ""
+        val sRoot = if ( forClauseDetail.forXmlClause.hasRoot ) "root" else ""
         var sRow = forClauseDetail.forXmlClause.rowLabel
         val outs = child.output ++ Seq( Literal(Array(sRoot, sRow) ++ colnames))
         val xmlfunc = CollectGroupXMLPath( outs )

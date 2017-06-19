@@ -454,20 +454,21 @@ private[hive] class SparkHiveWriterContainer(
   private def buildOutputData(insertPositions: Array[Int],
                               dataTypes: ListBuffer[DataType],
                               wrappers: Array[(Any) => Any], row: InternalRow, i: Int) = {
-    if (row.isNullAt(i)) {
-      null
-    } else {
+//    if (row.isNullAt(i)) {
+//      null
+//    } else {
       if (insertPositions.isEmpty) {
         wrappers(i)(row.get(i, dataTypes(i)))
       } else {
         val columnIndex = getInsertIndex(i, insertPositions)
+
         if (-1 == columnIndex) {
           null
         } else {
           wrappers(i)(row.get(columnIndex, dataTypes(i)))
         }
       }
-    }
+//    }
   }
 
   def getInsertIndex(index: Int, positions: Array[Int]): Int = {

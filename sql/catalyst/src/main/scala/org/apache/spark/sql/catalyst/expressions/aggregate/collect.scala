@@ -187,8 +187,8 @@ case class CollectGroupXMLPath(
 
   private var columnNames: Seq[(String, String)] = Seq.fill(cols.length)(("", ""))
 
-  private var rootSpec = ("<ROOT>", "</ROOT>")
-  private var rowSpec = ("<ROW>", "</ROW>")
+  private var rootSpec = ("<root>", "</root>")
+  private var rowSpec = ("<row>", "</row>")
 
 
   override def initialize(b: InternalRow): Unit = {
