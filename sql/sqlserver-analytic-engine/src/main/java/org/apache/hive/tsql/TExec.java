@@ -4024,6 +4024,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         subqueryStatement.setSql(visitSelect_statement(ctx.select_statement()).getSql());
         addNode(subqueryStatement);
         pushStatement(subqueryStatement);
+        limitSql = "";
         return subqueryStatement;
     }
 
