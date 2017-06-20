@@ -21,7 +21,6 @@ import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.catalog.SimpleCatalogRelation
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
-import org.apache.spark.sql.catalyst.plans.UsingJoin
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.types._
 
@@ -250,7 +249,7 @@ trait CheckAnalysis extends PredicateHelper {
                     "which value you get.")
               case e if groupingExprs.exists(_.semanticEquals(e)) => // OK
               // OK , we do not check ScalaSubquery, as we consider it as Constant.
-              case e: ScalarSubquery => //ok
+              case e: ScalarSubquery => // ok
               case e => e.children.foreach(checkValidAggregateExpression)
             }
 
@@ -404,7 +403,7 @@ trait CheckAnalysis extends PredicateHelper {
 
           // TODO: We need to consolidate this kind of checks for InsertIntoTable
           // with the rule of PreWriteCheck defined in extendedCheckRules.
-          case InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _,_) =>
+          case InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _, _) =>
             failAnalysis(
               s"""
                  |Hive support is required to insert into the following tables:

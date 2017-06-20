@@ -21,6 +21,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.types._
+import org.apache.spark.internal.Logging
 
 // scalastyle:off line.size.limit
 @ExpressionDescription(
@@ -249,7 +250,7 @@ case class CaseWhen(
 case class CaseWhenCodegen(
     val branches: Seq[(Expression, Expression)],
     val elseValue: Option[Expression] = None)
-  extends CaseWhenBase(branches, elseValue) with Serializable {
+  extends CaseWhenBase(branches, elseValue) with Serializable with Logging  {
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     // Generate code that looks like:
@@ -270,10 +271,20 @@ case class CaseWhenCodegen(
     //     }
     //   }
     // }
-    val cases = branches.map { case (condExpr, valueExpr) =>
-      val cond = condExpr.genCode(ctx)
-      val res = valueExpr.genCode(ctx)
-      s"""
+
+    logWarning(this.getClass.getSimpleName + " cache size :" +  ctx.subExprCache.size)
+    ctx.subExprCache.get(this) match {
+      case Some(cached) =>
+ // This expression is repeated which means that the code to evaluate it has already been added
+// as a function before. In that case, we just re-use it.
+        val xev = ev.copy( isNull = cached.isNull, value = cached.value )
+        logWarning("return from cahced :" + xev )
+        xev
+      case _ =>
+        val cases = branches.map { case (condExpr, valueExpr) =>
+          val cond = condExpr.genCode(ctx)
+          val res = valueExpr.genCode(ctx)
+          s"""
         ${cond.code}
         if (!${cond.isNull} && ${cond.value}) {
           ${res.code}
@@ -281,27 +292,33 @@ case class CaseWhenCodegen(
           ${ev.value} = ${res.value};
         }
       """
-    }
+        }
 
-    var generatedCode = cases.mkString("", "\nelse {\n", "\nelse {\n")
+        var generatedCode = cases.mkString("", "\nelse {\n", "\nelse {\n")
 
-    elseValue.foreach { elseExpr =>
-      val res = elseExpr.genCode(ctx)
-      generatedCode +=
-        s"""
+        elseValue.foreach { elseExpr =>
+          val res = elseExpr.genCode(ctx)
+          generatedCode +=
+            s"""
           ${res.code}
           ${ev.isNull} = ${res.isNull};
           ${ev.value} = ${res.value};
         """
-    }
+        }
 
-    generatedCode += "}\n" * cases.size
+        generatedCode += "}\n" * cases.size
 
-    ev.copy(code = s"""
+        val state = SubExprEliminationState(ev.isNull, ev.value)
+        ctx.subExprCache.put(this, state)
+        logWarning("put case when line:" + generatedCode.split("\n").length +
+          " in cache for " + state)
+
+        ev.copy(code = s"""
       boolean ${ev.isNull} = true;
       ${ctx.javaType(dataType)} ${ev.value} = ${ctx.defaultValue(dataType)};
       $generatedCode""")
-  }
+      }
+    }
 }
 
 /** Factory methods for CaseWhen. */
