@@ -644,7 +644,7 @@ valueExpression
     ;
 
 primaryExpression
-    : name=(CURRENT_DATE | CURRENT_TIMESTAMP)                                                  #timeFunctionCall
+    : name=(CURRENT_DATE | CURRENT_TIMESTAMP)('(' ')')?                                        #timeFunctionCall
     | CASE value=expression whenClause+ (ELSE elseExpression=expression)? END                  #simpleCase
     | CASE whenClause+ (ELSE elseExpression=expression)? END                                   #searchedCase
     | CAST '(' expression AS dataType ')'                                                      #cast
