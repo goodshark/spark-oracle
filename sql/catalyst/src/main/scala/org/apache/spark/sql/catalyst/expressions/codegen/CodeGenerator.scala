@@ -226,12 +226,6 @@ class CodegenContext {
   // Foreach expression that is participating in subexpression elimination, the state to use.
   val subExprEliminationExprs = mutable.HashMap.empty[Expression, SubExprEliminationState]
 
-  val subExprCache = mutable.HashMap.empty[Expression, SubExprEliminationState]
-
-  def beginNewExpr: Unit = {
-    subExprCache.clear()
-  }
-
   // The collection of sub-expression result resetting methods that need to be called on each row.
   val subexprFunctions = mutable.ArrayBuffer.empty[String]
 

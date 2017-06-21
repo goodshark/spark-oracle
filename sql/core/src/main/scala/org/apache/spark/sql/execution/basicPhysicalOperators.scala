@@ -63,8 +63,7 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
     val exprs = projectList.map(x =>
       ExpressionCanonicalizer.execute(BindReferences.bindReference(x, child.output)))
     ctx.currentVars = input
-    val resultVars = exprs.map { ex => ctx.beginNewExpr ; ex.genCode(ctx) }
-    // val resultVars = exprs.map(_.genCode(ctx))
+    val resultVars = exprs.map(_.genCode(ctx))
     // Evaluation of non-deterministic expressions can't be deferred.
     val nonDeterministicAttrs = projectList.filterNot(_.deterministic).map(_.toAttribute)
     s"""
