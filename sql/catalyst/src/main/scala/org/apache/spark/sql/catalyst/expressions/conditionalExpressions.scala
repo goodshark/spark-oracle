@@ -252,8 +252,14 @@ case class CaseWhenCodegen(
   extends CaseWhenBase(branches, elseValue) with Serializable {
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
-    if ( this.branches.filter( e => e._1.
-      asInstanceOf[EqualTo].left.isInstanceOf[CaseWhenCodegen] ).length == 0 ) {
+    val findCaseWhenInChild = this.find( p => {
+      if ( p != this && p.isInstanceOf[CaseWhenCodegen] ) {
+        true
+      } else {
+        false
+      }
+    })
+    if ( findCaseWhenInChild.equals(None) ) {
       val expr = this
       val fnName = ctx.freshName("evalExpr")
       val isNull = s"${fnName}IsNull"
