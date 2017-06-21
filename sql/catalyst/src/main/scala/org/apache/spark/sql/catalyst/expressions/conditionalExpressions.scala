@@ -252,6 +252,37 @@ case class CaseWhenCodegen(
   extends CaseWhenBase(branches, elseValue) with Serializable {
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    if ( this.branches.filter( e => e._1.
+      asInstanceOf[EqualTo].left.isInstanceOf[CaseWhenCodegen] ) == 0 ) {
+      val expr = this
+      val fnName = ctx.freshName("evalExpr")
+      val isNull = s"${fnName}IsNull"
+      val value = s"${fnName}Value"
+      val code = generateCode(ctx, ev)
+      val fn =
+        s"""
+           |private void $fnName(InternalRow ${ctx.INPUT_ROW}) {
+           |  ${code.code.trim}
+           |  $isNull = ${code.isNull};
+           |  $value = ${code.value};
+           |}
+           """.stripMargin
+
+      ctx.addNewFunction(fnName, fn)
+      ctx.addMutableState("boolean", isNull, s"$isNull = false;")
+      ctx.addMutableState(ctx.javaType(expr.dataType), value,
+        s"$value = ${ctx.defaultValue(expr.dataType)};")
+
+      ctx.subexprFunctions += s"$fnName(${ctx.INPUT_ROW});"
+      val state = SubExprEliminationState(isNull, value)
+      ctx.subExprEliminationExprs.put(this, state)
+      ExprCode(ctx.registerComment(this.toString), state.isNull, state.value)
+    } else {
+      generateCode(ctx, ev)
+    }
+  }
+
+  def generateCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     // Generate code that looks like:
     //
     // condA = ...
