@@ -299,6 +299,7 @@ object GenerateUnsafeProjection extends CodeGenerator[Seq[Expression], UnsafePro
       ctx: CodegenContext,
       expressions: Seq[Expression],
       useSubexprElimination: Boolean = false): ExprCode = {
+    ctx.generateCaseWhenCode(expressions)
     val exprEvals = ctx.generateExpressions(expressions, useSubexprElimination)
     val exprTypes = expressions.map(_.dataType)
 
@@ -363,7 +364,7 @@ object GenerateUnsafeProjection extends CodeGenerator[Seq[Expression], UnsafePro
       expressions: Seq[Expression],
       subexpressionEliminationEnabled: Boolean): UnsafeProjection = {
     val ctx = newCodeGenContext()
-    val eval = createCode(ctx, expressions, subexpressionEliminationEnabled)
+    val eval = createCode(ctx, expressions, true)
 
     val codeBody = s"""
       public java.lang.Object generate(Object[] references) {

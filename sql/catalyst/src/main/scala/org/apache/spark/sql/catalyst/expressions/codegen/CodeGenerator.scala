@@ -725,15 +725,7 @@ class CodegenContext {
     SubExprCodes(codes, subExprEliminationExprs.toMap)
   }
 
-  /**
-   * Checks and sets up the state and codegen for subexpression elimination. This finds the
-   * common subexpressions, generates the functions that evaluate those expressions and populates
-   * the mapping of common subexpressions to the generated functions.
-   */
-  private def subexpressionElimination(expressions: Seq[Expression]) = {
-    // Add each expression tree and compute the common subexpressions.
-    expressions.foreach(equivalentExpressions.addExprTree(_))
-
+  def generateCaseWhenCode(expressions: Seq[Expression]): Unit = {
     // last CaseWhen node codegen
     expressions.filter( p => p.isInstanceOf[CaseWhenCodegen] ).foreach (e => {
       val findCaseWhenInChild = e.find( p => {
@@ -769,6 +761,16 @@ class CodegenContext {
         ExprCode(registerComment(this.toString), state.isNull, state.value)
       }
     })
+  }
+
+  /**
+   * Checks and sets up the state and codegen for subexpression elimination. This finds the
+   * common subexpressions, generates the functions that evaluate those expressions and populates
+   * the mapping of common subexpressions to the generated functions.
+   */
+  private def subexpressionElimination(expressions: Seq[Expression]) = {
+    // Add each expression tree and compute the common subexpressions.
+    expressions.foreach(equivalentExpressions.addExprTree(_))
 
     // Get all the expressions that appear at least twice and set up the state for subexpression
     // elimination.
