@@ -253,7 +253,7 @@ case class CaseWhenCodegen(
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     if ( this.branches.filter( e => e._1.
-      asInstanceOf[EqualTo].left.isInstanceOf[CaseWhenCodegen] ) == 0 ) {
+      asInstanceOf[EqualTo].left.isInstanceOf[CaseWhenCodegen] ).length == 0 ) {
       val expr = this
       val fnName = ctx.freshName("evalExpr")
       val isNull = s"${fnName}IsNull"
