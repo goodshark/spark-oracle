@@ -226,12 +226,6 @@ class CodegenContext {
   // Foreach expression that is participating in subexpression elimination, the state to use.
   val subExprEliminationExprs = mutable.HashMap.empty[Expression, SubExprEliminationState]
 
-  val subExprCache = mutable.HashMap.empty[Expression, SubExprEliminationState]
-
-  def beginNewExpr: Unit = {
-    subExprCache.clear()
-  }
-
   // The collection of sub-expression result resetting methods that need to be called on each row.
   val subexprFunctions = mutable.ArrayBuffer.empty[String]
 
@@ -739,6 +733,42 @@ class CodegenContext {
   private def subexpressionElimination(expressions: Seq[Expression]) = {
     // Add each expression tree and compute the common subexpressions.
     expressions.foreach(equivalentExpressions.addExprTree(_))
+
+    // last CaseWhen node codegen
+    expressions.filter( p => p.isInstanceOf[CaseWhenCodegen] ).foreach (e => {
+      val findCaseWhenInChild = e.find( p => {
+        if ( p != this && p.isInstanceOf[CaseWhenCodegen] ) {
+          true
+        } else {
+          false
+        }
+      })
+      if ( findCaseWhenInChild.equals(None) && !subExprEliminationExprs.get(e).isDefined) {
+        val expr = this
+        val fnName = freshName("evalExpr")
+        val isNull = s"${fnName}IsNull"
+        val value = s"${fnName}Value"
+        val code = e.genCode(this)
+        val fn =
+          s"""
+             |private void $fnName(InternalRow $INPUT_ROW) {
+             |  ${code.code.trim}
+             |  $isNull = ${code.isNull};
+             |  $value = ${code.value};
+             |}
+           """.stripMargin
+
+        addNewFunction(fnName, fn)
+        addMutableState("boolean", isNull, s"$isNull = false;")
+        addMutableState(javaType(e.dataType), value,
+          s"$value = ${defaultValue(e.dataType)};")
+
+        subexprFunctions += s"$fnName($INPUT_ROW);"
+        val state = SubExprEliminationState(isNull, value)
+        subExprEliminationExprs.put(e, state)
+        ExprCode(registerComment(this.toString), state.isNull, state.value)
+      }
+    })
 
     // Get all the expressions that appear at least twice and set up the state for subexpression
     // elimination.
