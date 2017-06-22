@@ -740,6 +740,8 @@ class CodegenContext {
     // elimination.
     val commonExprs = equivalentExpressions.getAllEquivalentExprs.filter(_.size > 1)
     commonExprs.foreach { e =>
+      val codeLength = e.map(p => p.genCode(this).code.length).mkString(",")
+      print("codeLength ===========================:" + codeLength)
       val expr = e.head
       val fnName = freshName("evalExpr")
       val isNull = s"${fnName}IsNull"

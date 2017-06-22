@@ -265,6 +265,7 @@ case class CaseWhenCodegen(
         val fnName = ctx.freshName("evalExpr")
         val isNull = s"${fnName}IsNull"
         val value = s"${fnName}Value"
+        print("Case When code gen ==============: " + fnName)
         val code = this.generateCode(ctx, ev)
         val fn =
           s"""
@@ -344,13 +345,6 @@ case class CaseWhenCodegen(
       ${ctx.javaType(dataType)} ${ev.value} = ${ctx.defaultValue(dataType)};
       $generatedCode""")
   }
-
-  override def equals(o: Any): Boolean = o match {
-    case other: CaseWhenCodegen => semanticEquals(other)
-    case _ => false
-  }
-
-  override def hashCode: Int = semanticHash()
 
 }
 
