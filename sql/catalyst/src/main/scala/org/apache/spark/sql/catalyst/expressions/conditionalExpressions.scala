@@ -269,6 +269,7 @@ case class CaseWhenCodegen(
         val fn =
           s"""
              |private void $fnName(InternalRow ${ctx.INPUT_ROW}) {
+             |  // case when code re use
              |  ${code.code.trim}
              |  $isNull = ${code.isNull};
              |  $value = ${code.value};
@@ -343,6 +344,14 @@ case class CaseWhenCodegen(
       ${ctx.javaType(dataType)} ${ev.value} = ${ctx.defaultValue(dataType)};
       $generatedCode""")
   }
+
+  override def equals(o: Any): Boolean = o match {
+    case other: CaseWhenCodegen => semanticEquals(other)
+    case _ => false
+  }
+
+  override def hashCode: Int = semanticHash()
+
 }
 
 /** Factory methods for CaseWhen. */
