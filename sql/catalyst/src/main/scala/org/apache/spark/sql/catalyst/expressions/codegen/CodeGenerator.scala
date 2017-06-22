@@ -77,7 +77,7 @@ case class SubExprCodes(codes: Seq[String], states: Map[Expression, SubExprElimi
  * A context for codegen, tracking a list of objects that could be passed into generated Java
  * function.
  */
-class CodegenContext {
+class CodegenContext extends Logging{
 
   /**
    * Holding a list of objects that could be used passed into generated class.
@@ -741,7 +741,7 @@ class CodegenContext {
     val commonExprs = equivalentExpressions.getAllEquivalentExprs.filter(_.size > 1)
     commonExprs.foreach { e =>
       val codeLength = e.map(p => p.genCode(this).code.length).mkString(",")
-      print("codeLength ===========================:" + codeLength)
+      logInfo("codeLength ===========================:" + codeLength)
       val expr = e.head
       val fnName = freshName("evalExpr")
       val isNull = s"${fnName}IsNull"

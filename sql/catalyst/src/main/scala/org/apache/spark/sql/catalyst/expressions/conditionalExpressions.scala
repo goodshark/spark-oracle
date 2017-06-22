@@ -265,12 +265,11 @@ case class CaseWhenCodegen(
         val fnName = ctx.freshName("evalExpr")
         val isNull = s"${fnName}IsNull"
         val value = s"${fnName}Value"
-        print("Case When code gen ==============: " + fnName)
         val code = this.generateCode(ctx, ev)
         val fn =
           s"""
              |private void $fnName(InternalRow ${ctx.INPUT_ROW}) {
-             |  // case when code re use
+             |  // case when code re use ${expr.toString}
              |  ${code.code.trim}
              |  $isNull = ${code.isNull};
              |  $value = ${code.value};
