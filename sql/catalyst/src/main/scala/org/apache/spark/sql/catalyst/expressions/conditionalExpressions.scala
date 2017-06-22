@@ -265,7 +265,7 @@ case class CaseWhenCodegen(
         val fnName = ctx.freshName("evalExpr")
         val isNull = s"${fnName}IsNull"
         val value = s"${fnName}Value"
-        val code = this.genCode(ctx)
+        val code = this.generateCode(ctx, ev)
         val fn =
           s"""
              |private void $fnName(InternalRow ${ctx.INPUT_ROW}) {
