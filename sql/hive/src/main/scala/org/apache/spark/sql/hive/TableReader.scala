@@ -506,41 +506,66 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
 
     val converter = ObjectInspectorConverters.getConverter(rawDeser.getObjectInspector, soi)
 
+    val acidOptionFlag: Boolean = {
+      null != conf && conf.getBoolean(SPARK_TRANSACTION_ACID, false) && (
+        conf.get(OPTION_TYPE).equalsIgnoreCase("1") ||
+          conf.get(OPTION_TYPE).equalsIgnoreCase("2")
+        )
+    }
+
+   /* var count: Integer = 0
+    var currentTime = System.currentTimeMillis()
+    var  rowUseTime: Long = 0
+    var  getFileDataTime: Long = 0
+    var  updateTime: Long = 0 */
     // Map each tuple to a row object
     iterator.map { value =>
+     // count = count + 1
+      // val rowStartTime = System.currentTimeMillis()
       val raw = converter.convert(rawDeser.deserialize(value))
+      // rowUseTime = rowUseTime + (System.currentTimeMillis() - rowStartTime)
       var i = 0
       val length = fieldRefs.length
       while (i < length) {
+        // val getFileDataStartTime = System.currentTimeMillis()
         val fieldValue = soi.getStructFieldData(raw, fieldRefs(i))
+        // val getFileDataEndTime = System.currentTimeMillis()
+        // getFileDataTime = getFileDataTime + (getFileDataEndTime - getFileDataStartTime)
         // logWarning(s" i is $i , fieldValue is ${fieldValue},")
         if (fieldValue == null) {
           mutableRow.setNullAt(fieldOrdinals(i))
         } else {
           unwrappers(i)(fieldValue, mutableRow, fieldOrdinals(i))
         }
+       // updateTime = updateTime + (System.currentTimeMillis() - getFileDataEndTime)
         i += 1
       }
-     /* logWarning(s"filedLength is ${length},SPARK_TRANSACTION_ACID is " +
-        s":${conf.getBoolean(SPARK_TRANSACTION_ACID, false)}" +
-        s", option is =>${conf.get(OPTION_TYPE)}") */
-      if( null!=conf && conf.getBoolean(SPARK_TRANSACTION_ACID, false)) {
-        if (conf.get(OPTION_TYPE).equalsIgnoreCase("1")
-          || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
 
-          val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
-         /* logWarning(s"soi toString  :${soi.toString}")
+      /* if (count == 100000) {
+        logWarning(s" count is ${count} ,rowConverter use time is :$rowUseTime , " +
+          s"getFileDataTime is :${getFileDataTime}, updateTime is:${updateTime}, " +
+          s"iteratorUse :${System.currentTimeMillis()-currentTime}")
+        count = 0
+        currentTime = System.currentTimeMillis()
+        rowUseTime = 0
+        getFileDataTime = 0
+        updateTime = 0
+      } */
+
+      if (acidOptionFlag) {
+
+        val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+        /* logWarning(s"soi toString  :${soi.toString}")
           logWarning(s"vidField :${vidField}")
           logWarning(s"vidFieldName :${vidField.getFieldName}")
           logWarning(s"vidField-ID :${vidField.getFieldID}")
           logWarning(s"getStructFieldData :${soi.getStructFieldData(raw, vidField)}") */
-          val vid = soi.getStructFieldData(raw, vidField).toString
-          // logWarning(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
-          if ( vidIndex != -1) {
-            mutableRow.update(vidIndex, UTF8String.fromString(vid ))
-          } else {
-            logError(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME + " not find in table ")
-          }
+        val vid = soi.getStructFieldData(raw, vidField).toString
+        // logWarning(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
+        if (vidIndex != -1) {
+          mutableRow.update(vidIndex, UTF8String.fromString(vid))
+        } else {
+          logError(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME + " not find in table ")
         }
       }
       mutableRow: InternalRow
