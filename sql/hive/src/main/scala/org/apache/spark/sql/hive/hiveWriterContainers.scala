@@ -398,11 +398,12 @@ private[hive] class SparkHiveWriterContainer(
         transactionId = getTransactionId
         fileSinkConf.setTransactionId(transactionId)
       }
+      val optionType = conf.value.get(OPTION_TYPE)
       val optionFlag: Boolean = {
-        conf.value.get(OPTION_TYPE).equalsIgnoreCase("1") ||
-          conf.value.get(OPTION_TYPE).equalsIgnoreCase("2")
+        optionType.equalsIgnoreCase("1") || optionType.equalsIgnoreCase("2")
       }
-
+      val updateInspector = getUpdateInspector
+      val insertInspector = getInsertInspector
       iterator.foreach {
         row => {
           rows.clear()
@@ -418,18 +419,18 @@ private[hive] class SparkHiveWriterContainer(
             i += 1
           }
 
-          conf.value.get(OPTION_TYPE) match {
+          optionType match {
             case "1" =>
-              getUpdateRecord(bucketId, getUpdateInspector, outPutPath,
-                updateRecordMap, conf.value.get(OPTION_TYPE))
+              getUpdateRecord(bucketId, updateInspector, outPutPath,
+                updateRecordMap, optionType)
               updateRecordMap.get(bucketId).get.update(transactionId, rows)
             case "2" =>
-              getUpdateRecord(bucketId, getUpdateInspector, outPutPath,
-                updateRecordMap, conf.value.get(OPTION_TYPE))
+              getUpdateRecord(bucketId, updateInspector, outPutPath,
+                updateRecordMap, optionType)
               updateRecordMap.get(bucketId).get.delete(transactionId, rows)
             case "0" =>
-              getUpdateRecord(bucketId, getInsertInspector, outPutPath,
-                updateRecordMap, conf.value.get(OPTION_TYPE))
+              getUpdateRecord(bucketId, insertInspector, outPutPath,
+                updateRecordMap, optionType)
               updateRecordMap.get(bucketId).get.insert(transactionId, rows)
             case _ =>
               logError(s" no operation ")

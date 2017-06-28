@@ -512,56 +512,22 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
           conf.get(OPTION_TYPE).equalsIgnoreCase("2")
         )
     }
-
-   /* var count: Integer = 0
-    var currentTime = System.currentTimeMillis()
-    var  rowUseTime: Long = 0
-    var  getFileDataTime: Long = 0
-    var  updateTime: Long = 0 */
-    // Map each tuple to a row object
+    val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
     iterator.map { value =>
-     // count = count + 1
-      // val rowStartTime = System.currentTimeMillis()
       val raw = converter.convert(rawDeser.deserialize(value))
-      // rowUseTime = rowUseTime + (System.currentTimeMillis() - rowStartTime)
       var i = 0
       val length = fieldRefs.length
       while (i < length) {
-        // val getFileDataStartTime = System.currentTimeMillis()
         val fieldValue = soi.getStructFieldData(raw, fieldRefs(i))
-        // val getFileDataEndTime = System.currentTimeMillis()
-        // getFileDataTime = getFileDataTime + (getFileDataEndTime - getFileDataStartTime)
-        // logWarning(s" i is $i , fieldValue is ${fieldValue},")
         if (fieldValue == null) {
           mutableRow.setNullAt(fieldOrdinals(i))
         } else {
           unwrappers(i)(fieldValue, mutableRow, fieldOrdinals(i))
         }
-       // updateTime = updateTime + (System.currentTimeMillis() - getFileDataEndTime)
         i += 1
       }
-
-      /* if (count == 100000) {
-        logWarning(s" count is ${count} ,rowConverter use time is :$rowUseTime , " +
-          s"getFileDataTime is :${getFileDataTime}, updateTime is:${updateTime}, " +
-          s"iteratorUse :${System.currentTimeMillis()-currentTime}")
-        count = 0
-        currentTime = System.currentTimeMillis()
-        rowUseTime = 0
-        getFileDataTime = 0
-        updateTime = 0
-      } */
-
       if (acidOptionFlag) {
-
-        val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
-        /* logWarning(s"soi toString  :${soi.toString}")
-          logWarning(s"vidField :${vidField}")
-          logWarning(s"vidFieldName :${vidField.getFieldName}")
-          logWarning(s"vidField-ID :${vidField.getFieldID}")
-          logWarning(s"getStructFieldData :${soi.getStructFieldData(raw, vidField)}") */
         val vid = soi.getStructFieldData(raw, vidField).toString
-        // logWarning(s"vid is :${vid}, vidFiled is =>${vidField}, vidIndex is ${vidIndex}")
         if (vidIndex != -1) {
           mutableRow.update(vidIndex, UTF8String.fromString(vid))
         } else {
