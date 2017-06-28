@@ -398,10 +398,15 @@ private[hive] class SparkHiveWriterContainer(
         transactionId = getTransactionId
         fileSinkConf.setTransactionId(transactionId)
       }
+      val optionFlag: Boolean = {
+        conf.value.get(OPTION_TYPE).equalsIgnoreCase("1") ||
+          conf.value.get(OPTION_TYPE).equalsIgnoreCase("2")
+      }
+
       iterator.foreach {
         row => {
           rows.clear()
-          val bucketId: Int = rowsAddVid(bucketColumnNames, bucketNumBuckets,
+          val bucketId: Int = rowsAddVid(optionFlag, bucketColumnNames, bucketNumBuckets,
             standardOI, fieldOIs, rows, row)
           var i = 0
           while (i < fieldOIs.length) {
@@ -486,7 +491,8 @@ private[hive] class SparkHiveWriterContainer(
   }
 
 
-  def rowsAddVid(bucketColumnNames: Seq[String],
+  def rowsAddVid(optionFlag: Boolean,
+                 bucketColumnNames: Seq[String],
                  bucketNumber: Int,
                  standardOI: StructObjectInspector,
                  fieldOIs: Array[ObjectInspector],
@@ -494,23 +500,13 @@ private[hive] class SparkHiveWriterContainer(
                  row: InternalRow): Int = {
 
     var bucketId: Int = 0
-    if (conf.value.get(OPTION_TYPE).equalsIgnoreCase("1")
-      || conf.value.get(OPTION_TYPE).equalsIgnoreCase("2")) {
-      // val vidValue = row.getString(fieldOIs.length).toString
-      /* var i: Integer = 0
-       inputSchema.foreach( s => {
-         logInfo(s"row.numFields is ==>${row.numFields}")
-         logInfo(s"inputschema==>: ${s.name}")
-         logInfo(s"i is $i ,values  ===> ${row.getString(i)}")
-         i = i + 1
-       }) */
+    if (optionFlag) {
       val vidValue = row.getString(inputSchema.length-1).toString
       val vidInfo = new util.ArrayList[Object]
       val txnBucketRowId: Array[String] = vidValue.split('^')
       val txnId = new LongWritable(txnBucketRowId(0).trim.toLong)
       val bucketIdWritable = new LongWritable(txnBucketRowId(1).trim.toLong)
       val rowId = new LongWritable(txnBucketRowId(2).trim.toLong)
-
       logDebug(s" vidValue is : $vidValue txnId: $txnId bucketId: $bucketIdWritable ," +
         s"rowId: $rowId age: ${row.getString(1)}")
       vidInfo.add(txnId)
