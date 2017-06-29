@@ -374,7 +374,7 @@ private[hive] class SparkHiveWriterContainer(
           case _ => insertPositions
         }
       }
-      logDebug("Final positions: " + positions.mkString(","))
+      logError("Final positions: " + positions.mkString(","))
       conf.value.set("spark.exe.insert.positions", positions.mkString(","))
       var partitionPath = ""
       if (null != table.tableDesc.getProperties.getProperty("partition_columns") &&
@@ -404,16 +404,19 @@ private[hive] class SparkHiveWriterContainer(
       }
       val updateInspector = getUpdateInspector
       val insertInspector = getInsertInspector
+      val map: Map[Int, Int] = columnMap(insertPositions, fieldOIs.length - 1)
       iterator.foreach {
         row => {
           rows.clear()
           val bucketId: Int = rowsAddVid(optionFlag, bucketColumnNames, bucketNumBuckets,
             standardOI, fieldOIs, rows, row)
+
+
           var i = 0
           while (i < fieldOIs.length) {
 //            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
             outputData(i) = {
-              buildOutputData(positions, dataTypes, wrappers, row, i)
+              buildOutputData(positions.isEmpty, map, dataTypes, wrappers, row, i)
             }
             rows.add(outputData(i))
             i += 1
@@ -443,11 +446,13 @@ private[hive] class SparkHiveWriterContainer(
     } else {
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
       executorSideSetup(context.stageId, context.partitionId, context.attemptNumber)
+      val map: Map[Int, Int] = columnMap(insertPositions, fieldOIs.length - 1)
+
       iterator.foreach { row =>
         var i = 0
         while (i < fieldOIs.length) {
           outputData(i) = {
-            buildOutputData(insertPositions, dataTypes, wrappers, row, i)
+            buildOutputData(insertPositions.isEmpty, map, dataTypes, wrappers, row, i)
           }
           i += 1
         }
@@ -457,17 +462,24 @@ private[hive] class SparkHiveWriterContainer(
     }
   }
 
-  private def buildOutputData(insertPositions: Array[Int],
+  private def columnMap(inserts: Array[Int], total: Int): Map[Int, Int] = {
+    var map: Map[Int, Int] = Map()
+    for (i <- 0 to total) {
+      map += (i -> inserts.indexOf(i))
+    }
+    map
+  }
+
+  private def buildOutputData(isPositionEmpty: Boolean, map: Map[Int, Int],
                               dataTypes: ListBuffer[DataType],
                               wrappers: Array[(Any) => Any], row: InternalRow, i: Int) = {
 //    if (row.isNullAt(i)) {
 //      null
 //    } else {
-      if (insertPositions.isEmpty) {
+      if (isPositionEmpty) {
         wrappers(i)(row.get(i, dataTypes(i)))
       } else {
-        val columnIndex = getInsertIndex(i, insertPositions)
-
+        val columnIndex = map.get(i).get
         if (-1 == columnIndex) {
           null
         } else {
