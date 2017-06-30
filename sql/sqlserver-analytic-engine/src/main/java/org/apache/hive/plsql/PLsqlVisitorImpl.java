@@ -8,6 +8,7 @@ import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
 import org.apache.hive.plsql.dml.OracleSelectStatement;
 import org.apache.hive.plsql.dml.fragment.*;
+import org.apache.hive.plsql.dml.fragment.selectFragment.*;
 import org.apache.hive.plsql.function.FakeFunction;
 import org.apache.hive.plsql.function.Function;
 import org.apache.hive.plsql.function.ProcedureCall;
@@ -23,8 +24,6 @@ import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
-import org.apache.spark.sql.catalyst.expressions.Exp;
-import org.apache.spark.sql.catalyst.plans.logical.Except;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -873,6 +872,25 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         treeBuilder.pushStatement(selectStatement);
         return selectStatement;
+    }
+
+    @Override
+    public Object visitSubquery_factoring_clause(PlsqlParser.Subquery_factoring_clauseContext ctx) {
+        SubqueryFactoringClause subqueryFactoringClause = new SubqueryFactoringClause();
+        List<SqlStatement> factoringElements = new ArrayList<>();
+        for(PlsqlParser.Factoring_elementContext s : ctx.factoring_element()){
+            visit(s);
+            SqlStatement factoringElement = (SqlStatement) treeBuilder.popStatement();
+            factoringElements.add(factoringElement);
+        }
+        subqueryFactoringClause.setFactoringElements(factoringElements);
+        treeBuilder.pushStatement(subqueryFactoringClause);
+        return subqueryFactoringClause;
+    }
+
+    @Override
+    public Object visitOrder_by_clause(PlsqlParser.Order_by_clauseContext ctx) {
+        return super.visitOrder_by_clause(ctx);
     }
 
     @Override

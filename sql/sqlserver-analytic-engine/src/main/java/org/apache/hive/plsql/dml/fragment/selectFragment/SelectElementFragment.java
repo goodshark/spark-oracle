@@ -1,4 +1,4 @@
-package org.apache.hive.plsql.dml.fragment;
+package org.apache.hive.plsql.dml.fragment.selectFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
