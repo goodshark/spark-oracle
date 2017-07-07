@@ -454,12 +454,13 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
     }
     // logWarning(s" vid index : is ${vidIndex}")
 
-    val (fieldRefs, fieldOrdinals) = nonPartitionKeyAttrs.filter(_._1.name !=
+    val (fieldRefs1, fieldOrdinals1) = nonPartitionKeyAttrs.filter(_._1.name !=
       HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
       .map { case (attr, ordinal) =>
         soi.getStructFieldRef(attr.name) -> ordinal
       }.unzip
-
+    val fieldRefs = fieldRefs1.toVector
+    val fieldOrdinals = fieldOrdinals1.toVector
     /**
      * Builds specific unwrappers ahead of time according to object inspector
      * types to avoid pattern matching and branching costs per row.
