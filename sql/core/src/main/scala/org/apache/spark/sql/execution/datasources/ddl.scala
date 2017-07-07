@@ -180,14 +180,12 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     })
 
 
-
-
     sb.append(" insert into ")
     sb.append(db)
     sb.append(".")
     sb.append(tb)
     sb.append("(")
-    columnMap.keySet.foreach( k => {
+    columnMap.keySet.foreach(k => {
       sb.append("`")
       sb.append(k)
       sb.append("`")
@@ -223,41 +221,41 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     sb.append(" select ")
 
 
-    columnMap.keySet.foreach( k => {
+    columnMap.keySet.foreach(k => {
       sb.append(columnMap.get(k).get)
       sb.append(",")
     }
     )
 
-   /* tableMetadata.schema.foreach(column => {
-      if (columnMap.contains(column.name.toLowerCase)) {
-        sb.append(columnMap.get(column.name.toLowerCase).get)
-        sb.append(",")
-      } */
-      /* else {
-        if (!partitionSet.contains(column.name)) {
-          if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
-            colString.append(tb)
-          } else {
-            colString.append(tableNameAlias)
-          }
-          colString.append(".")
-          colString.append(column.name.toLowerCase)
-          colString.append(",")
+    /* tableMetadata.schema.foreach(column => {
+       if (columnMap.contains(column.name.toLowerCase)) {
+         sb.append(columnMap.get(column.name.toLowerCase).get)
+         sb.append(",")
+       } */
+    /* else {
+      if (!partitionSet.contains(column.name)) {
+        if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
+          colString.append(tb)
+        } else {
+          colString.append(tableNameAlias)
         }
+        colString.append(".")
+        colString.append(column.name.toLowerCase)
+        colString.append(",")
       }
-       }) */
+    }
+     }) */
     if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
-      sb.append( tb + "." + vid + " ")
+      sb.append(tb + "." + vid + " ")
     } else {
-      sb.append( tableNameAlias + "." + vid + " ")
+      sb.append(tableNameAlias + "." + vid + " ")
     }
     sb.append(" from ")
     if (null != statement.fromClauseForUpdate()) {
       val fromClause = statement.fromClauseForUpdate()
       sb.append(fromClause.start.getInputStream().getText(
         new Interval(fromClause.start.getStartIndex(), fromClause.stop.getStopIndex())))
-       // delete from t11 from t12 where t11.id = t12.id
+      // delete from t11 from t12 where t11.id = t12.id
       // 这样的情况需要在from 后面再追加t11表
       appendUpdateTable(fromClause, sb, db + "." + tb, sessionState.catalog.getCurrentDatabase)
 
@@ -288,29 +286,27 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
     sb.toString()
   }
 
- def appendUpdateTable(fromClause: FromClauseForUpdateContext,
-                       sb: StringBuilder, updateTable: String, currentDb: String) : Unit = {
-   val relations = fromClause.relationUpate()
-   var tableSet: Set[String] = Set()
-   for (i <- 0 until( relations.size())) {
-     val table = relations.get(i).tableNameUpdate().tableIdentifier()
-     if (table.identifier().size()==2) {
+  def appendUpdateTable(fromClause: FromClauseForUpdateContext,
+                        sb: StringBuilder, updateTable: String, currentDb: String): Unit = {
+    val relations = fromClause.relationUpate()
+    var tableSet: Set[String] = Set()
+    for (i <- 0 until (relations.size())) {
+      val table = relations.get(i).tableNameUpdate().tableIdentifier()
+      if (table.identifier().size() == 2) {
         tableSet += (table.identifier(0).getText.toLowerCase
-          + "." + table.identifier(1).getText.toLowerCase )
-     } else {
-       tableSet += (currentDb + "." + table.identifier(0).getText.toLowerCase)
-     }
-   }
-   logWarning( s"fromClusss table set is => ${tableSet}" )
-   if (!tableSet.contains(updateTable)) {
-     sb.append(" ," )
-     sb.append(updateTable)
-     sb.append(" ")
-   }
+          + "." + table.identifier(1).getText.toLowerCase)
+      } else {
+        tableSet += (currentDb + "." + table.identifier(0).getText.toLowerCase)
+      }
+    }
+    logWarning(s"fromClusss table set is => ${tableSet}")
+    if (!tableSet.contains(updateTable)) {
+      sb.append(" ,")
+      sb.append(updateTable)
+      sb.append(" ")
+    }
 
- }
-
-
+  }
 
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
@@ -322,6 +318,14 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
                           tableNameAlias: String)
   extends RunnableCommand {
 
+  def getInsertColumnName(tableMetadata: CatalogTable, partitionSet: Set[String]): String = {
+    tableMetadata.schema.foreach(c => {
+      if (!partitionSet.contains(c.name)) {
+        return c.name
+      }
+    })
+    return ""
+  }
 
   def parseAcidSql(sessionState: SessionState): String = {
     val statement: DeleteStatementContext = ctx.deleteStatement()
@@ -344,7 +348,20 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
     sb.append(".")
     sb.append(tb)
 
+
+
     var partitionSet: Set[String] = Set()
+    if (tableMetadata.partitionColumnNames.nonEmpty) {
+      partitionSet = tableMetadata.partitionColumnNames.map(cata => cata.toLowerCase).toSet
+    }
+    sb.append("(")
+    sb.append("`")
+    val insertColName = getInsertColumnName(tableMetadata, partitionSet)
+    sb.append(insertColName)
+    sb.append("`")
+    sb.append("," + AcidUpdateCommand(null, identifier, null, null).vid)
+    sb.append(")")
+
     if (tableMetadata.partitionColumnNames.nonEmpty) {
       if (null == statement.where || statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
@@ -353,7 +370,6 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
       val partitionColumnMap: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
       AcidUpdateCommand(null, identifier, null, null)
         .extractWhereMap(statement.where, partitionColumnMap)
-      partitionSet = tableMetadata.partitionColumnNames.map(cata => cata.toLowerCase).toSet
       val verifyPartition = partitionSet.subsetOf(
         partitionColumnMap.map(ele => ele._1).toSet
       )
@@ -370,16 +386,15 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
       sb.append(" )")
     }
 
-    sb.append(" select NULL ,")
-
-/*    tableMetadata.schema.foreach(c => {
+    sb.append(" select NULL , ")
+   /* tableMetadata.schema.foreach(c => {
       if (!partitionSet.contains(c.name)) {
         colString.append("NULL")
         colString.append(",")
       }
     })
-    sb.append(colString.toString()) */
-    sb.append(" ")
+    sb.append(colString.toString())
+    sb.append(" ") */
     if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
       sb.append(tb + "." + AcidUpdateCommand(null, identifier, null, null).vid).append(" ")
     } else {
