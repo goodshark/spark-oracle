@@ -370,14 +370,15 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
       sb.append(" )")
     }
 
-    sb.append(" select ")
-    tableMetadata.schema.foreach(c => {
+    sb.append(" select NULL ,")
+
+/*    tableMetadata.schema.foreach(c => {
       if (!partitionSet.contains(c.name)) {
         colString.append("NULL")
         colString.append(",")
       }
     })
-    sb.append(colString.toString())
+    sb.append(colString.toString()) */
     sb.append(" ")
     if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
       sb.append(tb + "." + AcidUpdateCommand(null, identifier, null, null).vid).append(" ")
