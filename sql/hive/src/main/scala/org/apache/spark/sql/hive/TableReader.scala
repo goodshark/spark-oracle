@@ -513,7 +513,7 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
           conf.get(OPTION_TYPE).equalsIgnoreCase("2")
         )
     }
-    val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+
     iterator.map { value =>
       val raw = converter.convert(rawDeser.deserialize(value))
       var i = 0
@@ -528,6 +528,7 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         i += 1
       }
       if (acidOptionFlag) {
+        val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
         val vid = soi.getStructFieldData(raw, vidField).toString
         if (vidIndex != -1) {
           mutableRow.update(vidIndex, UTF8String.fromString(vid))
