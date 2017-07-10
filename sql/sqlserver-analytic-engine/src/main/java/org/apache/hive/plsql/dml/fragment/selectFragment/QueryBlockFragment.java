@@ -6,18 +6,47 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ *  query_block
+ * : SELECT (DISTINCT | UNIQUE | ALL)? ('*' | selected_element (',' selected_element)*)
+ * into_clause? from_clause where_clause? hierarchical_query_clause? group_by_clause? model_clause?
+ * ;
+ *
+ *
+ *
+ * (DISTINCT | UNIQUE | ALL)? ===>queryType
+ * if select_element is empty ===>*
+ *
  * Created by dengrb1 on 6/9 0009.
  */
 public class QueryBlockFragment extends SqlStatement {
-    private List<SqlStatement> elements = new ArrayList<>();
+
+
+
+    private String quereyType;
+
+
+
+
+
+
+
+
+
+
+
+
+    private List<SelectElementFragment> elements = new ArrayList<>();
+    private FromClauseFragment fromClause = null;
+    private WhereClauseFragment whereClause = null;
+
+
+
     private SqlStatement intoClause = null;
-    private SqlStatement fromClause = null;
-    private SqlStatement whereClause = null;
     private SqlStatement hierachyClause = null;
     private SqlStatement groupClause = null;
     private SqlStatement modelClasue = null;
 
-    public void addElement(SqlStatement element) {
+    public void addElement(SelectElementFragment element) {
         elements.add(element);
     }
 
@@ -25,11 +54,11 @@ public class QueryBlockFragment extends SqlStatement {
         intoClause = stmt;
     }
 
-    public void setFromClause(SqlStatement stmt) {
+    public void setFromClause(FromClauseFragment stmt) {
         fromClause = stmt;
     }
 
-    public void setWhereClause(SqlStatement stmt) {
+    public void setWhereClause(WhereClauseFragment stmt) {
         whereClause = stmt;
     }
 
@@ -43,6 +72,15 @@ public class QueryBlockFragment extends SqlStatement {
 
     public void setModelClasue(SqlStatement stmt) {
         modelClasue = stmt;
+    }
+
+
+    public String getQuereyType() {
+        return quereyType;
+    }
+
+    public void setQuereyType(String quereyType) {
+        this.quereyType = quereyType;
     }
 
     @Override

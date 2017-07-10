@@ -1,4 +1,4 @@
-package org.apache.hive.plsql.dml.fragment;
+package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
 

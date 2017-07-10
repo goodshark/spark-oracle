@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.ColumnAliasFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 
@@ -8,13 +9,13 @@ import org.apache.hive.tsql.dml.ExpressionStatement;
  */
 public class SelectElementFragment extends SqlStatement {
     private ExpressionStatement col = null;
-    private String colAlias = "";
+    private ColumnAliasFragment colAlias = null;
 
     public void setCol(ExpressionStatement c) {
         col = c;
     }
 
-    public void setColAlias(String a) {
+    public void setColAlias(ColumnAliasFragment a) {
         colAlias = a;
     }
 
@@ -30,12 +31,12 @@ public class SelectElementFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return colAlias.isEmpty() ? col.getOriginalSql() : col.getOriginalSql() + " " + colAlias;
+        return col.getOriginalSql() + " " + colAlias.getOriginalSql();
     }
 
     @Override
     public String getFinalSql() throws Exception {
         col.setExecSession(getExecSession());
-        return colAlias.isEmpty() ? col.getFinalSql() : col.getFinalSql() + " " + colAlias;
+        return  col.getFinalSql() + " " + colAlias.getFinalSql();
     }
 }

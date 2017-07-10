@@ -1,6 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
-import org.apache.hive.plsql.dml.fragment.FragMentUtils;
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.SqlStatement;
 
@@ -10,13 +10,13 @@ import java.util.List;
  * Created by wangsm9 on 2017/6/21.
  */
 public class SubqueryFactoringClause extends SqlStatement {
-    private List<SqlStatement> factoringElements;
+    private List<FactoringElementFragment> factoringElements;
 
-    public List<SqlStatement> getFactoringElements() {
+    public List<FactoringElementFragment> getFactoringElements() {
         return factoringElements;
     }
 
-    public void setFactoringElements(List<SqlStatement> factoringElements) {
+    public void setFactoringElements(List<FactoringElementFragment> factoringElements) {
         this.factoringElements = factoringElements;
     }
 
@@ -37,4 +37,5 @@ public class SubqueryFactoringClause extends SqlStatement {
         sql.append(Common.SPACE);
         return sql.toString();
     }
+
 }

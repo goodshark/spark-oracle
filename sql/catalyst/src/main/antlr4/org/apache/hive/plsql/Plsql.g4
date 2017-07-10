@@ -1017,8 +1017,8 @@ table_ref_aux
     ;
 
 join_clause
-    : query_partition_clause? (CROSS | NATURAL)? (INNER | outer_join_type)?
-      JOIN table_ref_aux query_partition_clause? (join_on_part | join_using_part)*
+    : leftquery = query_partition_clause? (CROSS | NATURAL)? (INNER | outer_join_type)?
+      JOIN table_ref_aux rightquery= query_partition_clause? (join_on_part | join_using_part)*
     ;
 
 join_on_part

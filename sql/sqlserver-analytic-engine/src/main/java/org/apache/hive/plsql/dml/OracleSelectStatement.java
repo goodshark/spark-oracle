@@ -1,5 +1,8 @@
 package org.apache.hive.plsql.dml;
 
+import org.apache.hive.plsql.dml.fragment.selectFragment.OrderByClauseFragment;
+import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryFactoringClause;
+import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
@@ -8,31 +11,15 @@ import org.apache.hive.tsql.common.SqlStatement;
 public class OracleSelectStatement extends SqlStatement {
     private String finalSql = "";
 
-    private SqlStatement withQueryStatement = null;
-    private SqlStatement queryBlockStatement = null;
-    private SqlStatement forClauseStatement = null;
-    private SqlStatement orderByStatement = null;
+    private SubqueryFactoringClause withQueryStatement;
+    private SubqueryFragment queryBlockStatement;
+    private OrderByClauseFragment orderByStatement;
 
     public OracleSelectStatement(String nodeName) {
         super(nodeName);
         setAddResult(true);
     }
 
-    public void setWithQueryStatement(SqlStatement withQuery) {
-        withQueryStatement = withQuery;
-    }
-
-    public void setQueryBlockStatement(SqlStatement queryBlock) {
-        queryBlockStatement = queryBlock;
-    }
-
-    public void setForClauseStatement(SqlStatement forClause) {
-        forClauseStatement = forClause;
-    }
-
-    public void setOrderByStatement(SqlStatement orderBy) {
-        orderByStatement = orderBy;
-    }
 
     private void genFinalSql() throws Exception {
         if (withQueryStatement != null) {
@@ -41,25 +28,20 @@ public class OracleSelectStatement extends SqlStatement {
         if (queryBlockStatement == null)
             throw new Exception("missing query block statement in gen final sql");
         finalSql += queryBlockStatement.getFinalSql();
-        if (forClauseStatement != null) {
-            finalSql += forClauseStatement.getFinalSql();
-        }
+
         if (orderByStatement != null) {
             finalSql += orderByStatement.getFinalSql();
         }
     }
 
     private String genOriginalSql() throws Exception {
-        StringBuilder sb = new StringBuilder() ;
+        StringBuilder sb = new StringBuilder();
         if (withQueryStatement != null) {
             sb.append(withQueryStatement.getOriginalSql());
         }
         if (queryBlockStatement == null)
             throw new Exception("missing query block statement in gen original sql");
         sb.append(queryBlockStatement.getOriginalSql());
-        if (forClauseStatement != null) {
-            sb.append(forClauseStatement.getOriginalSql());
-        }
         if (orderByStatement != null) {
             sb.append(orderByStatement.getOriginalSql());
         }
@@ -109,14 +91,34 @@ public class OracleSelectStatement extends SqlStatement {
             queryBlockStatement.setExecSession(getExecSession());
             sb.append(queryBlockStatement.getFinalSql()).append(" ");
         }
-        if (forClauseStatement != null) {
-            forClauseStatement.setExecSession(getExecSession());
-            sb.append(forClauseStatement.getFinalSql()).append(" ");
-        }
         if (orderByStatement != null) {
             orderByStatement.setExecSession(getExecSession());
             sb.append(orderByStatement.getFinalSql());
         }
         return sb.toString();
+    }
+
+    public SubqueryFactoringClause getWithQueryStatement() {
+        return withQueryStatement;
+    }
+
+    public void setWithQueryStatement(SubqueryFactoringClause withQueryStatement) {
+        this.withQueryStatement = withQueryStatement;
+    }
+
+    public SubqueryFragment getQueryBlockStatement() {
+        return queryBlockStatement;
+    }
+
+    public void setQueryBlockStatement(SubqueryFragment queryBlockStatement) {
+        this.queryBlockStatement = queryBlockStatement;
+    }
+
+    public OrderByClauseFragment getOrderByStatement() {
+        return orderByStatement;
+    }
+
+    public void setOrderByStatement(OrderByClauseFragment orderByStatement) {
+        this.orderByStatement = orderByStatement;
     }
 }

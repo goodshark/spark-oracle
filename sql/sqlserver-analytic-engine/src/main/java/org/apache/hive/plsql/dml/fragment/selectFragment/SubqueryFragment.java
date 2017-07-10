@@ -9,14 +9,14 @@ import java.util.List;
  * Created by dengrb1 on 6/9 0009.
  */
 public class SubqueryFragment extends SqlStatement {
-    private SqlStatement basicElement = null;
-    private List<SqlStatement> operaionParts = new ArrayList<>();
+    private SubQuBaseElemFragment basicElement ;
+    private List<SubqueryOpPartFragment> operaionParts = new ArrayList<>();
 
-    public void setBasicElement(SqlStatement stmt) {
+    public void setBasicElement(SubQuBaseElemFragment stmt) {
         basicElement = stmt;
     }
 
-    public void addOperation(SqlStatement stmt) {
+    public void addOperation(SubqueryOpPartFragment stmt) {
         operaionParts.add(stmt);
     }
 

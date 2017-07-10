@@ -1,5 +1,6 @@
 package org.apache.hive.basesql;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.exception.Position;
 import org.apache.hive.tsql.exception.UnsupportedException;
@@ -24,6 +25,15 @@ public class TreeBuilder {
     public TreeBuilder(TreeNode root) {
         rootNode = root;
         exceptions = new ArrayList<>();
+    }
+
+    private Position locate(ParserRuleContext ctx) {
+        return new Position(ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine(),
+                ctx.getStop().getLine(), ctx.getStop().getCharPositionInLine());
+    }
+
+    public void addException(String msg, ParserRuleContext ctx) {
+        exceptions.add(new UnsupportedException(msg, locate(ctx)));
     }
 
     public void addException(String msg, Position position) {
