@@ -28,6 +28,7 @@ import org.apache.hive.tsql.another.SetStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.*;
+import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
 import org.apache.hive.tsql.ddl.CreateTableStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
@@ -403,13 +404,17 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
+        List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
+        if (expressCtxList.size() == 1) {
+            return visit(expressCtxList.get(0));
+        }
+        if(expressCtxList.size() != 2){
+            return null;
+        }
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
         predicateNode.setEvalType(PredicateNode.CompType.COMP);
         String op = ctx.relational_operator().getText();
         predicateNode.setOp(op);
-        List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
-        if (expressCtxList.size() != 2)
-            return null;
         for (PlsqlParser.Compound_expressionContext expressionContext : expressCtxList) {
             visit(expressionContext);
             treeBuilder.addNode(predicateNode);
@@ -675,9 +680,9 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         function.setSqlClauses(treeBuilder.popStatement());
         function.setLeastArguments();
 
-        CreateProcedureStatement.Action action = null != ctx.CREATE() ?
-                CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
-        CreateProcedureStatement statement = new CreateProcedureStatement(function, action);
+        CreateFunctionStatement.Action create = null != ctx.CREATE() ? CreateFunctionStatement.Action.CREATE : null;
+        CreateFunctionStatement.Action replace = null != ctx.REPLACE() ? CreateFunctionStatement.Action.REPLACE : null;
+        CreateFunctionStatement statement = new CreateFunctionStatement(function, create, replace);
         treeBuilder.pushStatement(statement);
 
         return statement;
@@ -1884,7 +1889,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public JoinOnPartFragment visitJoin_on_part(PlsqlParser.Join_on_partContext ctx) {
         JoinOnPartFragment joinOnPartFragment = new JoinOnPartFragment();
-        ExpressionStatement expressionStatement = visitCondition(ctx.condition());
+        visitCondition(ctx.condition());
+        ExpressionStatement expressionStatement = (ExpressionStatement)treeBuilder.popStatement();
         joinOnPartFragment.setEs(expressionStatement);
         treeBuilder.pushStatement(joinOnPartFragment);
         return joinOnPartFragment;
@@ -1902,6 +1908,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public ExpressionStatement visitCondition(PlsqlParser.ConditionContext ctx) {
         visit(ctx.expression());
         ExpressionStatement expressionStatement = (ExpressionStatement) treeBuilder.popStatement();
+        treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
 
