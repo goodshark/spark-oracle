@@ -1,8 +1,10 @@
 package org.apache.hive.tsql.execute;
 
 import org.apache.hive.plsql.block.BlockBorder;
+import org.apache.hive.plsql.cfl.OracleRaiseStatement;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
+import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
@@ -25,6 +27,7 @@ public class Executor {
     private TreeNode currentNode;
     private Stack<TreeNode> stack = new Stack<TreeNode>();
     private Stack<TreeNode> reverseStack = new Stack<TreeNode>();
+    private String engine = "oracle";
 
     public Executor(ExecSession session) {
         this(session,null);
@@ -33,6 +36,7 @@ public class Executor {
     public Executor(ExecSession session, TreeNode currentNode) {
         this.session = session;
         this.currentNode = null == currentNode ? session.getRootNode() : currentNode; //如果没有指定当前节点，则从跟节点开始执行
+        engine = session.getSparkSession().conf().get("spark.sql.analytical.engine");
     }
     public void execute() throws Exception {
         if(null == this.currentNode) {
@@ -107,19 +111,41 @@ public class Executor {
                 case BORDER:
                     borderExecute();
                     break;
+                case ORACLE_RAISE:
+                    oracleRaiseExecute(node);
+                    break;
                 default:
                     node.execute();
                     pushChild(node);
             }
         } catch (Exception e) {
+            // TODO create different oracle/sqlserver exception based on session conf
             // throw statement exception, if stmt in try-catch, handle it
             e.printStackTrace();
-            ThrowStatement throwStmt = new ThrowStatement(TreeNode.Type.THROW);
+            handleRunTimeException(e);
+            /*ThrowStatement throwStmt = new ThrowStatement(TreeNode.Type.THROW);
             throwStmt.setMsg(e.toString());
             // TODO make error number map error msg
             throwStmt.setStateNumStr("200");
             throwStmt.setErrorNumStr("60000");
+            throwExecute(throwStmt);*/
+        }
+    }
+
+    private void handleRunTimeException(Exception exception) throws Exception {
+        if (engine.equalsIgnoreCase("sqlserver")) {
+            ThrowStatement throwStmt = new ThrowStatement(TreeNode.Type.THROW);
+            throwStmt.setMsg(exception.toString());
+            // TODO make error number map error msg
+            throwStmt.setStateNumStr("200");
+            throwStmt.setErrorNumStr("60000");
             throwExecute(throwStmt);
+        } else if (engine.equalsIgnoreCase("oracle")) {
+            OracleRaiseStatement raiseStatement = new OracleRaiseStatement(TreeNode.Type.ORACLE_RAISE);
+            raiseStatement.setRunTimeException();
+            oracleRaiseExecute(raiseStatement);
+        } else {
+            LOG.warn("executor get unknown engine " + engine + ", ignore it");
         }
     }
 
@@ -130,9 +156,6 @@ public class Executor {
     }
 
     public void enterBlock(TreeNode node) {
-        // TODO test only
-//        String engine = session.getSparkSession().conf().get("spark.sql.analytical.engine");
-        String engine = "oracle";
         if (engine.equalsIgnoreCase("oracle"))
             session.enterScope(node);
     }
@@ -488,6 +511,8 @@ public class Executor {
     }
 
     public void anonyBlockExecute(TreeNode node) throws Exception {
+        // mark a anonymous block can be skipped for the raise statement
+        node.setSkipable(true);
         stack.push(new BlockBorder(node));
         enterBlock(node);
         node.execute();
@@ -496,5 +521,35 @@ public class Executor {
 
     public void borderExecute() {
         leaveBlock();
+    }
+
+    public void oracleRaiseExecute(TreeNode exceptionNode) throws Exception {
+        OracleRaiseStatement raiseStatement = (OracleRaiseStatement) exceptionNode;
+        String exceptionName = "";
+        if (!raiseStatement.isRunTimeException()) {
+            exceptionName = raiseStatement.getExceptionName();
+            Var exceptionVar = session.getVariableContainer().findVar(exceptionName);
+            if (exceptionVar == null)
+                throw new Exception(exceptionName + " EXCEPTION is not declare");
+        }
+
+        TreeNode node = null;
+        while(!stack.empty()) {
+            node = stack.pop();
+            if (node.getNodeType() == TreeNode.Type.BORDER) {
+                BlockBorder blockBorder = (BlockBorder) node;
+                if (blockBorder.checkException(exceptionName)) {
+                    TreeNode exceptionBlock = blockBorder.getExceptionBlock(exceptionName);
+                    if (exceptionBlock != null) {
+                        // exception block still in anonymous block, when finish handling error then leave block
+                        stack.push(node);
+                        stack.push(exceptionBlock);
+                        break;
+                    }
+                } else {
+                    leaveBlock();
+                }
+            }
+        }
     }
 }

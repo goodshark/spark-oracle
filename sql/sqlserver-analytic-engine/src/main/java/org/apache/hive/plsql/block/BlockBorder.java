@@ -23,6 +23,26 @@ public class BlockBorder extends TreeNode {
         }
     }
 
+    public boolean checkException(String name) {
+        if (node.getNodeType() == TreeNode.Type.ANONY_BLOCK) {
+            AnonymousBlock anonymousBlock = (AnonymousBlock) node;
+            if (anonymousBlock.matchException(name))
+                return true;
+            else
+                return false;
+        } else {
+            return false;
+        }
+    }
+
+    public TreeNode getExceptionBlock(String name) {
+        if (node.getNodeType() == TreeNode.Type.ANONY_BLOCK) {
+            AnonymousBlock anonymousBlock = (AnonymousBlock) node;
+            return anonymousBlock.getMatchHandler(name);
+        } else
+            return null;
+    }
+
     public int execute() throws Exception {
         return 0;
     }
