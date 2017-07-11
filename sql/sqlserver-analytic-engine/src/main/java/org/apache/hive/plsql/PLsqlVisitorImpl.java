@@ -682,7 +682,13 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
         CreateFunctionStatement.Action create = null != ctx.CREATE() ? CreateFunctionStatement.Action.CREATE : null;
         CreateFunctionStatement.Action replace = null != ctx.REPLACE() ? CreateFunctionStatement.Action.REPLACE : null;
-        CreateFunctionStatement statement = new CreateFunctionStatement(function, create, replace);
+        String returnType = ctx.type_spec() != null ? ctx.type_spec().getText().toUpperCase() : "NONE";
+        CreateFunctionStatement.SupportDataTypes rt = CreateFunctionStatement.fromString(returnType);
+        if (rt == null) {
+            treeBuilder.addException("Not Supported Type " + returnType, ctx);
+            return null;
+        }
+        CreateFunctionStatement statement = new CreateFunctionStatement(function, create, replace, rt);
         treeBuilder.pushStatement(statement);
 
         return statement;
