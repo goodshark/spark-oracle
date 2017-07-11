@@ -663,9 +663,9 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitIndex_name(PlsqlParser.Index_nameContext ctx) {
         visit(ctx.id());
-        TreeNode experssionStmt = treeBuilder.popStatement();
-        treeBuilder.pushStatement(experssionStmt);
-        return experssionStmt;
+        TreeNode expressionStmt = treeBuilder.popStatement();
+        treeBuilder.pushStatement(expressionStmt);
+        return expressionStmt;
     }
 
     private ExpressionStatement genExpression(String name, Object value, Var.DataType dataType) {
