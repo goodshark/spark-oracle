@@ -1948,4 +1948,67 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
     }
+
+    /**
+     * simple_case_clause
+     * : case u
+     * ;   when x then xx;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public Object visitSimple_case_statement(PlsqlParser.Simple_case_statementContext ctx) {
+        CaseStatement caseStatement = new CaseStatement(true);
+        caseStatement.setSwitchVar(ctx.atom().getText());
+        List<PlsqlParser.Simple_case_when_partContext> whens = ctx.simple_case_when_part();
+        for(PlsqlParser.Simple_case_when_partContext whenc : whens){
+            visit(whenc);
+            treeBuilder.addNode(caseStatement);
+        }
+        PlsqlParser.Case_else_partContext elsepart = ctx.case_else_part();
+        if(elsepart != null){
+            visit(ctx.case_else_part());
+            treeBuilder.addNode(caseStatement);
+        }
+        treeBuilder.pushStatement(caseStatement);
+        return caseStatement;
+    }
+
+    /**
+     * simple_case_clause
+     * :
+     * ;   when x then xx;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public Object visitSimple_case_when_part(PlsqlParser.Simple_case_when_partContext ctx) {
+        CaseWhenStatement whenStatement = new CaseWhenStatement(true);
+        PlsqlParser.ExpressionContext expression = ctx.expression().get(0);
+        visit(expression);
+        TreeNode condition = treeBuilder.popStatement();
+        whenStatement.setCondtion(condition);
+        visit(ctx.seq_of_statements());
+        treeBuilder.addNode(whenStatement);
+        treeBuilder.pushStatement(whenStatement);
+        return  whenStatement;
+    }
+
+    /**
+     * simple_case_clause
+     * : else xx;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public Object visitCase_else_part(PlsqlParser.Case_else_partContext ctx) {
+        CaseElseStatement elseStatement = new CaseElseStatement();
+        visit(ctx.seq_of_statements());
+        treeBuilder.addNode(elseStatement);
+        treeBuilder.pushStatement(elseStatement);
+        return  elseStatement;
+    }
 }
