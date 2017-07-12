@@ -2425,4 +2425,50 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return caseStatement;
     }
 
+    /**
+     * simple_case_clause
+     * :
+     * ;   when u=x then xx;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public Object visitSearched_case_when_part(PlsqlParser.Searched_case_when_partContext ctx) {
+        CaseWhenStatement whenStatement = new CaseWhenStatement(false);
+        PlsqlParser.ExpressionContext expression = ctx.expression().get(0);
+        visit(expression);
+        TreeNode condition = treeBuilder.popStatement();
+        whenStatement.setCondtion(condition);
+        visit(ctx.seq_of_statements());
+        treeBuilder.addNode(whenStatement);
+        treeBuilder.pushStatement(whenStatement);
+        return  whenStatement;
+    }
+
+    /**
+     * searched_case_clause
+     * : case
+     * ;   when u=x then xx;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public Object visitSearched_case_statement(PlsqlParser.Searched_case_statementContext ctx) {
+        CaseStatement caseStatement = new CaseStatement(false);
+        List<PlsqlParser.Searched_case_when_partContext> whens = ctx.searched_case_when_part();
+        for(PlsqlParser.Searched_case_when_partContext whenc : whens){
+            visit(whenc);
+            treeBuilder.addNode(caseStatement);
+        }
+        PlsqlParser.Case_else_partContext elsepart = ctx.case_else_part();
+        if(elsepart != null){
+            visit(ctx.case_else_part());
+            treeBuilder.addNode(caseStatement);
+        }
+        treeBuilder.pushStatement(caseStatement);
+        return caseStatement;
+    }
+
 }
