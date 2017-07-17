@@ -10,6 +10,32 @@ public class SelectSqlCase {
     public static final String SLECT_SQL_003 = "select id,name from tb001 where id = 1";
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     public static final String SELECT_SQL_02 = "create OR replace PROCEDURE foobar(p1 integer := 1) AS\n" +
             "BEGIN\n" +
             "\tdbms_output.put_line('p: ' || p1);\n" +

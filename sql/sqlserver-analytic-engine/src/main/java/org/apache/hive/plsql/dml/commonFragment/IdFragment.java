@@ -23,7 +23,7 @@ public class IdFragment extends SqlStatement {
             sql.append("INTRODUCER  ");
             sql.append(charSetName.getOriginalSql());
         }
-        sql.append(idExpression);
+        sql.append(idExpression.getOriginalSql());
         return  sql.toString();
     }
 
