@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment.tableRefFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.plsql.dml.fragment.selectFragment.joinFragment.JoinClauseFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.pivotFragment.PivotClauseFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.unpivotFragment.UnpivotClauseFragment;
@@ -23,6 +24,20 @@ public class TableRefFragment extends SqlStatement {
 
     private UnpivotClauseFragment unpivotClauseFragment;
 
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        sql.append(tableRefAuxFragment.getOriginalSql());
+        sql.append(FragMentUtils.appendOriginalSql(joinClauseFragments));
+        if (null != pivotClauseFragment) {
+            sql.append(pivotClauseFragment.getOriginalSql());
+        }
+        if (null != unpivotClauseFragment) {
+            sql.append(unpivotClauseFragment.getOriginalSql());
+        }
+        return sql.toString();
+    }
 
     public PivotClauseFragment getPivotClauseFragment() {
         return pivotClauseFragment;

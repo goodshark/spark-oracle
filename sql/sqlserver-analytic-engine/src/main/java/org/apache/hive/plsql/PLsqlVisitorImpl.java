@@ -1,4 +1,5 @@
 package org.apache.hive.plsql;
+
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -43,19 +44,24 @@ import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
+
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * Created by dengrb1 on 3/31 0031.
  */
 public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     private TreeBuilder treeBuilder = null;
+
     public PLsqlVisitorImpl(TreeNode rootNode) {
         treeBuilder = new TreeBuilder(rootNode);
     }
+
     public List<Exception> getExceptions() {
         return treeBuilder.getExceptions();
     }
+
     @Override
     public Object visitCompilation_unit(PlsqlParser.Compilation_unitContext ctx) {
         for (PlsqlParser.Unit_statementContext unitCtx : ctx.unit_statement()) {
@@ -64,10 +70,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         return null;
     }
+
     @Override
     public Object visitUnit_statement(PlsqlParser.Unit_statementContext ctx) {
         return visitChildren(ctx);
     }
+
     @Override
     public Object visitSeq_of_statements(PlsqlParser.Seq_of_statementsContext ctx) {
         BeginEndStatement beginEndStatement = new BeginEndStatement(TreeNode.Type.BEGINEND);
@@ -82,6 +90,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(beginEndStatement);
         return beginEndStatement;
     }
+
     @Override
     public Object visitLabel_declaration(PlsqlParser.Label_declarationContext ctx) {
         GotoStatement gotoStatement = new GotoStatement(TreeNode.Type.GOTO);
@@ -89,6 +98,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(gotoStatement);
         return gotoStatement;
     }
+
     @Override
     public Object visitAssignment_statement(PlsqlParser.Assignment_statementContext ctx) {
         SetStatement setStatement = new SetStatement();
@@ -104,6 +114,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(setStatement);
         return setStatement;
     }
+
     @Override
     public Object visitAnonymous_block(PlsqlParser.Anonymous_blockContext ctx) {
         AnonymousBlock anonymousBlock = new AnonymousBlock(TreeNode.Type.ANONY_BLOCK);
@@ -128,6 +139,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(anonymousBlock);
         return anonymousBlock;
     }
+
     /*@Override
     public Object visitDeclare_spec(PlsqlParser.Declare_specContext ctx) {
         return visitChildren(ctx);
@@ -149,6 +161,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(declareStatement);
         return declareStatement;
     }
+
     @Override
     public Object visitType_spec(PlsqlParser.Type_specContext ctx) {
         String typeName = "";
@@ -178,10 +191,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.DEFAULT;
         }
     }
+
     @Override
     public Object visitNative_datatype_element(PlsqlParser.Native_datatype_elementContext ctx) {
         return ctx.getText();
     }
+
     @Override
     public Object visitBool_condition_alias(PlsqlParser.Bool_condition_aliasContext ctx) {
         LogicNode orNode = new LogicNode(TreeNode.Type.OR);
@@ -207,6 +222,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(orNode);
         return orNode;
     }
+
     @Override
     public Object visitBinary_expression_alias(PlsqlParser.Binary_expression_aliasContext ctx) {
         ExpressionBean expressionBean = new ExpressionBean();
@@ -223,6 +239,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(es);
         return es;
     }
+
     @Override
     public Object visitBinary_expression_subalias(PlsqlParser.Binary_expression_subaliasContext ctx) {
         ExpressionBean expressionBean = new ExpressionBean();
@@ -239,6 +256,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(es);
         return es;
     }
+
     private ExpressionStatement genId_expression(List<PlsqlParser.Id_expressionContext> exprs) {
         ExpressionBean expressionBean = new ExpressionBean();
         ExpressionStatement expressionStatement = new ExpressionStatement(expressionBean);
@@ -254,6 +272,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         expressionBean.setVar(var);
         return expressionStatement;
     }
+
     @Override
     public Object visitId_expression_alias(PlsqlParser.Id_expression_aliasContext ctx) {
         /*ExpressionBean expressionBean = new ExpressionBean();
@@ -267,16 +286,19 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
+
     @Override
     public Object visitId_expression_subalias(PlsqlParser.Id_expression_subaliasContext ctx) {
         ExpressionStatement expressionStatement = genId_expression(ctx.id_expression());
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
+
     private ExpressionStatement genConstant(PlsqlParser.ConstantContext ctx) {
         visit(ctx);
         return (ExpressionStatement) treeBuilder.popStatement();
     }
+
     @Override
     public Object visitConstant_alias(PlsqlParser.Constant_aliasContext ctx) {
         if (ctx.constant() != null) {
@@ -285,6 +307,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(es);
         return es;
     }
+
     @Override
     public Object visitConstant_subalias(PlsqlParser.Constant_subaliasContext ctx) {
         if (ctx.constant() != null) {
@@ -294,6 +317,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(es);
         return es;
     }
+
     /*@Override
     public Object visitLogical_or_expression(PlsqlParser.Logical_or_expressionContext ctx) {
         LogicNode orNode = new LogicNode(TreeNode.Type.OR);
@@ -369,6 +393,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(andNode);
         return andNode;
     }
+
     @Override
     public Object visitNegated_expression(PlsqlParser.Negated_expressionContext ctx) {
         LogicNode orNode = new LogicNode(TreeNode.Type.NOT);
@@ -377,13 +402,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(orNode);
         return orNode;
     }
+
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
         if (expressCtxList.size() == 1) {
             return visit(expressCtxList.get(0));
         }
-        if(expressCtxList.size() != 2){
+        if (expressCtxList.size() != 2) {
             return null;
         }
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
@@ -397,6 +423,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(predicateNode);
         return predicateNode;
     }
+
     @Override
     public Object visitIf_statement(PlsqlParser.If_statementContext ctx) {
         IfStatement ifStatement = new IfStatement(TreeNode.Type.IF);
@@ -423,6 +450,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(rootIfStatement);
         return rootIfStatement;
     }
+
     @Override
     public Object visitElsif_part(PlsqlParser.Elsif_partContext ctx) {
         IfStatement ifStatement = new IfStatement(TreeNode.Type.IF);
@@ -437,6 +465,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(ifStatement);
         return ifStatement;
     }
+
     /*@Override
     public Object visitElse_part(PlsqlParser.Else_partContext ctx) {
         if (ctx.seq_of_statements() != null) {
@@ -458,6 +487,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(continueStmt);
         return continueStmt;
     }
+
     @Override
     public Object visitExit_statement(PlsqlParser.Exit_statementContext ctx) {
         BreakStatement exitStmt = new BreakStatement(TreeNode.Type.BREAK);
@@ -472,6 +502,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(exitStmt);
         return exitStmt;
     }
+
     @Override
     public Object visitLoop_statement(PlsqlParser.Loop_statementContext ctx) {
         WhileStatement loopStatement = new WhileStatement(TreeNode.Type.WHILE);
@@ -496,6 +527,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(loopStatement);
         return loopStatement;
     }
+
     @Override
     public Object visitCursor_loop_param(PlsqlParser.Cursor_loop_paramContext ctx) {
         LogicNode andNode = new LogicNode(TreeNode.Type.AND);
@@ -534,6 +566,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(andNode);
         return andNode;
     }
+
     private void genLoopIndex(LogicNode condition, ExpressionStatement indexStmt,
                               ExpressionStatement lowerStmt, ExpressionStatement upperStmt, boolean dir) {
         try {
@@ -550,6 +583,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             e.printStackTrace();
         }
     }
+
     @Override
     public Object visitIndex_name(PlsqlParser.Index_nameContext ctx) {
         visit(ctx.id());
@@ -557,18 +591,21 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(experssionStmt);
         return experssionStmt;
     }
+
     private ExpressionStatement genExpression(String name, Object value, Var.DataType dataType) {
         ExpressionBean expressionBean = new ExpressionBean();
         Var var = new Var(name, value, dataType);
         expressionBean.setVar(var);
         return new ExpressionStatement(expressionBean);
     }
+
     @Override
     public Object visitRegular_id(PlsqlParser.Regular_idContext ctx) {
         ExpressionStatement expressionStatement = genExpression(ctx.getText(), null, Var.DataType.VAR);
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
+
     @Override
     public Object visitCreate_procedure_body(PlsqlParser.Create_procedure_bodyContext ctx) {
         String sourceProcedure = ctx.start.getInputStream().getText(
@@ -591,6 +628,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(statement);
         return statement;
     }
+
     @Override
     public Object visitParameter(PlsqlParser.ParameterContext ctx) {
         String varName = ctx.parameter_name().getText().toUpperCase();
@@ -616,6 +654,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         return var;
     }
+
     @Override
     public Object visitCreate_function_body(PlsqlParser.Create_function_bodyContext ctx) {
         String sourceFunction = ctx.start.getInputStream().getText(
@@ -644,6 +683,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(statement);
         return statement;
     }
+
     @Override
     public Object visitReturn_statement(PlsqlParser.Return_statementContext ctx) {
         OracleReturnStatement returnStatement = new OracleReturnStatement();
@@ -654,6 +694,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(returnStatement);
         return returnStatement;
     }
+
     /*@Override
     public Object visitConcatenation(PlsqlParser.ConcatenationContext ctx) {
         // TODO test only constant
@@ -700,6 +741,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(function);
         return function;*/
     }
+
     @Override
     public Object visitExecute_argument(PlsqlParser.Execute_argumentContext ctx) {
         Var var = new Var();
@@ -713,6 +755,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         var.setValueType(Var.ValueType.EXPRESSION);
         return var;
     }
+
     @Override
     public Object visitFunction_argument(PlsqlParser.Function_argumentContext ctx) {
         List<Var> args = new ArrayList<Var>();
@@ -723,6 +766,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         return args;
     }
+
     /*@Override
     public Object visitArgument(PlsqlParser.ArgumentContext ctx) {
         return visitChildren(ctx);
@@ -741,6 +785,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
+
     @Override
     public Object visitNumeric(PlsqlParser.NumericContext ctx) {
         Var val = new Var();
@@ -755,6 +800,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         return val;
     }
+
     private String genTableColString(List<PlsqlParser.Column_nameContext> colCtxs,
                                      List<PlsqlParser.Type_specContext> typeCtxs) {
         StringBuilder sb = new StringBuilder();
@@ -768,6 +814,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         return sb.toString();
     }
+
     @Override
     public Object visitCreate_table(PlsqlParser.Create_tableContext ctx) {
         String tableName = ctx.tableview_name().getText();
@@ -778,6 +825,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return createTableStatement;
     }
     /*========================================selectStament===============================*/
+
     /**
      * select_statement
      * : subquery_factoring_clause? subquery (for_update_clause | order_by_clause)?
@@ -810,6 +858,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(selectStatement);
         return selectStatement;
     }
+
     /**
      * subquery_factoring_clause
      * : WITH factoring_element (',' factoring_element)*
@@ -831,6 +880,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(subqueryFactoringClause);
         return subqueryFactoringClause;
     }
+
     /**
      * 广度优先和深度优先
      *
@@ -842,16 +892,19 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.addException(" DEPTH OR  BREADTH  SEARCH ", ctx);
         return null;
     }
+
     @Override
     public Object visitCycle_clause(PlsqlParser.Cycle_clauseContext ctx) {
         treeBuilder.addException(" Recursive queries  ", ctx);
         return null;
     }
+
     @Override
     public Object visitFor_update_clause(PlsqlParser.For_update_clauseContext ctx) {
         treeBuilder.addException(" Lock table   ", ctx);
         return null;
     }
+
     /**
      * column_name
      * : id ('.' id_expression)*
@@ -874,6 +927,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(columnNameFragment);
         return columnNameFragment;
     }
+
     /**
      * factoring_element
      * : query_name ('(' column_name (',' column_name)* ')')? AS '(' subquery order_by_clause? ')'
@@ -916,6 +970,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(factoringElementFragment);
         return factoringElementFragment;
     }
+
     /**
      * id
      * : (INTRODUCER char_set_name)? id_expression
@@ -927,6 +982,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public IdFragment visitQuery_name(PlsqlParser.Query_nameContext ctx) {
         return visitId(ctx.id());
     }
+
     /**
      * id
      * : (INTRODUCER char_set_name)? id_expression
@@ -938,6 +994,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public String visitId_expression(PlsqlParser.Id_expressionContext ctx) {
         return getFullSql(ctx);
     }
+
     /**
      * char_set_name
      * : id_expression ('.' id_expression)*
@@ -948,15 +1005,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public CharSetNameFragment visitChar_set_name(PlsqlParser.Char_set_nameContext ctx) {
         CharSetNameFragment charSetNameFragment = new CharSetNameFragment();
-        List<String> idExpressions = new ArrayList<>();
         for (PlsqlParser.Id_expressionContext idExpressionContext : ctx.id_expression()) {
             String idExpression = visitId_expression(idExpressionContext);
-            idExpressions.add(idExpression);
+            charSetNameFragment.addIdExprssions(idExpression);
         }
-        charSetNameFragment.setIdExpressions(idExpressions);
         treeBuilder.pushStatement(charSetNameFragment);
         return charSetNameFragment;
     }
+
     /**
      * id
      * : (INTRODUCER char_set_name)? id_expression
@@ -977,6 +1033,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(idFragment);
         return idFragment;
     }
+
     /**
      * order_by_clause
      * : ORDER SIBLINGS? BY order_by_elements (',' order_by_elements)*
@@ -987,16 +1044,15 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public OrderByClauseFragment visitOrder_by_clause(PlsqlParser.Order_by_clauseContext ctx) {
         OrderByClauseFragment orderByClause = new OrderByClauseFragment();
-        List<OrderByElementsFragment> orderByEles = new ArrayList<>();
         for (PlsqlParser.Order_by_elementsContext order_by_elementsContext : ctx.order_by_elements()) {
             visit(order_by_elementsContext);
             OrderByElementsFragment orderByElement = (OrderByElementsFragment) treeBuilder.popStatement();
-            orderByEles.add(orderByElement);
+            orderByClause.addOrderByElem(orderByElement);
         }
-        orderByClause.setOrderByElements(orderByEles);
         treeBuilder.pushStatement(orderByClause);
         return orderByClause;
     }
+
     /**
      * order_by_elements
      * : expression (ASC | DESC)? (NULLS (FIRST | LAST))?
@@ -1026,6 +1082,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(orderByElementsFragment);
         return orderByElementsFragment;
     }
+
     /**
      * subquery
      * : subquery_basic_elements subquery_operation_part*
@@ -1047,6 +1104,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(subqueryFragment);
         return subqueryFragment;
     }
+
     /**
      * subquery_operation_part
      * : (UNION ALL? | INTERSECT | MINUS) subquery_basic_elements
@@ -1072,6 +1130,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(subqueryOpPartFragment);
         return subqueryOpPartFragment;
     }
+
     /**
      * subquery_basic_elements
      * : query_block
@@ -1096,6 +1155,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(subQuBaseElemFragment);
         return subQuBaseElemFragment;
     }
+
     /**
      * query_block
      * : SELECT (DISTINCT | UNIQUE | ALL)? ('*' | selected_element (',' selected_element)*)
@@ -1133,6 +1193,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(queryBlockFragment);
         return queryBlockFragment;
     }
+
     /**
      * selected_element
      * : select_list_elements column_alias?
@@ -1144,7 +1205,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public SelectElementFragment visitSelected_element(PlsqlParser.Selected_elementContext ctx) {
         SelectElementFragment elementFragment = new SelectElementFragment();
-        ExpressionStatement col = (ExpressionStatement) visit(ctx.select_list_elements());
+        visit(ctx.select_list_elements());
+        SelectListElementsFragment col = (SelectListElementsFragment) treeBuilder.popStatement();
         elementFragment.setCol(col);
         if (ctx.column_alias() != null) {
             visit(ctx.column_alias());
@@ -1154,6 +1216,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(elementFragment);
         return elementFragment;
     }
+
     /**
      * select_list_elements
      * : tableview_name '.' '*'
@@ -1179,6 +1242,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(selectListElementsFragment);
         return selectListElementsFragment;
     }
+
     /**
      * tableview_name
      * : id ('.' id_expression)?
@@ -1204,6 +1268,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(tableViewNameFragment);
         return tableViewNameFragment;
     }
+
     /**
      * column_alias
      * : AS? (id | alias_quoted_string)
@@ -1227,6 +1292,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(columnAliasFragment);
         return columnAliasFragment;
     }
+
     /**
      * from_clause
      * : FROM table_ref_list
@@ -1243,6 +1309,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(fromClauseFragment);
         return fromClauseFragment;
     }
+
     /**
      * table_ref_list
      * : table_ref (',' table_ref)*
@@ -1261,6 +1328,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(tableRefListFragment);
         return tableRefListFragment;
     }
+
     /**
      * table_ref
      * : table_ref_aux join_clause* (pivot_clause | unpivot_clause)?
@@ -1292,6 +1360,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(tableRefFragment);
         return tableRefFragment;
     }
+
     /**
      * pivot_clause
      * : PIVOT XML? '(' pivot_element (',' pivot_element)* pivot_for_clause pivot_in_clause ')'
@@ -1320,6 +1389,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(pivotClauseFragment);
         return pivotClauseFragment;
     }
+
     /**
      * pivot_in_clause
      * : IN '(' (subquery | ANY (',' ANY)* | pivot_in_clause_element (',' pivot_in_clause_element)*) ')'
@@ -1360,6 +1430,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(pivotInClauseFragment);
         return pivotInClauseFragment;
     }
+
     /**
      * pivot_in_clause_element
      * : pivot_in_clause_elements column_alias?
@@ -1381,6 +1452,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(pivotInClauseElemetFm);
         return pivotInClauseElemetFm;
     }
+
     /**
      * pivot_in_clause_elements
      * : expression
@@ -1406,6 +1478,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(pivotInClauseElemetsFm);
         return pivotInClauseElemetsFm;
     }
+
     /**
      * pivot_for_clause
      * : FOR (column_name | '(' column_name (',' column_name)* ')')
@@ -1424,6 +1497,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(pivotForClauseFragment);
         return pivotForClauseFragment;
     }
+
     /**
      * pivot_element
      * : aggregate_function_name '(' expression ')' column_alias?
@@ -1447,6 +1521,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(pivotElementFragment);
         return pivotElementFragment;
     }
+
     /**
      * aggregate_function_name
      * : id ('.' id_expression)*
@@ -1470,6 +1545,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(afnf);
         return afnf;
     }
+
     /**
      * unpivot_clause
      * : UNPIVOT ((INCLUDE | EXCLUDE) NULLS)?
@@ -1502,6 +1578,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(unpivotClauseFragment);
         return unpivotClauseFragment;
     }
+
     /**
      * unpivot_in_clause
      * : IN '(' unpivot_in_elements (',' unpivot_in_elements)* ')'
@@ -1521,6 +1598,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(unpivotInClauseFm);
         return unpivotInClauseFm;
     }
+
     /**
      * unpivot_in_elements
      * : (column_name | '(' column_name (',' column_name)* ')')
@@ -1546,6 +1624,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(unpivotInElementsFm);
         return unpivotInElementsFm;
     }
+
     /**
      * outer_join_type
      * : (FULL | LEFT | RIGHT) OUTER?
@@ -1570,6 +1649,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         return sql.toString();
     }
+
     /**
      * join_clause
      * : query_partition_clause? (CROSS | NATURAL)? (INNER | outer_join_type)?
@@ -1623,6 +1703,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(joinClauseFragment);
         return joinClauseFragment;
     }
+
     /**
      * join_using_part
      * : USING '(' column_name (',' column_name)* ')'
@@ -1642,6 +1723,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(joinUsingPartFragment);
         return joinUsingPartFragment;
     }
+
     /**
      * query_partition_clause
      * : PARTITION BY ('(' subquery ')' | expression_list | expression (',' expression)*)
@@ -1656,6 +1738,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(queryPartitionClauseFragement);
         return queryPartitionClauseFragement;
     }
+
     /**
      * table_ref_aux
      * : (dml_table_expression_clause (pivot_clause | unpivot_clause)?
@@ -1698,6 +1781,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(tableRefAuxFragment);
         return tableRefAuxFragment;
     }
+
     /**
      * dml_table_expression_clause
      * : table_collection_expression
@@ -1735,6 +1819,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(dmlTableExpressionFragment);
         return dmlTableExpressionFragment;
     }
+
     /**
      * table_collection_expression
      * : (TABLE | THE) ('(' subquery ')' | '(' expression ')' ('(' '+' ')')?)
@@ -1761,6 +1846,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(tableCollectionExpressionFm);
         return tableCollectionExpressionFm;
     }
+
     /**
      * join_on_part
      * : ON condition
@@ -1772,11 +1858,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public JoinOnPartFragment visitJoin_on_part(PlsqlParser.Join_on_partContext ctx) {
         JoinOnPartFragment joinOnPartFragment = new JoinOnPartFragment();
         visitCondition(ctx.condition());
-        ExpressionStatement expressionStatement = (ExpressionStatement)treeBuilder.popStatement();
+        ExpressionStatement expressionStatement = (ExpressionStatement) treeBuilder.popStatement();
         joinOnPartFragment.setEs(expressionStatement);
         treeBuilder.pushStatement(joinOnPartFragment);
         return joinOnPartFragment;
     }
+
     /**
      * condition
      * : expression
@@ -1792,6 +1879,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
     }
+
     /**
      * where_clause
      * : WHERE (current_of_clause | expression)
@@ -1814,16 +1902,19 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(whereClauseFragment);
         return whereClauseFragment;
     }
+
     private SqlStatement genSqlStringFragment(String str) {
         SqlStatement sqlStatement = new SqlStatement();
         sqlStatement.setSql(str);
         return sqlStatement;
     }
+
     private String getFullSql(ParserRuleContext ctx) {
         return ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
     }
     //======================================update===============================
+
     /**
      * update_statement
      * : UPDATE general_table_ref update_set_clause where_clause? static_returning_clause? error_logging_clause?
@@ -1857,6 +1948,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(updateSetClauseFm);
         return updateStatement;
     }
+
     /**
      * static_returning_clause
      * : (RETURNING | RETURN) expression (',' expression)* into_clause
@@ -1879,6 +1971,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(staticReturningClauseFm);
         return staticReturningClauseFm;
     }
+
     /**
      * into_clause
      * : INTO variable_name (',' variable_name)*
@@ -1902,6 +1995,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(intoClauseFragment);
         return intoClauseFragment;
     }
+
     /**
      * variable_name
      * : (INTRODUCER char_set_name)? id_expression ('.' id_expression)?
@@ -1934,11 +2028,13 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(variableNameFragment);
         return variableNameFragment;
     }
+
     @Override
     public Object visitBind_variable(PlsqlParser.Bind_variableContext ctx) {
         //TODO BIND_VARIABLE
         return null;
     }
+
     /**
      * general_table_ref
      * : (dml_table_expression_clause | ONLY '(' dml_table_expression_clause ')') table_alias?
@@ -1963,6 +2059,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(generalTableRefFragment);
         return generalTableRefFragment;
     }
+
     /**
      * table_alias
      * : (id | alias_quoted_string)
@@ -1986,6 +2083,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(tableAliasFragment);
         return tableAliasFragment;
     }
+
     /**
      * update_set_clause
      * : SET
@@ -2015,6 +2113,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(updateSetClauseFm);
         return updateSetClauseFm;
     }
+
     /**
      * column_based_update_set_clause
      * : column_name '=' expression
@@ -2046,6 +2145,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return columnBasedUpDateFm;
     }
     //==========================delete================================================================
+
     /**
      * delete_statement
      * : DELETE FROM? general_table_ref where_clause? static_returning_clause? error_logging_clause?
@@ -2077,6 +2177,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return delStatement;
     }
     //=========================================insert statement============================
+
     /**
      * insert_statement
      * : INSERT (single_table_insert | multi_table_insert)
@@ -2101,6 +2202,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(oracleInsertStatement);
         return oracleInsertStatement;
     }
+
     /**
      * single_table_insert
      * : insert_into_clause (values_clause static_returning_clause? | select_statement) error_logging_clause?
@@ -2136,6 +2238,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(singleTableInsertFragment);
         return singleTableInsertFragment;
     }
+
     /**
      * insert_into_clause
      * : INTO general_table_ref ('(' column_name (',' column_name)* ')')?
@@ -2158,6 +2261,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(insertIntoClauseFm);
         return insertIntoClauseFm;
     }
+
     /**
      * values_clause
      * : VALUES expression_list
@@ -2174,6 +2278,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(valuesClauseFragment);
         return valuesClauseFragment;
     }
+
     /**
      * multi_table_insert
      * : (ALL multi_table_element+ | conditional_insert_clause) select_statement
@@ -2201,6 +2306,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(multiTableInsertFragment);
         return multiTableInsertFragment;
     }
+
     /**
      * multi_table_element
      * : insert_into_clause values_clause? error_logging_clause?
@@ -2226,6 +2332,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(multiTableElementFm);
         return multiTableElementFm;
     }
+
     /**
      * conditional_insert_clause
      * : (ALL | FIRST)? conditional_insert_when_part+ conditional_insert_else_part?
@@ -2256,6 +2363,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(cicfm);
         return cicfm;
     }
+
     /**
      * conditional_insert_when_part
      * : WHEN condition THEN multi_table_element+
@@ -2276,6 +2384,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(conditionalWhenPartFm);
         return conditionalWhenPartFm;
     }
+
     /**
      * conditional_insert_else_part
      * : ELSE multi_table_element+
@@ -2296,6 +2405,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return conditionalElsePartFm;
     }
     //==================================mergeInto====================================
+
     /**
      * merge_statement
      * : MERGE INTO tableview_name table_alias? USING selected_tableview ON '(' condition ')'
@@ -2318,6 +2428,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return super.visitMerge_statement(ctx);
     }
     //=======================================explain================================
+
     /**
      * explain_statement
      * : EXPLAIN PLAN (SET STATEMENT_ID '=' quoted_string)? (INTO tableview_name)?
@@ -2396,7 +2507,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         visit(ctx.seq_of_statements());
         treeBuilder.addNode(whenStatement);
         treeBuilder.pushStatement(whenStatement);
-        return  whenStatement;
+        return whenStatement;
     }
 
     /**
@@ -2412,12 +2523,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         CaseStatement caseStatement = new CaseStatement(true);
         caseStatement.setSwitchVar(ctx.atom().getText());
         List<PlsqlParser.Simple_case_when_partContext> whens = ctx.simple_case_when_part();
-        for(PlsqlParser.Simple_case_when_partContext whenc : whens){
+        for (PlsqlParser.Simple_case_when_partContext whenc : whens) {
             visit(whenc);
             treeBuilder.addNode(caseStatement);
         }
         PlsqlParser.Case_else_partContext elsepart = ctx.case_else_part();
-        if(elsepart != null){
+        if (elsepart != null) {
             visit(ctx.case_else_part());
             treeBuilder.addNode(caseStatement);
         }
@@ -2443,7 +2554,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         visit(ctx.seq_of_statements());
         treeBuilder.addNode(whenStatement);
         treeBuilder.pushStatement(whenStatement);
-        return  whenStatement;
+        return whenStatement;
     }
 
     /**
@@ -2458,12 +2569,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitSearched_case_statement(PlsqlParser.Searched_case_statementContext ctx) {
         CaseStatement caseStatement = new CaseStatement(false);
         List<PlsqlParser.Searched_case_when_partContext> whens = ctx.searched_case_when_part();
-        for(PlsqlParser.Searched_case_when_partContext whenc : whens){
+        for (PlsqlParser.Searched_case_when_partContext whenc : whens) {
             visit(whenc);
             treeBuilder.addNode(caseStatement);
         }
         PlsqlParser.Case_else_partContext elsepart = ctx.case_else_part();
-        if(elsepart != null){
+        if (elsepart != null) {
             visit(ctx.case_else_part());
             treeBuilder.addNode(caseStatement);
         }

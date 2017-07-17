@@ -20,6 +20,8 @@ public class SubqueryFragment extends SqlStatement {
         operaionParts.add(stmt);
     }
 
+
+
     @Override
     public String getSql() {
         return "";

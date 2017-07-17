@@ -2,6 +2,7 @@ package org.apache.hive.plsql.dml.fragment.selectFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -12,13 +13,11 @@ import java.util.List;
  */
 public class OrderByClauseFragment extends SqlStatement {
 
-    private List<OrderByElementsFragment> orderByElements;
+    private List<OrderByElementsFragment> orderByElements = new ArrayList<>();
 
-    public List<OrderByElementsFragment> getOrderByElements() {
-        return orderByElements;
+
+    public void addOrderByElem(OrderByElementsFragment orderByElementsFragment) {
+        orderByElements.add(orderByElementsFragment);
     }
 
-    public void setOrderByElements(List<OrderByElementsFragment> orderByElements) {
-        this.orderByElements = orderByElements;
-    }
 }

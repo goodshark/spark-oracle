@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.commonFragment;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
@@ -9,10 +10,23 @@ import org.apache.hive.tsql.common.SqlStatement;
  * : (id | alias_quoted_string)
  * ;
  */
-public class TableAliasFragment extends SqlStatement{
+public class TableAliasFragment extends SqlStatement {
 
     private IdFragment idFragment;
     private String alias;
+
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        if (null != idFragment) {
+            sql.append(idFragment.getOriginalSql());
+        }
+        if (StringUtils.isNotBlank(alias)) {
+            sql.append(alias);
+        }
+        return sql.toString();
+    }
 
     public IdFragment getIdFragment() {
         return idFragment;
@@ -29,4 +43,6 @@ public class TableAliasFragment extends SqlStatement{
     public void setAlias(String alias) {
         this.alias = alias;
     }
+
+
 }

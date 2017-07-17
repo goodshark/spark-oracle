@@ -13,6 +13,10 @@ public class SubqueryOpPartFragment extends SqlStatement {
 
     private SubQuBaseElemFragment subQuBaseElemFragment;
 
+
+
+
+
     public String getOp() {
         return op;
     }

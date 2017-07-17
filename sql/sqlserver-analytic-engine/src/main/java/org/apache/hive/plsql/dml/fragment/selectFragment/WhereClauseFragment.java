@@ -19,15 +19,11 @@ public class WhereClauseFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return "";
-    }
-
-    @Override
-    public String getFinalSql() throws Exception {
         StringBuilder sb = new StringBuilder();
         sb.append(" WHERE ");
         condition.setExecSession(getExecSession());
-        sb.append(condition.getFinalSql());
+        sb.append(condition.getOriginalSql());
         return sb.toString();
     }
+
 }

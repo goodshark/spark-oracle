@@ -1,17 +1,22 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.plsql.dml.commonFragment.ColumnAliasFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 
 /**
  * Created by dengrb1 on 6/9 0009.
+ * <p>
+ * selected_element
+ * : select_list_elements column_alias?
+ * ;
  */
 public class SelectElementFragment extends SqlStatement {
-    private ExpressionStatement col = null;
-    private ColumnAliasFragment colAlias = null;
+    private SelectListElementsFragment col;
+    private ColumnAliasFragment colAlias;
 
-    public void setCol(ExpressionStatement c) {
+    public void setCol(SelectListElementsFragment c) {
         col = c;
     }
 
@@ -31,12 +36,12 @@ public class SelectElementFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return col.getOriginalSql() + " " + colAlias.getOriginalSql();
+        StringBuffer sql = new StringBuffer();
+        sql.append(col.getOriginalSql());
+        if (null != colAlias) {
+            sql.append(colAlias.getOriginalSql());
+        }
+        return sql.toString();
     }
 
-    @Override
-    public String getFinalSql() throws Exception {
-        col.setExecSession(getExecSession());
-        return  col.getFinalSql() + " " + colAlias.getFinalSql();
-    }
 }

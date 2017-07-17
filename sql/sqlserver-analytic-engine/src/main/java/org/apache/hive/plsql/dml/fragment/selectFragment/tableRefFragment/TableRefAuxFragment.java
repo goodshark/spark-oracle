@@ -1,11 +1,13 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment.tableRefFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.plsql.dml.fragment.selectFragment.DmlTableExpressionFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryOpPartFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.pivotFragment.PivotClauseFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.unpivotFragment.UnpivotClauseFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,7 +26,36 @@ public class TableRefAuxFragment extends SqlStatement {
     private UnpivotClauseFragment unpivotClauseFragment;
     private TableRefFragment tableRefFragment;
     private DmlTableExpressionFragment dmlTableExpressionFragment;
-    private List<SubqueryOpPartFragment> subqueryOpPartFragment;
+    private List<SubqueryOpPartFragment> subqueryOpPartFragment = new ArrayList<>();
+
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        if (null != dmlTableExpressionFragment) {
+            sql.append(dmlTableExpressionFragment.getOriginalSql());
+            getPivotSql(sql);
+
+        }
+        if (null != tableRefFragment) {
+            sql.append(tableRefFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(subqueryOpPartFragment));
+            getPivotSql(sql);
+
+        }
+
+        return sql.toString();
+
+    }
+
+    private void getPivotSql(StringBuffer sql) {
+        if (null != unpivotClauseFragment) {
+            sql.append(unpivotClauseFragment.getOriginalSql());
+        }
+        if (null != pivotClauseFragment) {
+            sql.append(pivotClauseFragment.getOriginalSql());
+        }
+    }
 
     public String getOnly() {
         return only;

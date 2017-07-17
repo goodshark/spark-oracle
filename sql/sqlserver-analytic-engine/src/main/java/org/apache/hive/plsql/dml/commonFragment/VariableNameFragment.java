@@ -2,6 +2,7 @@ package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -14,7 +15,30 @@ public class VariableNameFragment extends SqlStatement {
 
     private String introducer;
     private CharSetNameFragment charSetNameFragment;
-    private List<String> idExpressins;
+    private List<String> idExpressins = new ArrayList<>();
+    private BindVariableNameFm bindVariableNameFm;
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        if (null != charSetNameFragment) {
+            sql.append("INTRODUCER ");
+            sql.append(charSetNameFragment.getOriginalSql());
+        }
+        if (!idExpressins.isEmpty()) {
+            if (idExpressins.size() == 1) {
+                sql.append(idExpressins.get(0));
+            } else if (idExpressins.size() == 2) {
+                sql.append(idExpressins.get(0));
+                sql.append(".");
+                sql.append(idExpressins.get((1)));
+            }
+        }
+        if (null != bindVariableNameFm) {
+            sql.append(bindVariableNameFm.getOriginalSql());
+        }
+        return sql.toString();
+    }
 
     public String getIntroducer() {
         return introducer;
@@ -39,8 +63,6 @@ public class VariableNameFragment extends SqlStatement {
     public void setBindVariableNameFm(BindVariableNameFm bindVariableNameFm) {
         this.bindVariableNameFm = bindVariableNameFm;
     }
-
-    private BindVariableNameFm bindVariableNameFm;
 
     public void addIdExpression(String s) {
         idExpressins.add(s);

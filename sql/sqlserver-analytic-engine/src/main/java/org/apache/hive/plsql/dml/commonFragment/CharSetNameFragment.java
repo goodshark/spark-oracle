@@ -2,21 +2,32 @@ package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by wangsm9 on 2017/7/3.
+ * char_set_name
+ * : id_expression ('.' id_expression)*
+ * ;
  */
 public class CharSetNameFragment extends SqlStatement {
 
 
-    private List<String> idExpressions;
+    private List<String> idExpressions = new ArrayList<>();
 
-    public List<String> getIdExpressions() {
-        return idExpressions;
+
+    public void addIdExprssions(String idExpression) {
+        idExpressions.add(idExpression);
     }
 
-    public void setIdExpressions(List<String> idExpressions) {
-        this.idExpressions = idExpressions;
+    @Override
+    public String getOriginalSql() {
+        return FragMentUtils.appendSql(idExpressions);
+    }
+
+    @Override
+    public String getFinalSql() throws Exception {
+        return getOriginalSql();
     }
 }

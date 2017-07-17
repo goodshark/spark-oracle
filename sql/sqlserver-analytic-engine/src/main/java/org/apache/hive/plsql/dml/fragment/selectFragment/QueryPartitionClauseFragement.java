@@ -11,4 +11,5 @@ import org.apache.hive.tsql.common.SqlStatement;
  * ;
  */
 public class QueryPartitionClauseFragement extends SqlStatement {
+
 }

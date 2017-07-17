@@ -20,6 +20,22 @@ public class DmlTableExpressionFragment extends SqlStatement {
     private OracleSelectStatement selectStatement;
     private TableViewNameFragment tableViewNameFragment;
 
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        if (null != tableCollectionExpressionFm) {
+            sql.append(tableCollectionExpressionFm.getOriginalSql());
+        }
+        if (null != selectStatement) {
+            sql.append(selectStatement.getOriginalSql());
+        }
+        if (null != tableViewNameFragment) {
+            sql.append(tableViewNameFragment.getOriginalSql());
+        }
+        return sql.toString();
+    }
+
     public TableCollectionExpressionFm getTableCollectionExpressionFm() {
         return tableCollectionExpressionFm;
     }

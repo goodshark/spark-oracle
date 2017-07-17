@@ -5,15 +5,33 @@ import org.apache.hive.tsql.dml.ExpressionStatement;
 
 /**
  * Created by wangsm9 on 2017/7/5.
- *
+ * <p>
  * table_collection_expression
- : (TABLE | THE) ('(' subquery ')' | '(' expression ')' ('(' '+' ')')?)
+ * : (TABLE | THE) ('(' subquery ')' | '(' expression ')' ('(' '+' ')')?)
  */
 public class TableCollectionExpressionFm extends SqlStatement {
 
     private String keyWord;
     private SubqueryFragment subqueryFragment;
     private ExpressionStatement expressionStatement;
+
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        sql.append(keyWord);
+        if (null != subqueryFragment) {
+            sql.append("(");
+            sql.append(subqueryFragment.getOriginalSql());
+            sql.append(")");
+        }
+        if (null != expressionStatement) {
+            sql.append("(");
+            sql.append(expressionStatement.getSql());
+            sql.append(")");
+        }
+        return sql.toString();
+    }
 
     public String getKeyWord() {
         return keyWord;

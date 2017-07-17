@@ -8,13 +8,12 @@ import java.util.List;
 
 /**
  * Created by wangsm9 on 2017/6/30.
+ * <p>
+ * query_name ('(' column_name (',' column_name)* ')')? AS '(' subquery order_by_clause? ')'
+ * search_clause? cycle_clause?
  */
 public class FactoringElementFragment extends SqlStatement {
 
-    /**
-     * query_name ('(' column_name (',' column_name)* ')')? AS '(' subquery order_by_clause? ')'
-     * search_clause? cycle_clause?
-     */
     private IdFragment quereyName;
 
     private List<ColumnNameFragment> columnNames;
@@ -22,10 +21,6 @@ public class FactoringElementFragment extends SqlStatement {
     private SubqueryFragment subquery;
 
     private OrderByElementsFragment orderByClause;
-
-
-
-
 
 
     public SqlStatement getQuereyName() {

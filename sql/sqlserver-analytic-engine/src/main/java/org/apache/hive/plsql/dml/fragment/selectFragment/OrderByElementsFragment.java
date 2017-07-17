@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 
@@ -14,6 +15,20 @@ public class OrderByElementsFragment extends SqlStatement {
     private ExpressionStatement expression;
     private String orderType;
     private String nullOrderType;
+
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        sql.append(expression.getSql());
+        if (StringUtils.isNotBlank(orderType)) {
+            sql.append(orderType);
+        }
+        if (StringUtils.isNotBlank(nullOrderType)) {
+            sql.append(nullOrderType);
+        }
+        return sql.toString();
+    }
 
     public SqlStatement getExpression() {
         return expression;

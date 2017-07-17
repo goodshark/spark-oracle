@@ -16,6 +16,21 @@ public class SelectListElementsFragment extends SqlStatement {
     private ExpressionStatement expression;
     private TableViewNameFragment tableViewNameFragment;
 
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        if (null != tableViewNameFragment) {
+            sql.append(tableViewNameFragment.getOriginalSql());
+            sql.append(".*");
+        }
+        if (null != expression) {
+            sql.append(expression.getOriginalSql());
+        }
+
+        return sql.toString();
+    }
+
     public ExpressionStatement getExpression() {
         return expression;
     }

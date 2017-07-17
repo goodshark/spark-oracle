@@ -20,7 +20,6 @@ public class OracleSelectStatement extends SqlStatement {
         setAddResult(true);
     }
 
-
     private void genFinalSql() throws Exception {
         if (withQueryStatement != null) {
             finalSql += withQueryStatement.getFinalSql();

@@ -14,6 +14,19 @@ public class SubQuBaseElemFragment extends SqlStatement {
     private QueryBlockFragment queryBlock;
     private SubqueryFragment subQuery;
 
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        if (null != queryBlock) {
+            sql.append(queryBlock.getOriginalSql());
+        }
+        if (null != subQuery) {
+            sql.append(subQuery.getOriginalSql());
+        }
+        return sql.toString();
+    }
+
     public SqlStatement getQueryBlock() {
         return queryBlock;
     }

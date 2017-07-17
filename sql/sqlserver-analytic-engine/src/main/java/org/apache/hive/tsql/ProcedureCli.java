@@ -22,6 +22,14 @@ public class ProcedureCli {
     private static final Logger LOG = LoggerFactory.getLogger(ProcedureCli.class);
     private String engineName;
 
+    public String getEngineName() {
+        return engineName;
+    }
+
+    public void setEngineName(String engineName) {
+        this.engineName = engineName;
+    }
+
     static {
         // load all supported sql engine
         try {
@@ -46,7 +54,7 @@ public class ProcedureCli {
 
     public void callProcedure(String sql) throws Throwable {
         try {
-            engineName = sparkSession.conf().get("spark.sql.analytical.engine");
+           // engineName = sparkSession.conf().get("spark.sql.analytical.engine");
             LOG.info("spark-engine: " + engineName + ", query sql is " + sql);
             // generate execute plan
             buildExecutePlan(sql);
