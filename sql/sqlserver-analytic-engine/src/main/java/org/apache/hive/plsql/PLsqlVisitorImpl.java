@@ -545,6 +545,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             // number seq
             leftPredicateNode.setOp(">=");
             rightPredicateNode.setOp("<=");
+            //ExpressionStatement indexExprNode = visitIndex_name(ctx.index_name());
             visit(ctx.index_name());
             ExpressionStatement indexExprNode = (ExpressionStatement) treeBuilder.popStatement();
             indexExprNode.getExpressionBean().getVar().setDataType(Var.DataType.INT);
@@ -585,11 +586,10 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitIndex_name(PlsqlParser.Index_nameContext ctx) {
-        visit(ctx.id());
-        TreeNode experssionStmt = treeBuilder.popStatement();
-        treeBuilder.pushStatement(experssionStmt);
-        return experssionStmt;
+    public ExpressionStatement visitIndex_name(PlsqlParser.Index_nameContext ctx) {
+        ExpressionStatement indexName = (ExpressionStatement) treeBuilder.popStatement();
+        treeBuilder.pushStatement(indexName);
+        return indexName;
     }
 
     private ExpressionStatement genExpression(String name, Object value, Var.DataType dataType) {
@@ -917,13 +917,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         ColumnNameFragment columnNameFragment = new ColumnNameFragment();
         visit(ctx.id());
         IdFragment id = (IdFragment) treeBuilder.popStatement();
-        List<String> idExpressions = new ArrayList<>();
+        List<ExpressionStatement> idExpressions = new ArrayList<>();
         columnNameFragment.setId(id);
         for (PlsqlParser.Id_expressionContext idExpressionContext : ctx.id_expression()) {
-            String idExpression = visitId_expression(idExpressionContext);
-            idExpressions.add(idExpression);
+            ExpressionStatement idExpression = visitId_expression(idExpressionContext);
+            columnNameFragment.addExpress(idExpression);
         }
-        columnNameFragment.setIdExpressions(idExpressions);
         treeBuilder.pushStatement(columnNameFragment);
         return columnNameFragment;
     }
@@ -991,8 +990,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      * @return
      */
     @Override
-    public String visitId_expression(PlsqlParser.Id_expressionContext ctx) {
-        return getFullSql(ctx);
+    public ExpressionStatement visitId_expression(PlsqlParser.Id_expressionContext ctx) {
+        List<PlsqlParser.Id_expressionContext> exprs = new ArrayList<>();
+        exprs.add(ctx);
+        ExpressionStatement expressionStatement = genId_expression(exprs);
+        treeBuilder.pushStatement(expressionStatement);
+        return expressionStatement;
     }
 
     /**
@@ -1006,7 +1009,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public CharSetNameFragment visitChar_set_name(PlsqlParser.Char_set_nameContext ctx) {
         CharSetNameFragment charSetNameFragment = new CharSetNameFragment();
         for (PlsqlParser.Id_expressionContext idExpressionContext : ctx.id_expression()) {
-            String idExpression = visitId_expression(idExpressionContext);
+            ExpressionStatement idExpression = visitId_expression(idExpressionContext);
+            treeBuilder.popStatement();
             charSetNameFragment.addIdExprssions(idExpression);
         }
         treeBuilder.pushStatement(charSetNameFragment);
@@ -1028,7 +1032,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             CharSetNameFragment charSetName = (CharSetNameFragment) treeBuilder.popStatement();
             idFragment.setCharSetName(charSetName);
         }
-        String idExpression = visitId_expression(ctx.id_expression());
+        ExpressionStatement idExpression = visitId_expression(ctx.id_expression());
+        treeBuilder.popStatement();
         idFragment.setIdExpression(idExpression);
         treeBuilder.pushStatement(idFragment);
         return idFragment;
@@ -1259,7 +1264,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         IdFragment id = (IdFragment) treeBuilder.popStatement();
         tableViewNameFragment.setIdFragment(id);
         if (null != ctx.id_expression()) {
-            String idExpression = visitId_expression(ctx.id_expression());
+            ExpressionStatement idExpression = visitId_expression(ctx.id_expression());
+            treeBuilder.popStatement();
             tableViewNameFragment.setIdExpression(idExpression);
         }
         if (null != ctx.link_name()) {
@@ -1538,10 +1544,10 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         afnf.setIdFragment(idFragment);
         List<String> idExpressions = new ArrayList<>();
         for (PlsqlParser.Id_expressionContext ide : ctx.id_expression()) {
-            String idExpression = visitId_expression(ide);
-            idExpressions.add(idExpression);
+            ExpressionStatement idExpression = visitId_expression(ide);
+            treeBuilder.popStatement();
+            afnf.addExpression(idExpression);
         }
-        afnf.setIdExpressions(idExpressions);
         treeBuilder.pushStatement(afnf);
         return afnf;
     }
@@ -2022,7 +2028,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             variableNameFragment.setCharSetNameFragment(charSetNameFragment);
         }
         for (PlsqlParser.Id_expressionContext iec : ctx.id_expression()) {
-            String iecStr = visitId_expression(iec);
+            ExpressionStatement iecStr = visitId_expression(iec);
+            treeBuilder.popStatement();
             variableNameFragment.addIdExpression(iecStr);
         }
         treeBuilder.pushStatement(variableNameFragment);

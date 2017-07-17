@@ -1,7 +1,9 @@
 package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -15,16 +17,19 @@ public class ColumnNameFragment extends SqlStatement {
 
     private IdFragment id;
 
-    private List<String> idExpressions;
+    private List<ExpressionStatement> idExpressions = new ArrayList<>();
 
+    public void addExpress(ExpressionStatement expressionStatement) {
+        idExpressions.add(expressionStatement);
+    }
 
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         sql.append(id.getOriginalSql());
-        for (String id : idExpressions) {
+        for (ExpressionStatement id : idExpressions) {
             sql.append(".");
-            sql.append(id);
+            sql.append(id.getOriginalSql());
         }
         return sql.toString();
     }
@@ -37,11 +42,5 @@ public class ColumnNameFragment extends SqlStatement {
         this.id = id;
     }
 
-    public List<String> getIdExpressions() {
-        return idExpressions;
-    }
 
-    public void setIdExpressions(List<String> idExpressions) {
-        this.idExpressions = idExpressions;
-    }
 }

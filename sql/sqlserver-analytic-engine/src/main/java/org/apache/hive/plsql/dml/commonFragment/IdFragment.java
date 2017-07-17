@@ -1,6 +1,7 @@
 package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 
 /**
  * Created by wangsm9 on 2017/7/3.
@@ -12,7 +13,7 @@ public class IdFragment extends SqlStatement {
 
     private CharSetNameFragment charSetName;
 
-    private String idExpression;
+    private ExpressionStatement idExpression;
 
 
     @Override
@@ -35,11 +36,11 @@ public class IdFragment extends SqlStatement {
         charSetName = charSet;
     }
 
-    public String getIdExpression() {
+    public ExpressionStatement getIdExpression() {
         return idExpression;
     }
 
-    public void setIdExpression(String idExpression) {
+    public void setIdExpression(ExpressionStatement idExpression) {
         this.idExpression = idExpression;
     }
 }

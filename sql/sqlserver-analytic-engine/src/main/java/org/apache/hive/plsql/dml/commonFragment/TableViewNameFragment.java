@@ -2,6 +2,7 @@ package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hive.tsql.common.SqlStatement;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 
 /**
  * Created by wangsm9 on 2017/7/4.
@@ -13,7 +14,7 @@ import org.apache.hive.tsql.common.SqlStatement;
 public class TableViewNameFragment extends SqlStatement {
 
     private IdFragment idFragment;
-    private String idExpression;
+    private ExpressionStatement idExpression;
 
 
     @Override
@@ -21,9 +22,9 @@ public class TableViewNameFragment extends SqlStatement {
         StringBuffer sql = new StringBuffer();
         sql.append(idFragment.getOriginalSql());
 
-        if (StringUtils.isNoneBlank(idExpression)) {
+        if (null != idExpression) {
             sql.append(".");
-            sql.append(idExpression);
+            sql.append(idExpression.getOriginalSql());
         }
         return sql.toString();
     }
@@ -36,11 +37,11 @@ public class TableViewNameFragment extends SqlStatement {
         this.idFragment = idFragment;
     }
 
-    public String getIdExpression() {
+    public ExpressionStatement getIdExpression() {
         return idExpression;
     }
 
-    public void setIdExpression(String idExpression) {
+    public void setIdExpression(ExpressionStatement idExpression) {
         this.idExpression = idExpression;
     }
 }

@@ -14,6 +14,6 @@ public class TestPlsql {
 
         ProcedureCli procedureCli = new ProcedureCli(null);
         procedureCli.setEngineName("oracle");
-        procedureCli.callProcedure(SelectSqlCase.SLECT_SQL_002);
+        procedureCli.callProcedure(SelectSqlCase.SELECT_SQL_02);
     }
 }

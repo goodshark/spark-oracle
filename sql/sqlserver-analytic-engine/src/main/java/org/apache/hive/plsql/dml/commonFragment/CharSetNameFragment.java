@@ -1,6 +1,7 @@
 package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,16 +15,16 @@ import java.util.List;
 public class CharSetNameFragment extends SqlStatement {
 
 
-    private List<String> idExpressions = new ArrayList<>();
+    private List<ExpressionStatement> idExpressions = new ArrayList<>();
 
 
-    public void addIdExprssions(String idExpression) {
+    public void addIdExprssions(ExpressionStatement idExpression) {
         idExpressions.add(idExpression);
     }
 
     @Override
     public String getOriginalSql() {
-        return FragMentUtils.appendSql(idExpressions);
+        return FragMentUtils.appendOriginalSql(idExpressions);
     }
 
     @Override

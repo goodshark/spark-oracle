@@ -1,6 +1,7 @@
 package org.apache.hive.plsql.dml.commonFragment;
 
 import org.apache.hive.tsql.common.SqlStatement;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +16,7 @@ public class VariableNameFragment extends SqlStatement {
 
     private String introducer;
     private CharSetNameFragment charSetNameFragment;
-    private List<String> idExpressins = new ArrayList<>();
+    private List<ExpressionStatement> idExpressins = new ArrayList<>();
     private BindVariableNameFm bindVariableNameFm;
 
     @Override
@@ -64,7 +65,7 @@ public class VariableNameFragment extends SqlStatement {
         this.bindVariableNameFm = bindVariableNameFm;
     }
 
-    public void addIdExpression(String s) {
+    public void addIdExpression(ExpressionStatement s) {
         idExpressins.add(s);
     }
 

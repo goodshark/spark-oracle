@@ -31,11 +31,11 @@ public class CreateProcedureStatement extends BaseStatement {
             addFunc(function);
             return 0;
         }
-        switch (action){
+        /*switch (action){
             case CREATE:
-                /**
+                *//**
                  * 运行时才将PROC加入到变量容器的VariableContainer.functions map
-                 */
+                 *//*
                 //在内存中的proc需要保存在数据库中
                 if(function.getProcSource()==0){
                     ProcService procService = new ProcService(getExecSession().getSparkSession());
@@ -53,7 +53,7 @@ public class CreateProcedureStatement extends BaseStatement {
                 }
                 procService.createProc(function);
                 break;
-        }
+        }*/
         super.addFunc(function);
         return 0;
     }
