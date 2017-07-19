@@ -6,7 +6,7 @@ import org.apache.hive.tsql.common.SqlStatement;
  * Created by dengrb1 on 6/9 0009.
  */
 public class WhereClauseFragment extends SqlStatement {
-    private SqlStatement condition = null;
+    private SqlStatement condition ;
 
     public void setCondition(SqlStatement stmt) {
         condition = stmt;
