@@ -137,7 +137,7 @@ public class HiveSessionImpl implements HiveSession {
     SessionState.start(sessionState);
     try {
       sessionState.reloadAuxJars();
-    } catch (IOException e) {
+    } catch (Exception e) {
       String msg = "Failed to load reloadable jar file path: " + e;
       LOG.error(msg, e);
       throw new HiveSQLException(msg, e);

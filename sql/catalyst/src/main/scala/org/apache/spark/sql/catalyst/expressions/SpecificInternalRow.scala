@@ -193,6 +193,7 @@ final class MutableAny extends MutableValue {
  */
 final class SpecificInternalRow(val values: Array[MutableValue]) extends BaseGenericInternalRow {
 
+
   def this(dataTypes: Seq[DataType]) =
     this(
       dataTypes.map {

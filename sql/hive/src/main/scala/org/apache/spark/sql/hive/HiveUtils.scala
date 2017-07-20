@@ -273,6 +273,7 @@ private[spark] object HiveUtils extends Logging {
     newClientForMetadata(conf, hadoopConf, configurations)
   }
 
+  var isolatedLoader:IsolatedClientLoader=_
   protected[hive] def newClientForMetadata(
       conf: SparkConf,
       hadoopConf: Configuration,
@@ -285,86 +286,89 @@ private[spark] object HiveUtils extends Logging {
     val hiveMetastoreBarrierPrefixes = HiveUtils.hiveMetastoreBarrierPrefixes(sqlConf)
     val metaVersion = IsolatedClientLoader.hiveVersion(hiveMetastoreVersion)
 
-    val isolatedLoader = if (hiveMetastoreJars == "builtin") {
-      if (hiveExecutionVersion != hiveMetastoreVersion) {
-        throw new IllegalArgumentException(
-          "Builtin jars can only be used when hive execution version == hive metastore version. " +
-            s"Execution: $hiveExecutionVersion != Metastore: $hiveMetastoreVersion. " +
-            "Specify a vaild path to the correct hive jars using $HIVE_METASTORE_JARS " +
-            s"or change ${HIVE_METASTORE_VERSION.key} to $hiveExecutionVersion.")
-      }
-
-      // We recursively find all jars in the class loader chain,
-      // starting from the given classLoader.
-      def allJars(classLoader: ClassLoader): Array[URL] = classLoader match {
-        case null => Array.empty[URL]
-        case urlClassLoader: URLClassLoader =>
-          urlClassLoader.getURLs ++ allJars(urlClassLoader.getParent)
-        case other => allJars(other.getParent)
-      }
-
-      val classLoader = Utils.getContextOrSparkClassLoader
-      val jars = allJars(classLoader)
-      if (jars.length == 0) {
-        throw new IllegalArgumentException(
-          "Unable to locate hive jars to connect to metastore. " +
-            "Please set spark.sql.hive.metastore.jars.")
-      }
-
-      logInfo(
-        s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion using Spark classes.")
-      new IsolatedClientLoader(
-        version = metaVersion,
-        sparkConf = conf,
-        hadoopConf = hadoopConf,
-        execJars = jars.toSeq,
-        config = configurations,
-        isolationOn = true,
-        barrierPrefixes = hiveMetastoreBarrierPrefixes,
-        sharedPrefixes = hiveMetastoreSharedPrefixes)
-    } else if (hiveMetastoreJars == "maven") {
-      // TODO: Support for loading the jars from an already downloaded location.
-      logInfo(
-        s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion using maven.")
-      IsolatedClientLoader.forVersion(
-        hiveMetastoreVersion = hiveMetastoreVersion,
-        hadoopVersion = VersionInfo.getVersion,
-        sparkConf = conf,
-        hadoopConf = hadoopConf,
-        config = configurations,
-        barrierPrefixes = hiveMetastoreBarrierPrefixes,
-        sharedPrefixes = hiveMetastoreSharedPrefixes)
-    } else {
-      // Convert to files and expand any directories.
-      val jars =
-        hiveMetastoreJars
-          .split(File.pathSeparator)
-          .flatMap {
-          case path if new File(path).getName == "*" =>
-            val files = new File(path).getParentFile.listFiles()
-            if (files == null) {
-              logWarning(s"Hive jar path '$path' does not exist.")
-              Nil
-            } else {
-              files.filter(_.getName.toLowerCase.endsWith(".jar"))
-            }
-          case path =>
-            new File(path) :: Nil
+   // val isolatedLoader = if (hiveMetastoreJars == "builtin") {
+    if(isolatedLoader==null) {
+      isolatedLoader = if (hiveMetastoreJars == "builtin") {
+        if (hiveExecutionVersion != hiveMetastoreVersion) {
+          throw new IllegalArgumentException(
+            "Builtin jars can only be used when hive execution version == hive metastore version. " +
+              s"Execution: $hiveExecutionVersion != Metastore: $hiveMetastoreVersion. " +
+              "Specify a vaild path to the correct hive jars using $HIVE_METASTORE_JARS " +
+              s"or change ${HIVE_METASTORE_VERSION.key} to $hiveExecutionVersion.")
         }
-          .map(_.toURI.toURL)
 
-      logInfo(
-        s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion " +
-          s"using ${jars.mkString(":")}")
-      new IsolatedClientLoader(
-        version = metaVersion,
-        sparkConf = conf,
-        hadoopConf = hadoopConf,
-        execJars = jars.toSeq,
-        config = configurations,
-        isolationOn = true,
-        barrierPrefixes = hiveMetastoreBarrierPrefixes,
-        sharedPrefixes = hiveMetastoreSharedPrefixes)
+        // We recursively find all jars in the class loader chain,
+        // starting from the given classLoader.
+        def allJars(classLoader: ClassLoader): Array[URL] = classLoader match {
+          case null => Array.empty[URL]
+          case urlClassLoader: URLClassLoader =>
+            urlClassLoader.getURLs ++ allJars(urlClassLoader.getParent)
+          case other => allJars(other.getParent)
+        }
+
+        val classLoader = Utils.getContextOrSparkClassLoader
+        val jars = allJars(classLoader)
+        if (jars.length == 0) {
+          throw new IllegalArgumentException(
+            "Unable to locate hive jars to connect to metastore. " +
+              "Please set spark.sql.hive.metastore.jars.")
+        }
+
+        logInfo(
+          s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion using Spark classes.")
+        new IsolatedClientLoader(
+          version = metaVersion,
+          sparkConf = conf,
+          hadoopConf = hadoopConf,
+          execJars = jars.toSeq,
+          config = configurations,
+          isolationOn = true,
+          barrierPrefixes = hiveMetastoreBarrierPrefixes,
+          sharedPrefixes = hiveMetastoreSharedPrefixes)
+      } else if (hiveMetastoreJars == "maven") {
+        // TODO: Support for loading the jars from an already downloaded location.
+        logInfo(
+          s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion using maven.")
+        IsolatedClientLoader.forVersion(
+          hiveMetastoreVersion = hiveMetastoreVersion,
+          hadoopVersion = VersionInfo.getVersion,
+          sparkConf = conf,
+          hadoopConf = hadoopConf,
+          config = configurations,
+          barrierPrefixes = hiveMetastoreBarrierPrefixes,
+          sharedPrefixes = hiveMetastoreSharedPrefixes)
+      } else {
+        // Convert to files and expand any directories.
+        val jars =
+          hiveMetastoreJars
+            .split(File.pathSeparator)
+            .flatMap {
+              case path if new File(path).getName == "*" =>
+                val files = new File(path).getParentFile.listFiles()
+                if (files == null) {
+                  logWarning(s"Hive jar path '$path' does not exist.")
+                  Nil
+                } else {
+                  files.filter(_.getName.toLowerCase.endsWith(".jar"))
+                }
+              case path =>
+                new File(path) :: Nil
+            }
+            .map(_.toURI.toURL)
+
+        logInfo(
+          s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion " +
+            s"using ${jars.mkString(":")}")
+        new IsolatedClientLoader(
+          version = metaVersion,
+          sparkConf = conf,
+          hadoopConf = hadoopConf,
+          execJars = jars.toSeq,
+          config = configurations,
+          isolationOn = true,
+          barrierPrefixes = hiveMetastoreBarrierPrefixes,
+          sharedPrefixes = hiveMetastoreSharedPrefixes)
+      }
     }
     isolatedLoader.createClient()
   }
