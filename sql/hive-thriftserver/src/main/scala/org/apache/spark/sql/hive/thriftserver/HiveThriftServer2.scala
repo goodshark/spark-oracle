@@ -92,7 +92,9 @@ object HiveThriftServer2 extends Logging {
     val executionHive = HiveUtils.newClientForExecution(
       SparkSQLEnv.sqlContext.sparkContext.conf,
       SparkSQLEnv.sqlContext.sessionState.newHadoopConf())
-
+    logInfo("executionHive started")
+    val dbDefault = executionHive.getDatabase("default")
+    logInfo(s"====>${dbDefault.name}")
     try {
       val server = new HiveThriftServer2(SparkSQLEnv.sqlContext)
       server.init(executionHive.conf)
