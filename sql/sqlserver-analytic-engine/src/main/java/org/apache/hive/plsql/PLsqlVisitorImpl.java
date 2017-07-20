@@ -2,6 +2,7 @@ package org.apache.hive.plsql;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.hive.basesql.TreeBuilder;
 import org.apache.hive.plsql.block.AnonymousBlock;
@@ -79,13 +80,16 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitSeq_of_statements(PlsqlParser.Seq_of_statementsContext ctx) {
         BeginEndStatement beginEndStatement = new BeginEndStatement(TreeNode.Type.BEGINEND);
-        for (PlsqlParser.Label_declarationContext labelCtx : ctx.label_declaration()) {
-            visit(labelCtx);
-            treeBuilder.addNode(beginEndStatement);
-        }
-        for (PlsqlParser.StatementContext stateCtx : ctx.statement()) {
-            visit(stateCtx);
-            treeBuilder.addNode(beginEndStatement);
+        List<ParseTree> childs = ctx.children;
+        for(ParseTree child : childs) {
+            if (child instanceof PlsqlParser.Label_declarationContext) {
+                visit((PlsqlParser.Label_declarationContext) child);
+                treeBuilder.addNode(beginEndStatement);
+            }
+            if (child instanceof PlsqlParser.StatementContext) {
+                visit((PlsqlParser.StatementContext) child);
+                treeBuilder.addNode(beginEndStatement);
+            }
         }
         treeBuilder.pushStatement(beginEndStatement);
         return beginEndStatement;
@@ -396,7 +400,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitNegated_expression(PlsqlParser.Negated_expressionContext ctx) {
-        LogicNode orNode = new LogicNode(TreeNode.Type.NOT);
+        LogicNode orNode = null;
+        if(ctx.NOT() != null){
+            orNode = new LogicNode(TreeNode.Type.NOT);
+        } else {
+            orNode = new LogicNode(TreeNode.Type.AND);
+        }
         visit(ctx.equality_expression());
         treeBuilder.addNode(orNode);
         treeBuilder.pushStatement(orNode);
@@ -2495,7 +2504,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      */
     @Override
     public Object visitCase_else_part(PlsqlParser.Case_else_partContext ctx) {
-        CaseElseStatement elseStatement = new CaseElseStatement();
+        CaseElsePartStatement elseStatement = new CaseElsePartStatement();
         visit(ctx.seq_of_statements());
         treeBuilder.addNode(elseStatement);
         treeBuilder.pushStatement(elseStatement);
@@ -2512,7 +2521,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      */
     @Override
     public Object visitSimple_case_when_part(PlsqlParser.Simple_case_when_partContext ctx) {
-        CaseWhenStatement whenStatement = new CaseWhenStatement(true);
+        CaseWhenPartStatement whenStatement = new CaseWhenPartStatement(true);
         PlsqlParser.ExpressionContext expression = ctx.expression().get(0);
         visit(expression);
         TreeNode condition = treeBuilder.popStatement();
@@ -2540,6 +2549,18 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             visit(whenc);
             treeBuilder.addNode(caseStatement);
         }
+        List<TreeNode> whenParts = caseStatement.getChildrenNodes();
+        if(whenParts.size() > 0){
+            if(whenParts.get(0) instanceof CaseWhenPartStatement){
+                ((CaseWhenPartStatement)whenParts.get(0)).setFirst();
+            }
+        }
+        for(TreeNode node : whenParts){
+            if(node instanceof CaseWhenPartStatement){
+                ((CaseWhenPartStatement)node).setSwitchVar(caseStatement.getSwitchVar());
+            }
+        }
+
         PlsqlParser.Case_else_partContext elsepart = ctx.case_else_part();
         if (elsepart != null) {
             visit(ctx.case_else_part());
@@ -2559,7 +2580,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      */
     @Override
     public Object visitSearched_case_when_part(PlsqlParser.Searched_case_when_partContext ctx) {
-        CaseWhenStatement whenStatement = new CaseWhenStatement(false);
+        CaseWhenPartStatement whenStatement = new CaseWhenPartStatement(false);
         PlsqlParser.ExpressionContext expression = ctx.expression().get(0);
         visit(expression);
         TreeNode condition = treeBuilder.popStatement();
@@ -2585,6 +2606,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         for (PlsqlParser.Searched_case_when_partContext whenc : whens) {
             visit(whenc);
             treeBuilder.addNode(caseStatement);
+        }
+        List<TreeNode> whenParts = caseStatement.getChildrenNodes();
+        if(whenParts.size() > 0){
+            if(whenParts.get(0) instanceof CaseWhenPartStatement){
+                ((CaseWhenPartStatement)whenParts.get(0)).setFirst();
+            }
         }
         PlsqlParser.Case_else_partContext elsepart = ctx.case_else_part();
         if (elsepart != null) {

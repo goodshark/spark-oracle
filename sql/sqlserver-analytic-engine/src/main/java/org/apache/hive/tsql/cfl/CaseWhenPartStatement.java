@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * Created by chenfl2 on 2017/7/12.
  */
-public class CaseWhenStatement extends BaseStatement{
+public class CaseWhenPartStatement extends BaseStatement{
 
     private TreeNode whenCondition;
     private String switchVar = null;
@@ -18,12 +18,12 @@ public class CaseWhenStatement extends BaseStatement{
     private boolean isSimple = true;
     private boolean first = false;
 
-    public CaseWhenStatement(boolean isSimple) {
+    public CaseWhenPartStatement(boolean isSimple) {
         super();
         this.isSimple = isSimple;
     }
 
-    public CaseWhenStatement(TreeNode.Type t) {
+    public CaseWhenPartStatement(TreeNode.Type t) {
         super();
         setNodeType(t);
     }
@@ -31,6 +31,8 @@ public class CaseWhenStatement extends BaseStatement{
     public void setSwitchVar(String switchVar){
         this.switchVar = switchVar;
     }
+
+    public void setFirst(){ this.first = true;}
 
     public void setCondtion(TreeNode node) {
         whenCondition = node;
@@ -51,17 +53,25 @@ public class CaseWhenStatement extends BaseStatement{
     @Override
     public String doCodegen(){
         StringBuffer sb = new StringBuffer();
+        String ifstr = null;
+        if(first){
+            ifstr = "if";
+        } else {
+            ifstr = "else if";
+        }
         if(isSimple){
             if(whenCondition instanceof  BaseStatement){
                 String str = ((BaseStatement)whenCondition).doCodegen();
                 if(str != null && str.startsWith("\"") && str.endsWith("\"")){
-                    sb.append("if (");
+                    sb.append(ifstr);
+                    sb.append("(");
                     sb.append(str);
                     sb.append("equals(");
                     sb.append(switchVar);
                     sb.append("))");
                 } else {
-                    sb.append("if (");
+                    sb.append(ifstr);
+                    sb.append("(");
                     sb.append(switchVar);
                     sb.append(CODE_EQ2);
                     sb.append(str);
@@ -82,7 +92,8 @@ public class CaseWhenStatement extends BaseStatement{
         } else {
             if(whenCondition instanceof  BaseStatement){
                 String str = ((BaseStatement)whenCondition).doCodegen();
-                sb.append("if (");
+                sb.append(ifstr);
+                sb.append("(");
                 sb.append(str);
                 sb.append("){");
                 sb.append(CODE_LINE_END);

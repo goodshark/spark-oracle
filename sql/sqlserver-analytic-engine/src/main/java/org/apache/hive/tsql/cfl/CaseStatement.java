@@ -4,6 +4,9 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.LogicNode;
+import sun.reflect.generics.tree.Tree;
+
+import java.util.List;
 
 /**
  * Created by chenfl2 on 2017/7/12.
@@ -37,5 +40,17 @@ public class CaseStatement extends BaseStatement {
 
     public BaseStatement createStatement() {
         return null;
+    }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        List<TreeNode> childs = getChildrenNodes();
+        for(TreeNode child : childs){
+            if(child instanceof BaseStatement){
+                sb.append(((BaseStatement)child).doCodegen());
+            }
+        }
+        return sb.toString();
     }
 }
