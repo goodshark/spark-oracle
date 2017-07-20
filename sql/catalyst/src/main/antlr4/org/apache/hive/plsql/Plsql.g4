@@ -1932,7 +1932,7 @@ variable_name
     ;
 
 index_name
-    : id
+    : id_expression
     ;
 
 cursor_name
