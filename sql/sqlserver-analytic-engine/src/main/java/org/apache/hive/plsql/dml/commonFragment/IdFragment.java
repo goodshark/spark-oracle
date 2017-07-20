@@ -21,9 +21,9 @@ public class IdFragment extends SqlStatement {
         StringBuffer sql = new StringBuffer();
         if (null != charSetName) {
             sql.append("INTRODUCER  ");
-            sql.append(charSetName.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(charSetName, getExecSession()));
         }
-        sql.append(idExpression.getOriginalSql());
+        sql.append(FragMentUtils.appendOriginalSql(idExpression, getExecSession()));
         return  sql.toString();
     }
 

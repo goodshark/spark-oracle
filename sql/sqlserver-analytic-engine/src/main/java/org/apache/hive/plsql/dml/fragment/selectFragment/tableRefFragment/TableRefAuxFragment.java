@@ -1,10 +1,12 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment.tableRefFragment;
 
 import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
+import org.apache.hive.plsql.dml.commonFragment.TableAliasFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.DmlTableExpressionFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryOpPartFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.pivotFragment.PivotClauseFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.unpivotFragment.UnpivotClauseFragment;
+import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.SqlStatement;
 
 import java.util.ArrayList;
@@ -27,34 +29,48 @@ public class TableRefAuxFragment extends SqlStatement {
     private TableRefFragment tableRefFragment;
     private DmlTableExpressionFragment dmlTableExpressionFragment;
     private List<SubqueryOpPartFragment> subqueryOpPartFragment = new ArrayList<>();
+    private TableAliasFragment tableAliasFragment;
 
 
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         if (null != dmlTableExpressionFragment) {
-            sql.append(dmlTableExpressionFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(dmlTableExpressionFragment, getExecSession()));
             getPivotSql(sql);
 
         }
         if (null != tableRefFragment) {
-            sql.append(tableRefFragment.getOriginalSql());
-            sql.append(FragMentUtils.appendOriginalSql(subqueryOpPartFragment));
+            sql.append(FragMentUtils.appendOriginalSql(tableRefFragment, getExecSession()));
+            sql.append(FragMentUtils.appendOriginalSql(subqueryOpPartFragment, getExecSession()));
             getPivotSql(sql);
 
         }
 
+        if (null != tableAliasFragment) {
+            sql.append(FragMentUtils.appendOriginalSql(tableAliasFragment, getExecSession()));
+        }
         return sql.toString();
 
     }
 
     private void getPivotSql(StringBuffer sql) {
         if (null != unpivotClauseFragment) {
-            sql.append(unpivotClauseFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(unpivotClauseFragment, getExecSession()));
         }
         if (null != pivotClauseFragment) {
-            sql.append(pivotClauseFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(pivotClauseFragment, getExecSession()));
         }
+        sql.append(Common.SPACE);
+    }
+
+
+    public TableAliasFragment getTableAliasFragment() {
+        return tableAliasFragment;
+    }
+
+    public void setTableAliasFragment(TableAliasFragment tableAliasFragment) {
+        this.tableAliasFragment = tableAliasFragment;
     }
 
     public String getOnly() {

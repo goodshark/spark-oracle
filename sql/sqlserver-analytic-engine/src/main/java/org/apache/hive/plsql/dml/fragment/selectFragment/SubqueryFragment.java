@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 import java.util.ArrayList;
@@ -31,9 +32,9 @@ public class SubqueryFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuilder sb = new StringBuilder();
         if (basicElement != null)
-            sb.append(basicElement.getOriginalSql()).append(" ");
+            sb.append(FragMentUtils.appendOriginalSql(basicElement,getExecSession())).append(" ");
         for (SqlStatement stmt: operaionParts) {
-            sb.append(stmt.getOriginalSql()).append(" ");
+            sb.append(FragMentUtils.appendOriginalSql(stmt,getExecSession())).append(" ");
         }
         return sb.toString();
     }
@@ -42,12 +43,11 @@ public class SubqueryFragment extends SqlStatement {
     public String getFinalSql() throws Exception {
         StringBuilder sb = new StringBuilder();
         if (basicElement != null) {
-            basicElement.setExecSession(getExecSession());
-            sb.append(basicElement.getFinalSql()).append(" ");
+            sb.append(FragMentUtils.appendFinalSql(basicElement,getExecSession())).append(" ");
         }
         for (SqlStatement stmt: operaionParts) {
             stmt.setExecSession(getExecSession());
-            sb.append(stmt.getFinalSql()).append(" ");
+            sb.append(FragMentUtils.appendFinalSql(stmt,getExecSession())).append(" ");
         }
         return sb.toString();
     }

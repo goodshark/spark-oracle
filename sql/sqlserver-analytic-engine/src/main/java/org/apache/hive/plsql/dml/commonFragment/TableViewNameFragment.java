@@ -20,11 +20,11 @@ public class TableViewNameFragment extends SqlStatement {
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
-        sql.append(idFragment.getOriginalSql());
+        sql.append(FragMentUtils.appendOriginalSql(idFragment, getExecSession()));
 
         if (null != idExpression) {
             sql.append(".");
-            sql.append(idExpression.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(idExpression, getExecSession()));
         }
         return sql.toString();
     }

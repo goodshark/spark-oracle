@@ -22,6 +22,6 @@ public class ExpressionListFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return FragMentUtils.appendOriginalSql(expressionStatements);
+        return FragMentUtils.appendOriginalSql(expressionStatements,getExecSession());
     }
 }

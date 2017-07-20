@@ -24,15 +24,15 @@ public class VariableNameFragment extends SqlStatement {
         StringBuffer sql = new StringBuffer();
         if (null != charSetNameFragment) {
             sql.append("INTRODUCER ");
-            sql.append(charSetNameFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(charSetNameFragment, getExecSession()));
         }
         if (!idExpressins.isEmpty()) {
             if (idExpressins.size() == 1) {
-                sql.append(idExpressins.get(0));
+                sql.append(FragMentUtils.appendOriginalSql(idExpressins.get(0), getExecSession()));
             } else if (idExpressins.size() == 2) {
-                sql.append(idExpressins.get(0));
+                sql.append(FragMentUtils.appendOriginalSql(idExpressins.get(0), getExecSession()));
                 sql.append(".");
-                sql.append(idExpressins.get((1)));
+                sql.append(FragMentUtils.appendOriginalSql(idExpressins.get(1), getExecSession()));
             }
         }
         if (null != bindVariableNameFm) {

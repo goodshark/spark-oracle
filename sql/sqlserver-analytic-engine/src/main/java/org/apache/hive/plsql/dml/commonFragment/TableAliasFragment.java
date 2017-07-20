@@ -20,7 +20,7 @@ public class TableAliasFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         if (null != idFragment) {
-            sql.append(idFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(idFragment, getExecSession()));
         }
         if (StringUtils.isNotBlank(alias)) {
             sql.append(alias);

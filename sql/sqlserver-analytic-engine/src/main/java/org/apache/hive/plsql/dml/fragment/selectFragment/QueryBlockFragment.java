@@ -49,15 +49,15 @@ public class QueryBlockFragment extends SqlStatement {
         if (elements.isEmpty()) {
             sb.append(" * ");
         } else {
-            sb.append(FragMentUtils.appendOriginalSql(elements));
+            sb.append(FragMentUtils.appendOriginalSql(elements,getExecSession()));
         }
 
         if (null != intoClause) {
-            sb.append(intoClause.getOriginalSql());
+            sb.append(FragMentUtils.appendOriginalSql(intoClause,getExecSession()));
         }
-        sb.append(fromClause.getOriginalSql());
+        sb.append(FragMentUtils.appendOriginalSql(fromClause,getExecSession()));
         if (null != whereClause) {
-            sb.append(whereClause.getOriginalSql());
+            sb.append(FragMentUtils.appendOriginalSql(whereClause,getExecSession()));
         }
         return sb.toString();
     }

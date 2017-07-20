@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
@@ -21,8 +22,7 @@ public class WhereClauseFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuilder sb = new StringBuilder();
         sb.append(" WHERE ");
-        condition.setExecSession(getExecSession());
-        sb.append(condition.getOriginalSql());
+        sb.append(FragMentUtils.appendOriginalSql(condition,getExecSession()));
         return sb.toString();
     }
 

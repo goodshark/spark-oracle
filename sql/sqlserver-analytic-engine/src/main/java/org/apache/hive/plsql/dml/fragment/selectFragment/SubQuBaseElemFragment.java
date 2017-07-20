@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
@@ -19,10 +20,10 @@ public class SubQuBaseElemFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         if (null != queryBlock) {
-            sql.append(queryBlock.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(queryBlock,getExecSession()));
         }
         if (null != subQuery) {
-            sql.append(subQuery.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(subQuery,getExecSession()));
         }
         return sql.toString();
     }

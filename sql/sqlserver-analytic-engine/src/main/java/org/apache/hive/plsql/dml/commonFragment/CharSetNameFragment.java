@@ -24,7 +24,7 @@ public class CharSetNameFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return FragMentUtils.appendOriginalSql(idExpressions);
+        return FragMentUtils.appendOriginalSql(idExpressions,getExecSession());
     }
 
     @Override

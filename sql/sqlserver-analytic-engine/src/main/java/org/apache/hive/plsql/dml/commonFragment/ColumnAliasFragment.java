@@ -19,7 +19,7 @@ public class ColumnAliasFragment extends SqlStatement {
         StringBuffer sql = new StringBuffer();
         sql.append("AS ");
         if (null != idFragment) {
-            sql.append(idFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(idFragment, getExecSession()));
         }
         if (!StringUtils.isBlank(alias)) {
             sql.append(alias);

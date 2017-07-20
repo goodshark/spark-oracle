@@ -19,7 +19,7 @@ public class CommonFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuilder sb = new StringBuilder();
         for (SqlStatement stmt: fragments) {
-            sb.append(stmt.getOriginalSql()).append(" ");
+            sb.append(FragMentUtils.appendOriginalSql(stmt, getExecSession())).append(" ");
         }
         return sb.toString();
     }
@@ -27,8 +27,7 @@ public class CommonFragment extends SqlStatement {
     public String getFinalSql() throws Exception {
         StringBuilder sb = new StringBuilder();
         for (SqlStatement stmt: fragments) {
-            stmt.setExecSession(getExecSession());
-            sb.append(stmt.getFinalSql()).append(" ");
+            sb.append(FragMentUtils.appendOriginalSql(stmt, getExecSession())).append(" ");
         }
         return sb.toString();
     }

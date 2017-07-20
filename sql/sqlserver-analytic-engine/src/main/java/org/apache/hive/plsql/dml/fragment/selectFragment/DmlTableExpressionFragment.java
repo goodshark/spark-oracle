@@ -1,6 +1,7 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
 import org.apache.hive.plsql.dml.OracleSelectStatement;
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.plsql.dml.commonFragment.TableViewNameFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 
@@ -25,13 +26,15 @@ public class DmlTableExpressionFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         if (null != tableCollectionExpressionFm) {
-            sql.append(tableCollectionExpressionFm.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(tableCollectionExpressionFm, getExecSession()));
         }
         if (null != selectStatement) {
-            sql.append(selectStatement.getOriginalSql());
+            sql.append("( ");
+            sql.append(FragMentUtils.appendOriginalSql(selectStatement, getExecSession()));
+            sql.append(")");
         }
         if (null != tableViewNameFragment) {
-            sql.append(tableViewNameFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(tableViewNameFragment, getExecSession()));
         }
         return sql.toString();
     }

@@ -28,13 +28,13 @@ public class TableRefFragment extends SqlStatement {
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
-        sql.append(tableRefAuxFragment.getOriginalSql());
-        sql.append(FragMentUtils.appendOriginalSql(joinClauseFragments));
+        sql.append(FragMentUtils.appendOriginalSql(tableRefAuxFragment,getExecSession()));
+        sql.append(FragMentUtils.appendOriginalSql(joinClauseFragments,getExecSession()));
         if (null != pivotClauseFragment) {
-            sql.append(pivotClauseFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(pivotClauseFragment,getExecSession()));
         }
         if (null != unpivotClauseFragment) {
-            sql.append(unpivotClauseFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(unpivotClauseFragment,getExecSession()));
         }
         return sql.toString();
     }

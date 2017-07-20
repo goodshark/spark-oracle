@@ -29,7 +29,7 @@ public class ColumnNameFragment extends SqlStatement {
         sql.append(id.getOriginalSql());
         for (ExpressionStatement id : idExpressions) {
             sql.append(".");
-            sql.append(id.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(id, getExecSession()));
         }
         return sql.toString();
     }

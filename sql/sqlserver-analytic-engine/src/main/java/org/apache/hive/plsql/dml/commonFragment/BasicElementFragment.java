@@ -39,11 +39,11 @@ public class BasicElementFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuffer stringBuffer = new StringBuffer();
         if (null != queryBlock) {
-            stringBuffer.append(queryBlock.getOriginalSql());
+            stringBuffer.append(FragMentUtils.appendOriginalSql(queryBlock, getExecSession()));
         }
         if (null != subQuery) {
             stringBuffer.append("(");
-            stringBuffer.append(subQuery.getOriginalSql());
+            stringBuffer.append(FragMentUtils.appendOriginalSql(subQuery, getExecSession()));
             stringBuffer.append(")");
         }
         return stringBuffer.toString();

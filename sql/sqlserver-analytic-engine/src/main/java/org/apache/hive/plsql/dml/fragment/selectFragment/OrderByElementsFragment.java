@@ -1,6 +1,8 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
+import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 
@@ -20,10 +22,12 @@ public class OrderByElementsFragment extends SqlStatement {
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
-        sql.append(expression.getSql());
+        sql.append(FragMentUtils.appendOriginalSql(expression,getExecSession()));
+        sql.append(Common.SPACE);
         if (StringUtils.isNotBlank(orderType)) {
             sql.append(orderType);
         }
+        sql.append(Common.SPACE);
         if (StringUtils.isNotBlank(nullOrderType)) {
             sql.append(nullOrderType);
         }

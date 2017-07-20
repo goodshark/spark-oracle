@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 import java.util.ArrayList;
@@ -20,4 +21,11 @@ public class OrderByClauseFragment extends SqlStatement {
         orderByElements.add(orderByElementsFragment);
     }
 
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        sql.append("order by ");
+        sql.append(FragMentUtils.appendOriginalSql(orderByElements, getExecSession()));
+        return sql.toString();
+    }
 }

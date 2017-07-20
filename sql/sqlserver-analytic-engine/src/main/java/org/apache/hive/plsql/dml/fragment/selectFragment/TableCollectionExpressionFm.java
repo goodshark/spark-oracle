@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 
@@ -22,12 +23,12 @@ public class TableCollectionExpressionFm extends SqlStatement {
         sql.append(keyWord);
         if (null != subqueryFragment) {
             sql.append("(");
-            sql.append(subqueryFragment.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(subqueryFragment,getExecSession()));
             sql.append(")");
         }
         if (null != expressionStatement) {
             sql.append("(");
-            sql.append(expressionStatement.getSql());
+            sql.append(FragMentUtils.appendOriginalSql(expressionStatement,getExecSession()));
             sql.append(")");
         }
         return sql.toString();

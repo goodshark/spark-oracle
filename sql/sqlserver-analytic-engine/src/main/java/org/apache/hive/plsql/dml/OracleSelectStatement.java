@@ -76,26 +76,22 @@ public class OracleSelectStatement extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return "";
-    }
-
-    @Override
-    public String getFinalSql() throws Exception {
         StringBuilder sb = new StringBuilder();
         if (withQueryStatement != null) {
             withQueryStatement.setExecSession(getExecSession());
-            sb.append(withQueryStatement.getFinalSql()).append(" ");
+            sb.append(withQueryStatement.getOriginalSql()).append(" ");
         }
         if (queryBlockStatement != null) {
             queryBlockStatement.setExecSession(getExecSession());
-            sb.append(queryBlockStatement.getFinalSql()).append(" ");
+            sb.append(queryBlockStatement.getOriginalSql()).append(" ");
         }
         if (orderByStatement != null) {
             orderByStatement.setExecSession(getExecSession());
-            sb.append(orderByStatement.getFinalSql());
+            sb.append(orderByStatement.getOriginalSql());
         }
         return sb.toString();
     }
+
 
     public SubqueryFactoringClause getWithQueryStatement() {
         return withQueryStatement;

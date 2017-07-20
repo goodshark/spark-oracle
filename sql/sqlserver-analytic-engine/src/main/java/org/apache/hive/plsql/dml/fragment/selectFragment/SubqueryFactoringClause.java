@@ -24,7 +24,7 @@ public class SubqueryFactoringClause extends SqlStatement {
     public String getFinalSql() throws Exception {
         StringBuffer sql = new StringBuffer();
         sql.append(Common.SPACE).append("with ");
-        sql.append(FragMentUtils.appendFinalSql(factoringElements));
+        sql.append(FragMentUtils.appendFinalSql(factoringElements,getExecSession()));
         sql.append(Common.SPACE);
         return sql.toString();
     }
@@ -33,7 +33,7 @@ public class SubqueryFactoringClause extends SqlStatement {
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         sql.append(Common.SPACE).append("with ");
-        sql.append(FragMentUtils.appendOriginalSql(factoringElements));
+        sql.append(FragMentUtils.appendOriginalSql(factoringElements,getExecSession()));
         sql.append(Common.SPACE);
         return sql.toString();
     }

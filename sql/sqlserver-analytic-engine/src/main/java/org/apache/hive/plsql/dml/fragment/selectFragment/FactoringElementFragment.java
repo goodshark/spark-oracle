@@ -23,6 +23,11 @@ public class FactoringElementFragment extends SqlStatement {
     private OrderByElementsFragment orderByClause;
 
 
+
+
+
+
+
     public SqlStatement getQuereyName() {
         return quereyName;
     }

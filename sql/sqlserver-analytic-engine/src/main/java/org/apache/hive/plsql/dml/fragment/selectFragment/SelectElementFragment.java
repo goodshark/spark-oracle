@@ -2,6 +2,7 @@ package org.apache.hive.plsql.dml.fragment.selectFragment;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.plsql.dml.commonFragment.ColumnAliasFragment;
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 
@@ -37,9 +38,9 @@ public class SelectElementFragment extends SqlStatement {
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
-        sql.append(col.getOriginalSql());
+        sql.append(FragMentUtils.appendOriginalSql(col,getExecSession()));
         if (null != colAlias) {
-            sql.append(colAlias.getOriginalSql());
+            sql.append(FragMentUtils.appendOriginalSql(colAlias,getExecSession()));
         }
         return sql.toString();
     }

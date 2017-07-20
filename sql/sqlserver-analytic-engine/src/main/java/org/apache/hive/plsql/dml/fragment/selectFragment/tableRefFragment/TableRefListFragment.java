@@ -22,6 +22,6 @@ public class TableRefListFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return FragMentUtils.appendOriginalSql(tableRefFragments);
+        return FragMentUtils.appendOriginalSql(tableRefFragments,getExecSession());
     }
 }

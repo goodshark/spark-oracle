@@ -1784,6 +1784,11 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         if (!ctx.flashback_query_clause().isEmpty()) {
             treeBuilder.addException("flash back query ", ctx.flashback_query_clause(0));
         }
+        if (null != ctx.table_alias()) {
+            visit(ctx.table_alias());
+            TableAliasFragment tableAliasFragment = (TableAliasFragment) treeBuilder.popStatement();
+            tableRefAuxFragment.setTableAliasFragment(tableAliasFragment);
+        }
         treeBuilder.pushStatement(tableRefAuxFragment);
         return tableRefAuxFragment;
     }
