@@ -512,7 +512,8 @@ public class Executor {
 
     public void anonyBlockExecute(TreeNode node) throws Exception {
         // mark a anonymous block can be skipped for the raise statement
-        node.setSkipable(true);
+        // do not need mark skip, just need boarder node re-enter when meet raise stmt
+//        node.setSkipable(true);
         stack.push(new BlockBorder(node));
         enterBlock(node);
         node.execute();
