@@ -3,9 +3,11 @@ package org.apache.hive.tsql.node;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.arg.VariableContainer;
+import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.SparkResultSet;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
+import org.apache.hive.tsql.udf.BaseCalculator;
 
 import java.util.List;
 
@@ -258,5 +260,47 @@ public class LogicNode extends ExpressionStatement {
     @Override
     public String getFinalSql() throws Exception {
         return toString();
+    }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        String op = this.getNodeType().name();
+        if("NOT".equalsIgnoreCase(op) && this.getChildrenNodes().size() == 1){
+            TreeNode node = this.getChildrenNodes().get(0);
+            if(node instanceof BaseStatement){
+                sb.append(CODE_NOT);
+                sb.append("(");
+                sb.append(((BaseStatement) node).doCodegen());
+                sb.append(")");
+            }
+        }
+        if("OR".equalsIgnoreCase(op) && this.getChildrenNodes().size() == 2){
+            TreeNode left = this.getChildrenNodes().get(0);
+            TreeNode rift = this.getChildrenNodes().get(1);
+            if(left instanceof BaseStatement && rift instanceof BaseStatement){
+                sb.append("(");
+                sb.append(((BaseStatement) left).doCodegen());
+                sb.append(CODE_OR);
+                sb.append(((BaseStatement) rift).doCodegen());
+                sb.append(")");
+            }
+        }
+        if("AND".equalsIgnoreCase(op)){
+            List<TreeNode> childs = this.getChildrenNodes();
+            sb.append("(");
+            int i = 0;
+            for(TreeNode child : childs){
+                i++;
+                if(child instanceof BaseStatement){
+                    sb.append(((BaseStatement) child).doCodegen());
+                    if(i != childs.size()){
+                        sb.append(CODE_AND);
+                    }
+                }
+            }
+            sb.append(")");
+        }
+        return sb.toString();
     }
 }

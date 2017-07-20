@@ -33,4 +33,14 @@ public abstract class CommonReturnStatement extends BaseStatement {
     }
 
     public abstract void postExecute(Var res) throws Exception;
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        sb.append("return ");
+        BaseStatement bs = (BaseStatement)expr;
+        sb.append(bs.doCodegen());
+        sb.append(CODE_END);
+        return sb.toString();
+    }
 }

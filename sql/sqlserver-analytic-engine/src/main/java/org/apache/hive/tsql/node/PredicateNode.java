@@ -695,4 +695,19 @@ public class PredicateNode extends LogicNode {
     public String getFinalSql() throws Exception {
         return toString();
     }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        if(this.getChildrenNodes().size()==2){
+            TreeNode left = this.getChildrenNodes().get(0);
+            TreeNode rift = this.getChildrenNodes().get(0);
+            if(left instanceof BaseStatement && rift instanceof BaseStatement){
+                sb.append(((BaseStatement) left).doCodegen());
+                sb.append(this.operator);
+                sb.append(((BaseStatement) rift).doCodegen());
+            }
+        }
+        return sb.toString();
+    }
 }

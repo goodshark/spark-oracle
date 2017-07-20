@@ -4,6 +4,7 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,5 +67,24 @@ public class DeclareStatement extends BaseStatement {
     @Override
     public BaseStatement createStatement() {
         return this;
+    }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        String varName = declareVars.get(0).getVarName();
+        CreateFunctionStatement.SupportDataTypes dataType = CreateFunctionStatement.fromString(declareVars.get(0).getDataType().name());
+        sb.append(dataType.toString());
+        sb.append(BaseStatement.CODE_SEP);
+        sb.append(varName);
+        if("EXPRESSION".equalsIgnoreCase(declareVars.get(0).getValueType().name()) && declareVars.get(0).getExpr() != null){
+            if(declareVars.get(0).getExpr() instanceof BaseStatement){
+                sb.append(CODE_EQ);
+                BaseStatement bs = (BaseStatement)declareVars.get(0).getExpr();
+                sb.append(bs.doCodegen());
+            }
+        }
+        sb.append(CODE_END);
+        return sb.toString();
     }
 }
