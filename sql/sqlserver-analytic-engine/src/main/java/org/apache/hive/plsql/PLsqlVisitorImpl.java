@@ -540,8 +540,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitCursor_loop_param(PlsqlParser.Cursor_loop_paramContext ctx) {
         LogicNode andNode = new LogicNode(TreeNode.Type.AND);
-        LogicNode leftNotNode = new LogicNode(TreeNode.Type.NOT);
-        LogicNode rightNotNode = new LogicNode(TreeNode.Type.NOT);
+        LogicNode leftNotNode = new LogicNode(TreeNode.Type.AND);
+        LogicNode rightNotNode = new LogicNode(TreeNode.Type.AND);
         andNode.addNode(leftNotNode);
         andNode.addNode(rightNotNode);
         PredicateNode leftPredicateNode = new PredicateNode(TreeNode.Type.PREDICATE);

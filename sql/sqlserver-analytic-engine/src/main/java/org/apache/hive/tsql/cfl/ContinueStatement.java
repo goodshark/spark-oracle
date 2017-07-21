@@ -74,4 +74,33 @@ public class ContinueStatement extends NonSeqStatement {
     public BaseStatement createStatement() {
         return null;
     }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        if(condition != null){
+            sb.append("if(");
+            sb.append(condition.doCodegen());
+            sb.append("){");
+            sb.append(CODE_LINE_END);
+            if(label != null){
+                sb.append("continue " + label);
+            } else {
+                sb.append("continue ");
+            }
+            sb.append(CODE_END);
+            sb.append(CODE_LINE_END);
+            sb.append("}");
+            sb.append(CODE_LINE_END);
+        } else {
+            if(label != null){
+                sb.append("continue " + label);
+            } else {
+                sb.append("continue ");
+            }
+            sb.append(CODE_END);
+            sb.append(CODE_LINE_END);
+        }
+        return sb.toString();
+    }
 }

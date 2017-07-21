@@ -32,12 +32,24 @@ public class LogicNode extends ExpressionStatement {
             lower = left;
         }
 
+        public Var getLower() {
+            return lower;
+        }
+
         public void setUpper(Var right) {
             upper = right;
         }
 
+        public Var getUpper() {
+            return upper;
+        }
+
         public void setReverse() {
             reverse = true;
+        }
+
+        public boolean isReverse() {
+            return reverse;
         }
 
         public void init() throws Exception {
@@ -123,6 +135,10 @@ public class LogicNode extends ExpressionStatement {
 
     public void setIndexIter(IndexIterator iter) {
         indexIter = iter;
+    }
+
+    public IndexIterator getIndexIter() {
+        return indexIter;
     }
 
     public Var getIndexVar() {
@@ -266,40 +282,44 @@ public class LogicNode extends ExpressionStatement {
     public String doCodegen(){
         StringBuffer sb = new StringBuffer();
         String op = this.getNodeType().name();
-        if("NOT".equalsIgnoreCase(op) && this.getChildrenNodes().size() == 1){
-            TreeNode node = this.getChildrenNodes().get(0);
-            if(node instanceof BaseStatement){
-                sb.append(CODE_NOT);
-                sb.append("(");
-                sb.append(((BaseStatement) node).doCodegen());
-                sb.append(")");
-            }
-        }
-        if("OR".equalsIgnoreCase(op) && this.getChildrenNodes().size() == 2){
-            TreeNode left = this.getChildrenNodes().get(0);
-            TreeNode rift = this.getChildrenNodes().get(1);
-            if(left instanceof BaseStatement && rift instanceof BaseStatement){
-                sb.append("(");
-                sb.append(((BaseStatement) left).doCodegen());
-                sb.append(CODE_OR);
-                sb.append(((BaseStatement) rift).doCodegen());
-                sb.append(")");
-            }
-        }
-        if("AND".equalsIgnoreCase(op)){
-            List<TreeNode> childs = this.getChildrenNodes();
-            sb.append("(");
-            int i = 0;
-            for(TreeNode child : childs){
-                i++;
-                if(child instanceof BaseStatement){
-                    sb.append(((BaseStatement) child).doCodegen());
-                    if(i != childs.size()){
-                        sb.append(CODE_AND);
-                    }
+        if(this.boolFlag){
+            sb.append("(true)");
+        } else {
+            if("NOT".equalsIgnoreCase(op) && this.getChildrenNodes().size() == 1){
+                TreeNode node = this.getChildrenNodes().get(0);
+                if(node instanceof BaseStatement){
+                    sb.append(CODE_NOT);
+                    sb.append("(");
+                    sb.append(((BaseStatement) node).doCodegen());
+                    sb.append(")");
                 }
             }
-            sb.append(")");
+            if("OR".equalsIgnoreCase(op) && this.getChildrenNodes().size() == 2){
+                TreeNode left = this.getChildrenNodes().get(0);
+                TreeNode rift = this.getChildrenNodes().get(1);
+                if(left instanceof BaseStatement && rift instanceof BaseStatement){
+                    sb.append("(");
+                    sb.append(((BaseStatement) left).doCodegen());
+                    sb.append(CODE_OR);
+                    sb.append(((BaseStatement) rift).doCodegen());
+                    sb.append(")");
+                }
+            }
+            if("AND".equalsIgnoreCase(op)){
+                List<TreeNode> childs = this.getChildrenNodes();
+                sb.append("(");
+                int i = 0;
+                for(TreeNode child : childs){
+                    i++;
+                    if(child instanceof BaseStatement){
+                        sb.append(((BaseStatement) child).doCodegen());
+                        if(i != childs.size()){
+                            sb.append(CODE_AND);
+                        }
+                    }
+                }
+                sb.append(")");
+            }
         }
         return sb.toString();
     }
