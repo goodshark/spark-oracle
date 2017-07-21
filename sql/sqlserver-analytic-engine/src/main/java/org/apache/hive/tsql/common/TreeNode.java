@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
@@ -226,15 +227,15 @@ public abstract class TreeNode implements Serializable {
      */
     public abstract int execute() throws Exception;
 
-    public Cursor findCursor(String name, boolean isGlobal) {
+    public CommonCursor findCursor(String name, boolean isGlobal) {
         return this.execSession.getVariableContainer().findCursor(name.trim().toUpperCase(), isGlobal);
     }
 
-    public Cursor findCursor(String name) {
+    public CommonCursor findCursor(String name) {
         return this.execSession.getVariableContainer().findCursor(name.trim().toUpperCase());
     }
 
-    public void addCursor(Cursor cursor) {
+    public void addCursor(CommonCursor cursor) {
         this.execSession.getVariableContainer().addCursor(cursor);
     }
 

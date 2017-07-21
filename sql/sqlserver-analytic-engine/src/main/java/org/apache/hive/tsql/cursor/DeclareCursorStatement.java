@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.cursor;
 
+import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.exception.AlreadyDeclaredException;
 
@@ -8,13 +9,13 @@ import org.apache.hive.tsql.exception.AlreadyDeclaredException;
  */
 public class DeclareCursorStatement extends BaseStatement {
     private static final String STATEMENT_NAME = "_DECALRE_CURSOR_";
-    private Cursor cursor;
+    private CommonCursor cursor;
 
     public DeclareCursorStatement() {
         super(STATEMENT_NAME);
     }
 
-    public void setCursor(Cursor cursor) {
+    public void setCursor(CommonCursor cursor) {
         this.cursor = cursor;
     }
 

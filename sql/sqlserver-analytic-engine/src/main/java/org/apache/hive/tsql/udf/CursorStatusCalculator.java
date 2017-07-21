@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.udf;
 
+import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cursor.Cursor;
 import org.apache.hive.tsql.util.StrUtils;
@@ -20,7 +21,7 @@ public class CursorStatusCalculator extends BaseCalculator {
         boolean isVariable = isVariable(cursorName);
         Var ret = new Var(-3, Var.DataType.INT);
 
-        Cursor cursor = null;
+        CommonCursor cursor = null;
         if ("LOCAL".equals(scope)) {
             if (isVariable) {
                 return ret;

@@ -1,29 +1,21 @@
 package org.apache.hive.tsql.cursor;
 
+import org.apache.hive.basesql.cursor.CommonCloseCursorStmt;
 import org.apache.hive.tsql.common.BaseStatement;
 
 /**
  * Created by zhongdg1 on 2016/12/28.
  */
-public class CloseCursorStatement extends BaseStatement {
+public class CloseCursorStatement extends CommonCloseCursorStmt {
     private static final String STATEMENT_NAME = "_CLOSE_CURSOR_";
-    private String cursorName;
-    private boolean isGlobal = false;
 
     public CloseCursorStatement(String cursorName, boolean isGlobal) {
-        super(STATEMENT_NAME);
-        this.cursorName = cursorName.trim().toUpperCase();
-        this.isGlobal = isGlobal;
+        super(STATEMENT_NAME, cursorName, isGlobal);
     }
 
-    @Override
-    public BaseStatement createStatement() {
-        return null;
-    }
-
-    @Override
+    /*@Override
     public int execute() throws Exception {
-        Cursor cursor = isGlobal ? findCursor(cursorName, true) : findCursor(cursorName);
+        Cursor cursor = (Cursor) (isGlobal ? findCursor(cursorName, true) : findCursor(cursorName));
         if (null == cursor) {
             System.out.println("Cursor not declared # " + cursorName);
             return 1;
@@ -35,5 +27,5 @@ public class CloseCursorStatement extends BaseStatement {
         cursor.setStatus(Cursor.CursorStatus.CLOSED);
         //TODO 清理结果集
         return 0;
-    }
+    }*/
 }

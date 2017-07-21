@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.cursor;
 
+import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.tsql.arg.SystemVName;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
@@ -64,11 +65,11 @@ public class FetchCursorStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
-        Cursor cursor = isGlobal ? findCursor(cursorName, true) : findCursor(cursorName);
+        Cursor cursor = (Cursor) (isGlobal ? findCursor(cursorName, true) : findCursor(cursorName));
         if (null == cursor) {
             throw new NotDeclaredException(cursorName);
         }
-        if (Cursor.CursorStatus.OPENING != cursor.getStatus()) {
+        if (CommonCursor.CursorStatus.OPENING != cursor.getStatus()) {
             throw new RuntimeException("Cursor not opening # " + cursorName);
         }
         SparkResultSet rs = (SparkResultSet) cursor.getRs();

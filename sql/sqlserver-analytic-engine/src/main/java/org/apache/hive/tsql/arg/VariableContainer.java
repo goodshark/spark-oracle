@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.arg;
 
+import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.BaseStatement;
@@ -31,8 +32,10 @@ public class VariableContainer {
     private ConcurrentHashMap<String, CommonProcedureStatement> functions = new ConcurrentHashMap<String, CommonProcedureStatement>();
     private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, List<CommonProcedureStatement>>> newFunctions = new ConcurrentHashMap<>();
     //保存cursor
-    private ConcurrentHashMap<String, Cursor> localCursors = new ConcurrentHashMap<>();//本地游标
-    private ConcurrentHashMap<String, Cursor> globalCursors = new ConcurrentHashMap<>();//全局游标
+    private ConcurrentHashMap<String, CommonCursor> localCursors = new ConcurrentHashMap<>();//本地游标
+    private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, CommonCursor>> newLocalCursors =
+            new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, CommonCursor> globalCursors = new ConcurrentHashMap<>();//全局游标
     //系统变量
     private ConcurrentHashMap<String,Var> systemVariables = new ConcurrentHashMap<>();
 
@@ -75,25 +78,74 @@ public class VariableContainer {
     }
 
     //按指定容器查找
-    public Cursor findCursor(String name, boolean isGlobal) {
+    public CommonCursor findCursor(String name, boolean isGlobal) {
         name = name.toUpperCase();
-        return isGlobal ? globalCursors.get(name) : localCursors.get(name);
+        return isGlobal ? getGlobalCursor(name) : getLocalCursor(name);
+//        return isGlobal ? globalCursors.get(name) : localCursors.get(name);
     }
 
     //local存在在返回，否则找global
-    public Cursor findCursor(String name) {
+    public CommonCursor findCursor(String name) {
         name = name.toUpperCase();
-        return localCursors.get(name) != null ? localCursors.get(name) : globalCursors.get(name);
+        CommonCursor cursor = getLocalCursor(name);
+        return cursor == null ? getGlobalCursor(name) : cursor;
+//        return localCursors.get(name) != null ? localCursors.get(name) : globalCursors.get(name);
+    }
+
+    private CommonCursor getLocalCursor(String name) {
+        TreeNode[] blocks = session.getCurrentScopes();
+        ConcurrentHashMap<String, CommonCursor> mapCursor = null;
+        for (TreeNode curBlock: blocks) {
+            mapCursor = newLocalCursors.get(curBlock);
+            if (mapCursor != null && mapCursor.get(name) != null)
+                return mapCursor.get(name);
+        }
+        TreeNode rootBlock = session.getRootNode();
+        mapCursor = newLocalCursors.get(rootBlock);
+        if (mapCursor != null)
+            return mapCursor.get(name);
+        return null;
+    }
+
+    private CommonCursor getGlobalCursor(String name) {
+        return globalCursors.get(name);
     }
 
 
     //保持只有一个Cursor，LOCAL OR GLOBAL
-    public Cursor addCursor(Cursor cursor) {
-        return cursor.isGlobal() ? globalCursors.put(cursor.getName(), cursor) : localCursors.put(cursor.getName(), cursor);
+    public void addCursor(CommonCursor cursor) {
+//        return cursor.isGlobal() ? globalCursors.put(cursor.getName(), cursor) : localCursors.put(cursor.getName(), cursor);
+        if (cursor.isGlobal())
+            addGlobalCursor(cursor);
+        else
+            addLocalCursor(cursor);
+    }
+
+    private void addGlobalCursor(CommonCursor cursor) {
+        globalCursors.put(cursor.getName(), cursor);
+    }
+
+    private void addLocalCursor(CommonCursor cursor) {
+        TreeNode curBlock = session.getCurrentScope();
+        ConcurrentHashMap<String, CommonCursor> mapCursor = new ConcurrentHashMap<>();
+        mapCursor.put(cursor.getName().toUpperCase(), cursor);
+        if (curBlock != null) {
+            if (newLocalCursors.containsKey(curBlock))
+                newLocalCursors.get(curBlock).put(cursor.getName(), cursor);
+            else
+                newLocalCursors.put(curBlock, mapCursor);
+        } else {
+            if (newLocalCursors.containsKey(session.getRootNode()))
+                newLocalCursors.get(session.getRootNode()).put(cursor.getName(), cursor);
+            else
+                newLocalCursors.put(session.getRootNode(), mapCursor);
+        }
+//        localCursors.put(cursor.getName(), cursor);
     }
 
     //如果指定global则直接delete global，否则优先delete local
     public void deleteCursor(String cursorName, boolean isGlobal) {
+        // TODO delete cursor in hierachy block
         cursorName = cursorName.toUpperCase();
         if (isGlobal) {
             globalCursors.remove(cursorName);
@@ -142,8 +194,6 @@ public class VariableContainer {
         var.setExecuted(true);
         return var;
     }
-
-
 
     public void addProcFunc(CommonProcedureStatement function) {
         if (function == null)
@@ -327,7 +377,7 @@ public class VariableContainer {
     public void resetVars() {
         this.vars = new ConcurrentHashMap<String, Var>();
         this.tableVars = new ConcurrentHashMap<String,Var>();
-        this.localCursors = new ConcurrentHashMap<String, Cursor>();
+        this.localCursors = new ConcurrentHashMap<String, CommonCursor>();
     }
 
     public Var addOrUpdateSys(Var var) {

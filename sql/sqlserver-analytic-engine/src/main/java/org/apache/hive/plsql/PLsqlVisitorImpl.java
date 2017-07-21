@@ -8,6 +8,10 @@ import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.cfl.ExceptionVariable;
 import org.apache.hive.plsql.cfl.OracleRaiseStatement;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
+import org.apache.hive.plsql.cursor.OracleCloseCursorStmt;
+import org.apache.hive.plsql.cursor.OracleCursor;
+import org.apache.hive.plsql.cursor.OracleFetchCursorStmt;
+import org.apache.hive.plsql.cursor.OracleOpenCursorStmt;
 import org.apache.hive.plsql.dml.OracleSelectStatement;
 import org.apache.hive.plsql.dml.fragment.*;
 import org.apache.hive.plsql.function.FakeFunction;
@@ -18,6 +22,7 @@ import org.apache.hive.tsql.another.SetStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.*;
+import org.apache.hive.tsql.cursor.DeclareCursorStatement;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
 import org.apache.hive.tsql.ddl.CreateTableStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
@@ -1102,5 +1107,57 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     private Position locate(ParserRuleContext ctx) {
         return new Position(ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine(),
                 ctx.getStop().getLine(), ctx.getStop().getCharPositionInLine());
+    }
+
+    @Override
+    public Object visitCursor_declaration(PlsqlParser.Cursor_declarationContext ctx) {
+        DeclareCursorStatement stmt = new DeclareCursorStatement();
+        OracleCursor cursor = new OracleCursor(ctx.cursor_name().getText());
+        // TODO cursor return type
+        // TODO cursor parameter
+        for (PlsqlParser.Parameter_specContext para: ctx.parameter_spec()) {
+            visit(para);
+            treeBuilder.popStatement();
+        }
+        if (ctx.select_statement() != null) {
+            visit(ctx.select_statement());
+            cursor.setTreeNode(treeBuilder.popStatement());
+        }
+        stmt.setCursor(cursor);
+        treeBuilder.pushStatement(stmt);
+        return stmt;
+    }
+
+    @Override
+    public Object visitClose_statement(PlsqlParser.Close_statementContext ctx) {
+        OracleCloseCursorStmt closeCursorStmt = new OracleCloseCursorStmt(ctx.cursor_name().getText(), false);
+        treeBuilder.pushStatement(closeCursorStmt);
+        return closeCursorStmt;
+    }
+
+    @Override
+    public Object visitOpen_statement(PlsqlParser.Open_statementContext ctx) {
+        OracleOpenCursorStmt openCursorStmt = new OracleOpenCursorStmt(ctx.cursor_name().getText(), false);
+        // TODO open expression list
+        treeBuilder.pushStatement(openCursorStmt);
+        return openCursorStmt;
+    }
+
+    @Override
+    public Object visitFetch_statement(PlsqlParser.Fetch_statementContext ctx) {
+        OracleFetchCursorStmt fetchCursorStmt = new OracleFetchCursorStmt(ctx.cursor_name().getText());
+        for (PlsqlParser.Variable_nameContext varNameCtx: ctx.variable_name()) {
+            String varName = varNameCtx.getText();
+            fetchCursorStmt.addVarname(varName);
+        }
+        treeBuilder.pushStatement(fetchCursorStmt);
+        return fetchCursorStmt;
+    }
+
+    @Override
+    public Object visitOpen_for_statement(PlsqlParser.Open_for_statementContext ctx) {
+        OracleOpenCursorStmt openCursorStmt = new OracleOpenCursorStmt();
+        treeBuilder.pushStatement(openCursorStmt);
+        return openCursorStmt;
     }
 }
