@@ -218,12 +218,12 @@ insert_statement_value
 
 // https://msdn.microsoft.com/zh-cn/library/ms189499.aspx
 select_statement
-    : with_expression? query_expression order_by_clause? for_clause? option_clause? limit? ';'?
+    : with_expression? query_expression order_by_clause? for_clause? option_clause?  ';'?
     ;
 
- limit
+/* limit
     :LIMIT DECIMAL
-    ;
+    ;*/
 
 // https://msdn.microsoft.com/zh-cn/library/ms177523.aspx
 update_statement
