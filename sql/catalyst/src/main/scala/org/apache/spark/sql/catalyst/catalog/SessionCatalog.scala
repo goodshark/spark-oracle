@@ -298,7 +298,7 @@ class SessionCatalog(
   def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
     var flag = true
     // for test create crud table in hive, the table is not crud table in spark;
-    logInfo(s"bucket num is ${tableMetadata.bucketSpec.
+    /* logInfo(s"bucket num is ${tableMetadata.bucketSpec.
       getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames}")
     logInfo(s" transctional is : ${tableMetadata.properties.get("transactional")}")
     logInfo(s" inputFormat is : ${tableMetadata.storage.inputFormat.get}")
@@ -313,7 +313,7 @@ class SessionCatalog(
       get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")}")
     logInfo(s"four :${!tableMetadata.storage.inputFormat.
       get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcInputFormat")}")
-
+   */
     if ( tableMetadata.bucketSpec.
       getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.isEmpty ||
       !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||

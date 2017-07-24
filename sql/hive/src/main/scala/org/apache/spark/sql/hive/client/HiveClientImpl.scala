@@ -402,7 +402,9 @@ private[hive] class HiveClientImpl(
         partitionColumnNames = partCols.map(_.name),
         // We can not populate bucketing information for Hive tables as Spark SQL has a different
         // implementation of hash function from Hive.
-        bucketSpec = None,
+        bucketSpec = Option(new BucketSpec(h.getNumBuckets,
+          h.getBucketCols.asScala.toSeq, Seq())),
+        // bucketSpec = None,
         owner = h.getOwner,
         createTime = h.getTTable.getCreateTime.toLong * 1000,
         lastAccessTime = h.getLastAccessTime.toLong * 1000,
