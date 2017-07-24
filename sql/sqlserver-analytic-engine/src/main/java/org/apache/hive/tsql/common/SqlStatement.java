@@ -64,6 +64,6 @@ public class SqlStatement extends BaseStatement implements Serializable {
     }
 
     public String getFinalSql() throws Exception {
-        return super.getSql();
+        return getOriginalSql();
     }
 }

@@ -1,5 +1,6 @@
-package org.apache.hive.plsql.dml.fragment;
+package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 import java.util.ArrayList;
@@ -9,16 +10,18 @@ import java.util.List;
  * Created by dengrb1 on 6/9 0009.
  */
 public class SubqueryFragment extends SqlStatement {
-    private SqlStatement basicElement = null;
-    private List<SqlStatement> operaionParts = new ArrayList<>();
+    private SubQuBaseElemFragment basicElement ;
+    private List<SubqueryOpPartFragment> operaionParts = new ArrayList<>();
 
-    public void setBasicElement(SqlStatement stmt) {
+    public void setBasicElement(SubQuBaseElemFragment stmt) {
         basicElement = stmt;
     }
 
-    public void addOperation(SqlStatement stmt) {
+    public void addOperation(SubqueryOpPartFragment stmt) {
         operaionParts.add(stmt);
     }
+
+
 
     @Override
     public String getSql() {
@@ -29,9 +32,9 @@ public class SubqueryFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuilder sb = new StringBuilder();
         if (basicElement != null)
-            sb.append(basicElement.getOriginalSql()).append(" ");
+            sb.append(FragMentUtils.appendOriginalSql(basicElement,getExecSession())).append(" ");
         for (SqlStatement stmt: operaionParts) {
-            sb.append(stmt.getOriginalSql()).append(" ");
+            sb.append(FragMentUtils.appendOriginalSql(stmt,getExecSession())).append(" ");
         }
         return sb.toString();
     }
@@ -40,12 +43,11 @@ public class SubqueryFragment extends SqlStatement {
     public String getFinalSql() throws Exception {
         StringBuilder sb = new StringBuilder();
         if (basicElement != null) {
-            basicElement.setExecSession(getExecSession());
-            sb.append(basicElement.getFinalSql()).append(" ");
+            sb.append(FragMentUtils.appendFinalSql(basicElement,getExecSession())).append(" ");
         }
         for (SqlStatement stmt: operaionParts) {
             stmt.setExecSession(getExecSession());
-            sb.append(stmt.getFinalSql()).append(" ");
+            sb.append(FragMentUtils.appendFinalSql(stmt,getExecSession())).append(" ");
         }
         return sb.toString();
     }

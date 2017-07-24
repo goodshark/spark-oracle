@@ -35,9 +35,9 @@ public class ProcService {
     }
 
     public void initDb() {
-        dbUrl = sparkSession.sparkContext().hadoopConfiguration().get(Common.DBURL);
+       /* dbUrl = sparkSession.sparkContext().hadoopConfiguration().get(Common.DBURL);
         userName = sparkSession.sparkContext().hadoopConfiguration().get(Common.USER_NAME);
-        password = sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD);
+        password = sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD);*/
     }
 
     public int createProc(CommonProcedureStatement procedure) throws Exception {

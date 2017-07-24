@@ -14,6 +14,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by zhongdg1 on 2016/11/29.
  */
 public abstract class BaseStatement extends TreeNode {
+    public static final String CODE_SEP = " ";
+    public static final String CODE_EQ = "=";
+    public static final String CODE_EQ2 = "==";
+    public static final String CODE_END = ";";
+    public static final String CODE_OR = "||";
+    public static final String CODE_AND = "&&";
+    public static final String CODE_NOT = "!";
+    public static final String CODE_LINE_END = "\n";
+
     private StringBuffer exeSql = new StringBuffer();
     // store labels with while
     private Set<String> labels = new HashSet<>();
@@ -54,7 +63,7 @@ public abstract class BaseStatement extends TreeNode {
         }
         return sparkResultSet;*/
         //For testing end
-        SparkSession sparkSession = getExecSession().getSparkSession();
+      /*  SparkSession sparkSession = getExecSession().getSparkSession();
         LogicalPlan plan = sparkSession.sqlContext().sessionState().sqlParser().parsePlan(exeSql);
         getExecSession().addLogicalPlans(plan);
         Dataset dataset = sparkSession.sql(exeSql);
@@ -62,7 +71,8 @@ public abstract class BaseStatement extends TreeNode {
         if(isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
-        return sparkResultSet;
+        return sparkResultSet;*/
+        return null;
     }
 
     /**
@@ -144,7 +154,7 @@ public abstract class BaseStatement extends TreeNode {
     }
 
     public Set<String> searchAllLabels() {
-        Set<String> labelSet= new HashSet<>();
+        Set<String> labelSet = new HashSet<>();
         TreeNode pNode = getParentNode();
         // a normal CFL-node in AST tree always has a parent node
         if (pNode == null) {
@@ -152,7 +162,7 @@ public abstract class BaseStatement extends TreeNode {
         }
         List<TreeNode> childList = pNode.getChildrenNodes();
         // label always before whileStmt
-        for (TreeNode child: childList) {
+        for (TreeNode child : childList) {
             if (child.equals(this))
                 break;
             else {
@@ -166,4 +176,6 @@ public abstract class BaseStatement extends TreeNode {
         }
         return labelSet;
     }
+
+    public String doCodegen(){return  null;};
 }

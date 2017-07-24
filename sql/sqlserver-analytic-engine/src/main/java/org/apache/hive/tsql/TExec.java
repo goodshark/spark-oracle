@@ -13,6 +13,7 @@ import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.cursor.*;
 import org.apache.hive.tsql.ddl.*;
 import org.apache.hive.tsql.dml.*;
+import org.apache.hive.tsql.dml.CaseWhenStatement;
 import org.apache.hive.tsql.exception.AlreadyDeclaredException;
 import org.apache.hive.tsql.exception.Position;
 import org.apache.hive.tsql.exception.UnsupportedException;

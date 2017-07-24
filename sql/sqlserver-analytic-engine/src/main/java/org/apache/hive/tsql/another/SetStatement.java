@@ -5,7 +5,9 @@ import org.apache.hive.tsql.common.AssignmentOp;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.cursor.Cursor;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.exception.NotDeclaredException;
+import org.glassfish.jersey.message.internal.StringBuilderUtils;
 
 /**
  * Created by zhongdg1 on 2016/12/2.
@@ -118,6 +120,19 @@ public class SetStatement extends BaseStatement {
     @Override
     public BaseStatement createStatement() {
         return this;
+    }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        String varName = var.getVarName();
+        String op = aop.val;
+        String result = ((BaseStatement)var.getExpr()).doCodegen();
+        sb.append(varName);
+        sb.append(op);
+        sb.append(result);
+        sb.append(BaseStatement.CODE_END);
+        return sb.toString();
     }
 
 }

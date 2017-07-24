@@ -1,12 +1,13 @@
-package org.apache.hive.plsql.dml.fragment;
+package org.apache.hive.plsql.dml.fragment.selectFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
  * Created by dengrb1 on 6/9 0009.
  */
 public class WhereClauseFragment extends SqlStatement {
-    private SqlStatement condition = null;
+    private SqlStatement condition ;
 
     public void setCondition(SqlStatement stmt) {
         condition = stmt;
@@ -19,15 +20,10 @@ public class WhereClauseFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return "";
-    }
-
-    @Override
-    public String getFinalSql() throws Exception {
         StringBuilder sb = new StringBuilder();
         sb.append(" WHERE ");
-        condition.setExecSession(getExecSession());
-        sb.append(condition.getFinalSql());
+        sb.append(FragMentUtils.appendOriginalSql(condition,getExecSession()));
         return sb.toString();
     }
+
 }

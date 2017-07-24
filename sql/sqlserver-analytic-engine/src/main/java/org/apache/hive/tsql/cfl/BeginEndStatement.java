@@ -3,6 +3,8 @@ package org.apache.hive.tsql.cfl;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 
+import java.util.List;
+
 /**
  * Created by dengrb1 on 12/8 0008.
  */
@@ -24,5 +26,26 @@ public class BeginEndStatement extends BaseStatement {
 
     public BaseStatement createStatement() {
         return null;
+    }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        List<TreeNode> childs = getChildrenNodes();
+        int i=0;
+        for(TreeNode node : childs){
+            i++;
+            if(node instanceof GotoStatement && i < childs.size() && childs.get(i) instanceof WhileStatement){
+                sb.append(((GotoStatement) node).getLabel());
+                sb.append(":");
+            } else {
+                if(node instanceof BaseStatement){
+                    BaseStatement bs = (BaseStatement)node;
+                    sb.append(bs.doCodegen());
+                    sb.append(CODE_LINE_END);
+                }
+            }
+        }
+        return sb.toString();
     }
 }

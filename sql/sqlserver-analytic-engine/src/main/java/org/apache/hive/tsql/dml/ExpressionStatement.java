@@ -2,6 +2,7 @@ package org.apache.hive.tsql.dml;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.*;
+import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.util.StrUtils;
 
@@ -356,4 +357,58 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
         }
         return sql;
     }
+
+    @Override
+    public String doCodegen(){
+        StringBuffer sb = new StringBuffer();
+        Var var = getExpressionBean().getVar();
+        OperatorSign op = getExpressionBean().getOperatorSign();
+        if(op == null && var != null && getChildrenNodes().size() == 0){
+            sb.append(BaseStatement.CODE_SEP);
+            try{
+                Object obj = var.getVarValue();
+                if(obj != null){
+                    CreateFunctionStatement.SupportDataTypes dataType = CreateFunctionStatement.fromString(var.getDataType().name());
+                    if(CreateFunctionStatement.SupportDataTypes.STRING.equals(dataType) || CreateFunctionStatement.SupportDataTypes.CHAR.equals(dataType)){
+                        String data = obj.toString();
+                        if('\'' == data.charAt(0)){
+                            data = data.substring(1, data.length() - 1);
+                        }
+                        if('\'' == data.charAt(data.length()-1)){
+                            data = data.substring(0, data.length() - 2);
+                        }
+                        sb.append("\"");
+                        sb.append(data);
+                        sb.append("\"");
+                    } else {
+                        sb.append(obj.toString());
+                    }
+                } else {
+                    sb.append(var.getVarName());
+                }
+            } catch (ParseException e) {
+                //TODO
+            }
+            sb.append(BaseStatement.CODE_SEP);
+        } else if(op == null && var != null && getChildrenNodes().size() == 1){
+            if(getChildrenNodes().get(0) instanceof BaseStatement){
+                BaseStatement bs = (BaseStatement)getChildrenNodes().get(0);
+                sb.append(BaseStatement.CODE_SEP);
+                sb.append(bs.doCodegen());
+                sb.append(BaseStatement.CODE_SEP);
+            }
+        } else if(op != null && var == null && getChildrenNodes().size() == 2){
+            sb.append(CODE_SEP);
+            if(getChildrenNodes().get(0) instanceof BaseStatement && getChildrenNodes().get(1) instanceof BaseStatement){
+                BaseStatement bs0 = (BaseStatement)getChildrenNodes().get(0);
+                sb.append(bs0.doCodegen());
+                sb.append(op.getOperator());
+                BaseStatement bs1 = (BaseStatement)getChildrenNodes().get(1);
+                sb.append(bs1.doCodegen());
+            }
+            sb.append(CODE_SEP);
+        }
+        return sb.toString();
+    }
+
 }
