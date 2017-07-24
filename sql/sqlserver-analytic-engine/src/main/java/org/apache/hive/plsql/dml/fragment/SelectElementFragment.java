@@ -18,6 +18,10 @@ public class SelectElementFragment extends SqlStatement {
         colAlias = a;
     }
 
+    public void replaceAlias(String str) {
+        colAlias = str;
+    }
+
     @Override
     public String getSql() {
         String sql = super.getSql();
