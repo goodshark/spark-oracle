@@ -36,7 +36,7 @@ public class SetStatement extends BaseStatement {
     public int execute() throws Exception {
         Cursor cursor = null;
         if (var.getValueType() == Var.ValueType.EXPRESSION) {
-            cursor = findCursor(var.getVarName());
+            cursor = (Cursor) findCursor(var.getVarName());
         }
         if (cursor != null) {
             var.setValueType(Var.ValueType.CURSOR);
@@ -56,7 +56,7 @@ public class SetStatement extends BaseStatement {
                     cursor = (Cursor) var.getVarValue();
                 } else {
                     String realCursorName = var.getExpr().getSql().trim().toUpperCase();
-                    Cursor realCursor = findCursor(realCursorName);
+                    Cursor realCursor = (Cursor) findCursor(realCursorName);
                     if (null == realCursor) {
                         throw new NotDeclaredException(realCursorName);
                     }

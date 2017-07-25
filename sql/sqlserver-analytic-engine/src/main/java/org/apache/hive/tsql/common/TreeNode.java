@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
@@ -36,7 +37,8 @@ public abstract class TreeNode implements Serializable {
     public enum Type {
         IF, AND, OR, NOT, PREDICATE, WHILE, BREAK, CONTINUE, RETURN, GOTO, PRINT,
         RAISE, THROW, TRY, WAIT, BEGINEND, WHEN, THEN, ELSE, SWICH, CASE_INPUT, GO, TABLE_VALUE, DERIVED_TABLE,
-        TABEL_DEFAULT_VALUES, EXECUTE_STATEMENT, LIMIT_NUMBER, LIMIT_PERCENT, CURSOR, DEFAULT, BORDER, ANONY_BLOCK
+        TABEL_DEFAULT_VALUES, EXECUTE_STATEMENT, LIMIT_NUMBER, LIMIT_PERCENT, CURSOR, DEFAULT, BORDER, ANONY_BLOCK,
+        ORACLE_RAISE
     }
 
     public boolean isCollectRs() {
@@ -225,15 +227,15 @@ public abstract class TreeNode implements Serializable {
      */
     public abstract int execute() throws Exception;
 
-    public Cursor findCursor(String name, boolean isGlobal) {
+    public CommonCursor findCursor(String name, boolean isGlobal) {
         return this.execSession.getVariableContainer().findCursor(name.trim().toUpperCase(), isGlobal);
     }
 
-    public Cursor findCursor(String name) {
+    public CommonCursor findCursor(String name) {
         return this.execSession.getVariableContainer().findCursor(name.trim().toUpperCase());
     }
 
-    public void addCursor(Cursor cursor) {
+    public void addCursor(CommonCursor cursor) {
         this.execSession.getVariableContainer().addCursor(cursor);
     }
 

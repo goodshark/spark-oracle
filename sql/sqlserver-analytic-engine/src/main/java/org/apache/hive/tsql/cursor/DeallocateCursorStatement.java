@@ -23,7 +23,7 @@ public class DeallocateCursorStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
-        Cursor cursor = isGlobal ? findCursor(cursorName, true) : findCursor(cursorName);
+        Cursor cursor = (Cursor) (isGlobal ? findCursor(cursorName, true) : findCursor(cursorName));
         if (null == cursor) {
             System.out.println("Cursor not declared # " + cursorName);
             return 1;

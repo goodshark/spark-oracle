@@ -21,6 +21,10 @@ public class Row {
         values[index] = val;
     }
 
+    public int getColumnSize() {
+        return columnSize;
+    }
+
     public Row setValues(Object[] values) {
         this.values = values;
         return this;

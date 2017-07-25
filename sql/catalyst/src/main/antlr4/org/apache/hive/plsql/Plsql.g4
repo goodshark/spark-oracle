@@ -141,10 +141,11 @@ package_spec
     ;
 
 package_obj_spec
-    : variable_declaration
+    : exception_declaration
+    | variable_declaration
     | subtype_declaration
     | cursor_declaration
-    | exception_declaration
+//    | exception_declaration
     | pragma_declaration
     | record_declaration
     | table_declaration
@@ -597,10 +598,11 @@ default_value_part
 // $<PL/SQL Elements Declarations
 
 declare_spec
-    : variable_declaration
+    : exception_declaration
+    | variable_declaration
     | subtype_declaration
     | cursor_declaration
-    | exception_declaration
+//    | exception_declaration
     | pragma_declaration
     | record_declaration
     | table_declaration
@@ -1927,6 +1929,7 @@ trigger_name
     ;
 
 variable_name
+    // TODO id_expression -> expression
     : (INTRODUCER char_set_name)? id_expression ('.' id_expression)?
     | bind_variable
     ;
@@ -2462,7 +2465,7 @@ regular_id
     | PRESENT
     //| PRIOR
     //| PROCEDURE
-    | RAISE
+//    | RAISE
     | RANGE
     | RAW
     | READ

@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public class AnonymousBlock extends BaseStatement {
     private List<TreeNode> executeList = new ArrayList<>();
-    private List<TreeNode> exceptionList = new ArrayList<>();
+    private List<ExceptionHandler> exceptionList = new ArrayList<>();
 
 
     public AnonymousBlock(TreeNode.Type t) {
@@ -26,8 +26,24 @@ public class AnonymousBlock extends BaseStatement {
         executeList.add(node);
     }
 
-    public void addExecptionNode(TreeNode node) {
+    public void addExecptionNode(ExceptionHandler node) {
         exceptionList.add(node);
+    }
+
+    public boolean matchException(String name) {
+        for (ExceptionHandler node: exceptionList) {
+            if (node.matchException(name))
+                return true;
+        }
+        return false;
+    }
+
+    public TreeNode getMatchHandler(String name) {
+        for (ExceptionHandler node: exceptionList) {
+            if (node.matchException(name))
+                return node.getStmts();
+        }
+        return null;
     }
 
     public int execute() throws Exception {

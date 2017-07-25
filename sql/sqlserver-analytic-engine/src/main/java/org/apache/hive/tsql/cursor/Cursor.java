@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.cursor;
 
+import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.tsql.common.TreeNode;
 
 import java.sql.ResultSet;
@@ -10,39 +11,23 @@ import java.util.Set;
 /**
  * Created by zhongdg1 on 2016/12/28.
  */
-public class Cursor {
+public class Cursor extends CommonCursor {
     public enum DataMode {STATIC, KEYSET, DYNAMIC, FAST_FORWARD}
 
     public enum ConsistencyMode {READ_ONLY, SCROLL_LOCKS, OPTIMISTIC}
 
-    public enum CursorStatus {
-        DECLARED(1), OPENING(2), FETCHING(3),CLOSED(4), DEALLOCATED(5);
-
-        CursorStatus(int code) {
-        }
-    }
-
-    private String name;
-    private TreeNode treeNode; //select statement
     private boolean isInsensitive = false;
     private boolean isScoll = false;
-    private boolean isGlobal = false;
     private boolean typeWarning = false;
     private boolean isUpdatable = false;
     private DataMode dataMode = DataMode.STATIC;
     private ConsistencyMode consistencyMode = ConsistencyMode.READ_ONLY;
     private Set<String> updatableColumns = new HashSet<String>();
-    private CursorStatus status = CursorStatus.DECLARED;
-    private ResultSet rs;
     public Cursor() {
     }
 
     public Cursor(String name) {
-        this.name = name.toUpperCase();
-    }
-
-    public String getName() {
-        return name.toUpperCase();
+        super(name.toUpperCase());
     }
 
     public boolean isInsensitive() {
@@ -51,10 +36,6 @@ public class Cursor {
 
     public boolean isScoll() {
         return isScoll;
-    }
-
-    public boolean isGlobal() {
-        return isGlobal;
     }
 
     public boolean isTypeWarning() {
@@ -73,20 +54,8 @@ public class Cursor {
         return consistencyMode;
     }
 
-    public CursorStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(CursorStatus status) {
-        this.status = status;
-    }
-
     public void addUpdatableColumns(Collection<String> columns) {
         updatableColumns.addAll(columns);
-    }
-
-    public void setGlobal(boolean global) {
-        isGlobal = global;
     }
 
     public void setTypeWarning(boolean typeWarning) {
@@ -111,26 +80,6 @@ public class Cursor {
 
     public void setScoll(boolean scoll) {
         isScoll = scoll;
-    }
-
-    public void setName(String name) {
-        this.name = name.toUpperCase();
-    }
-
-    public void setTreeNode(TreeNode treeNode) {
-        this.treeNode = treeNode;
-    }
-
-    public TreeNode getTreeNode() {
-        return treeNode;
-    }
-
-    public ResultSet getRs() {
-        return rs;
-    }
-
-    public void setRs(ResultSet rs) {
-        this.rs = rs;
     }
 }
 
