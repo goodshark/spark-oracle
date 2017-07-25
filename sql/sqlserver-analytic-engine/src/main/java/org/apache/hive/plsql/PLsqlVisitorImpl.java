@@ -10,10 +10,7 @@ import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.cfl.ExceptionVariable;
 import org.apache.hive.plsql.cfl.OracleRaiseStatement;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
-import org.apache.hive.plsql.cursor.OracleCloseCursorStmt;
-import org.apache.hive.plsql.cursor.OracleCursor;
-import org.apache.hive.plsql.cursor.OracleFetchCursorStmt;
-import org.apache.hive.plsql.cursor.OracleOpenCursorStmt;
+import org.apache.hive.plsql.cursor.*;
 import org.apache.hive.plsql.dml.OracleSelectStatement;
 import org.apache.hive.plsql.dml.commonFragment.*;
 import org.apache.hive.plsql.dml.fragment.delFragment.OracleDelStatement;
@@ -262,10 +259,52 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
     }
 
-    @Override
+    /*@Override
     public Object visitNative_datatype_element(PlsqlParser.Native_datatype_elementContext ctx) {
         return ctx.getText();
     }
+
+    @Override
+    public Object visitStandard_function(PlsqlParser.Standard_functionContext ctx) {
+        // TODO only implement cursor attribute
+        OracleCursorAttribute ca = new OracleCursorAttribute();
+        if (ctx.cursor_name() != null) {
+            ca.setCursorName(ctx.cursor_name().getText());
+            if (ctx.PERCENT_FOUND() != null)
+                else if (ctx.PERCENT_NOTFOUND() != null)
+                else if (ctx.PERCENT_ISOPEN() != null)
+                else if (ctx.PERCENT_ROWCOUNT() != null)
+                else
+            treeBuilder.pushStatement(ca);
+        }
+        return ca;
+    }*/
+
+    @Override
+    public Object visitUnary_expression(PlsqlParser.Unary_expressionContext ctx) {
+        ExpressionStatement unaryEs = null;
+        // TODO only implement standard funciton
+        if (ctx.standard_function() != null) {
+            visit(ctx.standard_function());
+            unaryEs = (ExpressionStatement) treeBuilder.popStatement();
+        }
+        treeBuilder.pushStatement(unaryEs);
+        return unaryEs;
+    }
+
+    /*@Override
+    public Object visitUnary_expression_alias(PlsqlParser.Unary_expression_aliasContext ctx) {
+        // need generate a ExpressionStatement
+        visit(ctx.unary_expression());
+        ExpressionStatement unaryEs = (ExpressionStatement) treeBuilder.popStatement();
+        treeBuilder.pushStatement(unaryEs);
+        return unaryEs;
+    }
+
+    @Override
+    public Object visitUnary_expression_subalias(PlsqlParser.Unary_expression_subaliasContext ctx) {
+        return visitChildren(ctx);
+    }*/
 
     @Override
     public Object visitBool_condition_alias(PlsqlParser.Bool_condition_aliasContext ctx) {
@@ -466,11 +505,9 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitNegated_expression(PlsqlParser.Negated_expressionContext ctx) {
-        LogicNode orNode = null;
-        if(ctx.NOT() != null){
-            orNode = new LogicNode(TreeNode.Type.NOT);
-        } else {
-            orNode = new LogicNode(TreeNode.Type.AND);
+        LogicNode orNode = new LogicNode(TreeNode.Type.NOT);
+        if(ctx.NOT() != null) {
+            orNode.setNot();
         }
         visit(ctx.equality_expression());
         treeBuilder.addNode(orNode);
@@ -606,8 +643,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitCursor_loop_param(PlsqlParser.Cursor_loop_paramContext ctx) {
         LogicNode andNode = new LogicNode(TreeNode.Type.AND);
-        LogicNode leftNotNode = new LogicNode(TreeNode.Type.AND);
-        LogicNode rightNotNode = new LogicNode(TreeNode.Type.AND);
+        LogicNode leftNotNode = new LogicNode(TreeNode.Type.NOT);
+        LogicNode rightNotNode = new LogicNode(TreeNode.Type.NOT);
         andNode.addNode(leftNotNode);
         andNode.addNode(rightNotNode);
         PredicateNode leftPredicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
