@@ -259,12 +259,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
     }
 
-    /*@Override
+    @Override
     public Object visitNative_datatype_element(PlsqlParser.Native_datatype_elementContext ctx) {
         return ctx.getText();
     }
 
-    @Override
+    /*@Override
     public Object visitStandard_function(PlsqlParser.Standard_functionContext ctx) {
         // TODO only implement cursor attribute
         OracleCursorAttribute ca = new OracleCursorAttribute();
