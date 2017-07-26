@@ -26,14 +26,16 @@ public class FragMentUtils {
 
     public static String appendOriginalSql(SqlStatement sqlStatement, ExecSession execSession) {
         sqlStatement.setExecSession(execSession);
-        return sqlStatement.getOriginalSql();
+        return sqlStatement.getOriginalSql() + Common.SPACE;
     }
 
 
     public static String appendFinalSql(SqlStatement sqlStatement, ExecSession execSession) throws Exception {
         StringBuffer sql = new StringBuffer();
         sqlStatement.setExecSession(execSession);
-        return sqlStatement.getFinalSql();
+        sql.append(sqlStatement.getFinalSql());
+        sql.append(Common.SPACE);
+        return sql.toString();
     }
 
     public static String appendFinalSql(List<? extends SqlStatement> list, ExecSession execSession) throws Exception {

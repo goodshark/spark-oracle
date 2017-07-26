@@ -36,7 +36,7 @@ public class Executor {
     public Executor(ExecSession session, TreeNode currentNode) {
         this.session = session;
         this.currentNode = null == currentNode ? session.getRootNode() : currentNode; //如果没有指定当前节点，则从跟节点开始执行
-        engine = session.getSparkSession().conf().get("spark.sql.analytical.engine");
+        //engine = session.getSparkSession().conf().get("spark.sql.analytical.engine");
     }
     public void execute() throws Exception {
         if(null == this.currentNode) {

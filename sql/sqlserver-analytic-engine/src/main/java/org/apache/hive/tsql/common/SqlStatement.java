@@ -59,7 +59,7 @@ public class SqlStatement extends BaseStatement implements Serializable {
         return sql;
     }
 
-    public String getOriginalSql() {
+    public String getOriginalSql()  {
         return super.getSql();
     }
 

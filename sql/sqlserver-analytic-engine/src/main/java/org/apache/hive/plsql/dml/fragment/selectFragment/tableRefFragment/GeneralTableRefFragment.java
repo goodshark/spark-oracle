@@ -1,7 +1,9 @@
 package org.apache.hive.plsql.dml.fragment.selectFragment.tableRefFragment;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.plsql.dml.commonFragment.TableAliasFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.DmlTableExpressionFragment;
+import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.SqlStatement;
 
 import java.util.List;
@@ -17,6 +19,21 @@ public class GeneralTableRefFragment extends SqlStatement {
     private DmlTableExpressionFragment dmlTableExpressionFragment;
     private String only;
     private TableAliasFragment tableAliasFragment;
+
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        if (StringUtils.isNotBlank(only)) {
+            //TODO ONLY
+        }
+        sql.append(dmlTableExpressionFragment.getOriginalSql());
+        if (null != tableAliasFragment) {
+            sql.append(Common.SPACE);
+            sql.append(tableAliasFragment.getOriginalSql());
+        }
+        return sql.toString();
+    }
 
     public DmlTableExpressionFragment getDmlTableExpressionFragment() {
         return dmlTableExpressionFragment;

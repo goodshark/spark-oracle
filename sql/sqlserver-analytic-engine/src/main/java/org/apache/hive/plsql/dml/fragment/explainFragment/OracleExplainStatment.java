@@ -1,10 +1,12 @@
 package org.apache.hive.plsql.dml.fragment.explainFragment;
 
 import org.apache.hive.plsql.dml.OracleSelectStatement;
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.plsql.dml.commonFragment.TableViewNameFragment;
 import org.apache.hive.plsql.dml.fragment.delFragment.OracleDelStatement;
 import org.apache.hive.plsql.dml.fragment.insertFragment.OracleInsertStatement;
 import org.apache.hive.plsql.dml.fragment.updateFragment.OracleUpdateStatement;
+import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
@@ -24,6 +26,34 @@ public class OracleExplainStatment extends SqlStatement {
     private OracleInsertStatement oracleInsertStatement;
     private OracleUpdateStatement oracleUpdateStatement;
     private OracleDelStatement oracleDelStatement;
+
+    @Override
+    public int execute() throws Exception {
+        String sql = getOriginalSql();
+        setRs(commitStatement(sql));
+        return 0;
+    }
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        sql.append("EXPLAN ");
+        ExecSession execSession = getExecSession();
+        if (null != oracleSelectStatement) {
+            sql.append(FragMentUtils.appendOriginalSql(oracleSelectStatement, execSession));
+        }
+        if (null != oracleInsertStatement) {
+            sql.append(FragMentUtils.appendOriginalSql(oracleInsertStatement, execSession));
+        }
+        if (null != oracleUpdateStatement) {
+            sql.append(FragMentUtils.appendOriginalSql(oracleUpdateStatement, execSession));
+        }
+        if (null != oracleDelStatement) {
+            sql.append(FragMentUtils.appendOriginalSql(oracleDelStatement, execSession));
+        }
+
+        return sql.toString();
+    }
 
     public String getQuotedStr() {
         return quotedStr;
