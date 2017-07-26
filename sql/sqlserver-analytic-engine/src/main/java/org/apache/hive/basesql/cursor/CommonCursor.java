@@ -68,4 +68,10 @@ public abstract class CommonCursor {
     public void setGlobal(boolean global) {
         isGlobal = global;
     }
+
+    public boolean isOpen() {
+        if (status == CursorStatus.OPENING || status == CursorStatus.FETCHING)
+            return true;
+        return false;
+    }
 }

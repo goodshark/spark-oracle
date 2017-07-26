@@ -102,13 +102,16 @@ public class SparkResultSet extends BaseResultSet {
     @Override
     public boolean next() throws SQLException {
         if (!isFirstFetch && (0 == currentSize || index == currentSize - 1)) {
+            alreadyGetLast = true;
             return false;
         }
         if (isFirstFetch) {
             isFirstFetch = false;
+            currentRowNumber++;
             return true;
         }
         index++;
+        currentRowNumber++;
         return true;
     }
 
@@ -262,4 +265,17 @@ public class SparkResultSet extends BaseResultSet {
         return dataset;
     }
 
+    public int getIndex() {
+        return index;
+    }
+
+    int currentRowNumber = 0;
+    public int getCurrentRowNumber() {
+        return currentRowNumber;
+    }
+
+    boolean alreadyGetLast = false;
+    public boolean hasMoreRows() {
+        return !alreadyGetLast;
+    }
 }

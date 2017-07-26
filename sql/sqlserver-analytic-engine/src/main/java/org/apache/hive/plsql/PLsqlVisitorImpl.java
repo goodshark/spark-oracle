@@ -264,21 +264,24 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return ctx.getText();
     }
 
-    /*@Override
+    @Override
     public Object visitStandard_function(PlsqlParser.Standard_functionContext ctx) {
         // TODO only implement cursor attribute
         OracleCursorAttribute ca = new OracleCursorAttribute();
         if (ctx.cursor_name() != null) {
             ca.setCursorName(ctx.cursor_name().getText());
             if (ctx.PERCENT_FOUND() != null)
-                else if (ctx.PERCENT_NOTFOUND() != null)
-                else if (ctx.PERCENT_ISOPEN() != null)
-                else if (ctx.PERCENT_ROWCOUNT() != null)
-                else
+                ca.setMark(ctx.PERCENT_FOUND().getText());
+            else if (ctx.PERCENT_NOTFOUND() != null)
+                ca.setMark(ctx.PERCENT_NOTFOUND().getText());
+            else if (ctx.PERCENT_ISOPEN() != null)
+                ca.setMark(ctx.PERCENT_ISOPEN().getText());
+            else if (ctx.PERCENT_ROWCOUNT() != null)
+                ca.setMark(ctx.PERCENT_ROWCOUNT().getText());
             treeBuilder.pushStatement(ca);
         }
         return ca;
-    }*/
+    }
 
     @Override
     public Object visitUnary_expression(PlsqlParser.Unary_expressionContext ctx) {
@@ -542,7 +545,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         IfStatement rootIfStatement = ifStatement;
         if (ctx.condition() != null) {
             visit(ctx.condition());
-            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            TreeNode conditionNode = treeBuilder.popStatement();
             ifStatement.setCondtion(conditionNode);
         }
         if (ctx.seq_of_statements() != null) {

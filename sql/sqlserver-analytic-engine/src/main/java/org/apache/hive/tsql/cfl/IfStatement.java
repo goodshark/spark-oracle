@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.cfl;
 
+import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.common.TreeNode;
@@ -12,7 +13,7 @@ import java.util.List;
 
 public class IfStatement extends BaseStatement {
 
-    private LogicNode condtionNode = null;
+    private TreeNode condtionNode = null;
 
     public IfStatement() {
         super();
@@ -24,7 +25,7 @@ public class IfStatement extends BaseStatement {
         setAtomic(true);
     }
 
-    public void setCondtion(LogicNode node) {
+    public void setCondtion(TreeNode node) {
         condtionNode = node;
     }
 
@@ -32,7 +33,8 @@ public class IfStatement extends BaseStatement {
         if (condtionNode != null) {
             condtionNode.setExecSession(getExecSession());
             condtionNode.execute();
-            return condtionNode.getBool();
+            Var res = (Var) condtionNode.getRs().getObject(0);
+            return (boolean) res.getVarValue();
         } else {
             return false;
         }
@@ -54,7 +56,7 @@ public class IfStatement extends BaseStatement {
             TreeNode child = childs.get(0);
             if(this.condtionNode instanceof BaseStatement && child instanceof BeginEndStatement){
                 sb.append("if(");
-                sb.append(condtionNode.doCodegen());
+                sb.append(((LogicNode)condtionNode).doCodegen());
                 sb.append("){");
                 sb.append(CODE_LINE_END);
                 sb.append(((BeginEndStatement) child).doCodegen());
@@ -68,7 +70,7 @@ public class IfStatement extends BaseStatement {
             if(this.condtionNode instanceof BaseStatement){
                 if(left instanceof BeginEndStatement && rift instanceof BeginEndStatement){
                     sb.append("if(");
-                    sb.append(condtionNode.doCodegen());
+                    sb.append(((LogicNode)condtionNode).doCodegen());
                     sb.append("){");
                     sb.append(CODE_LINE_END);
                     sb.append(((BeginEndStatement) left).doCodegen());
@@ -82,7 +84,7 @@ public class IfStatement extends BaseStatement {
                 }
                 if(left instanceof BeginEndStatement && rift instanceof IfStatement){
                     sb.append("if(");
-                    sb.append(condtionNode.doCodegen());
+                    sb.append(((LogicNode)condtionNode).doCodegen());
                     sb.append("){");
                     sb.append(CODE_LINE_END);
                     sb.append(((BeginEndStatement) left).doCodegen());
