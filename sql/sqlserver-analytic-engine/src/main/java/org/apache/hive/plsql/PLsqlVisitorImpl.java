@@ -5,15 +5,16 @@ import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.hive.basesql.TreeBuilder;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
-import org.apache.hive.plsql.cfl.ExceptionVariable;
 import org.apache.hive.plsql.cfl.OracleRaiseStatement;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
 import org.apache.hive.plsql.cursor.*;
 import org.apache.hive.plsql.ddl.fragment.alterTableFragment.*;
+import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropTableStatement;
+import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropViewStatement;
+import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleTruncateTableStatement;
 import org.apache.hive.plsql.ddl.fragment.packageFragment.*;
 import org.apache.hive.plsql.dml.OracleSelectStatement;
 import org.apache.hive.plsql.dml.commonFragment.*;
@@ -3173,5 +3174,66 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         //TODO
         treeBuilder.pushStatement(alterPackageStatement);
         return alterPackageStatement;
+    }
+
+
+    /**
+     * drop_table
+     * : DROP TABLE tableview_name ';'
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public OracleDropTableStatement visitDrop_table(PlsqlParser.Drop_tableContext ctx) {
+        OracleDropTableStatement dropTableStatement = new OracleDropTableStatement(Common.DROP_TABLE);
+        if (ctx.tableview_name() != null) {
+            visit(ctx.tableview_name());
+            TableViewNameFragment tableStatement = (TableViewNameFragment) treeBuilder.popStatement();
+            dropTableStatement.settableNameStatement(tableStatement);
+        }
+        treeBuilder.pushStatement(dropTableStatement);
+        return dropTableStatement;
+    }
+
+    /**
+     * drop_view
+     * : DROP VIEW tableview_name ';'
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public OracleDropViewStatement visitDrop_view(PlsqlParser.Drop_viewContext ctx) {
+        OracleDropViewStatement dropViewStatement = new OracleDropViewStatement(Common.DROP_VIEW);
+        if (ctx.tableview_name() != null) {
+            visit(ctx.tableview_name());
+            TableViewNameFragment viewStatement = (TableViewNameFragment) treeBuilder.popStatement();
+            dropViewStatement.setviewNameStatement(viewStatement);
+        }
+        treeBuilder.pushStatement(dropViewStatement);
+        return dropViewStatement;
+    }
+
+    /**
+     * truncate_table
+     * : TRUNCATE TABLE tableview_name ';'
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public OracleTruncateTableStatement visitTruncate_table(PlsqlParser.Truncate_tableContext ctx) {
+        OracleTruncateTableStatement truncateTableStatement = new OracleTruncateTableStatement();
+        if (ctx.tableview_name() != null) {
+            visit(ctx.tableview_name());
+            TableViewNameFragment tTableStatement = (TableViewNameFragment) treeBuilder.popStatement();
+            truncateTableStatement.setTableViewNameStatement(tTableStatement);
+        }
+        treeBuilder.pushStatement(truncateTableStatement);
+        return truncateTableStatement;
     }
 }
