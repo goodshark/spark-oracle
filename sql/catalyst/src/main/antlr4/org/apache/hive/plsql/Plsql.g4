@@ -125,7 +125,6 @@ drop_package
 alter_package
     : ALTER PACKAGE package_name COMPILE DEBUG? (PACKAGE | BODY | SPECIFICATION)? compiler_parameters_clause* (REUSE SETTINGS)? ';'
     ;
-
 create_package
     : CREATE (OR REPLACE)? PACKAGE (package_spec | package_body)? ';'
     ;
@@ -177,14 +176,35 @@ package_obj_body
 // $<Procedure DDLs
 
 alter_table
-    : ALTER TABLE tableview_name (ADD column_name type_spec column_constraint?
-                                  | MODIFY column_name type_spec column_constraint?
-                                  | DROP column_name type_spec column_constraint?) ';'
+    : ALTER TABLE tableview_name (add_column_clause
+                                  | modify_column_clause
+                                  | drop_column_clause
+                                  | rename_column_clause)
+
+    ;
+add_column_clause:
+    ADD column_name type_spec column_constraint?
+    ;
+modify_column_clause:
+    MODIFY column_name type_spec column_constraint?
+    ;
+drop_column_clause:
+     DROP COLUMN column_name
+     ;
+rename_column_clause:
+    RENAME column_name TO column_name
     ;
 
 create_table
-    : CREATE TABLE tableview_name '(' column_name type_spec column_constraint? (',' column_name type_spec column_constraint?)* ')' ';' comments*
+    : CREATE TABLE tableview_name '(' column_name type_spec column_constraint? (',' column_name type_spec column_constraint?)* ')' crud_table? ';' comments*
     ;
+
+//crud table
+crud_table
+    : CLUSTERED BY '(' column_name (',' column_name)* ')' INTO  DECIMAL BUCKETS STORED AS ORC TBLPROPERTIES
+    '('TRANSACTIONAL '=' TRUE')'
+    ;
+
 
 comments
     : COMMENT ON TABLE tableview_name IS quoted_string ';'
