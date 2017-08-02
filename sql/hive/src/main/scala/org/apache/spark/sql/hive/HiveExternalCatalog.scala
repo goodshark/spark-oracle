@@ -210,7 +210,9 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
         tableDefinition.storage.locationUri.isEmpty
 
       val tableLocation = if (needDefaultTableLocation) {
-        Some(defaultTablePath(tableDefinition.identifier))
+        // 修复在sentry权限控制下, location必须为null
+        // Some(defaultTablePath(tableDefinition.identifier))
+        tableDefinition.storage.locationUri
       } else {
         tableDefinition.storage.locationUri
       }
