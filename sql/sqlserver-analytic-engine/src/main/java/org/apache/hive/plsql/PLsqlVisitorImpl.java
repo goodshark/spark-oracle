@@ -11,7 +11,10 @@ import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.cfl.OracleRaiseStatement;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
 import org.apache.hive.plsql.cursor.*;
+import org.apache.hive.plsql.ddl.commonFragment.CrudTableFragment;
 import org.apache.hive.plsql.ddl.fragment.alterTableFragment.*;
+import org.apache.hive.plsql.ddl.fragment.createTableFragment.OracleCreateTableStatement;
+import org.apache.hive.plsql.ddl.fragment.createViewFragment.OracleCreateViewStatment;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropTableStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropViewStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleTruncateTableStatement;
@@ -259,6 +262,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             case "VARCHAR2":
             case "VARCHAR":
             case "STRING":
+            case "CHAR":
                 return Var.DataType.STRING;
             case "BOOLEAN":
                 return Var.DataType.BOOLEAN;
@@ -936,15 +940,72 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return sb.toString();
     }
 
+    /**
+     * create_table
+     * : CREATE  (GLOBAL TEMPORARY)? TABLE tableview_name
+     * '(' column_name type_spec column_constraint?
+     * (',' column_name type_spec column_constraint?)* ')' crud_table?
+     * table_space? storage?
+     * tmp_tb_comments?
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
     @Override
-    public Object visitCreate_table(PlsqlParser.Create_tableContext ctx) {
-        String tableName = ctx.tableview_name().getText();
-        CreateTableStatement createTableStatement = new CreateTableStatement(tableName);
-        String colString = genTableColString(ctx.column_name(), ctx.type_spec());
-        createTableStatement.setColumnDefs(colString);
-        treeBuilder.pushStatement(createTableStatement);
-        return createTableStatement;
+    public OracleCreateTableStatement visitCreate_table(PlsqlParser.Create_tableContext ctx) {
+        OracleCreateTableStatement oracleCreateTableStatement = new OracleCreateTableStatement();
+
+        if (null != ctx.GLOBAL()) {
+            oracleCreateTableStatement.setTempTable(true);
+        }
+        visit(ctx.tableview_name());
+        TableViewNameFragment tableViewNameFragment = (TableViewNameFragment) treeBuilder.popStatement();
+        oracleCreateTableStatement.setTableViewNameFragment(tableViewNameFragment);
+
+        for (PlsqlParser.Column_nameContext column_nameContext : ctx.column_name()) {
+            visit(column_nameContext);
+            ColumnNameFragment columnNameFragment = (ColumnNameFragment) treeBuilder.popStatement();
+            oracleCreateTableStatement.addColumnName(columnNameFragment);
+        }
+
+        for (PlsqlParser.Type_specContext type : ctx.type_spec()) {
+            Var.DataType columnType = visitType_spec(type);
+            oracleCreateTableStatement.addColumnType(columnType);
+        }
+
+        if (null != ctx.crud_table()) {
+            visit(ctx.crud_table());
+            CrudTableFragment crudTableFragment = (CrudTableFragment) treeBuilder.popStatement();
+            oracleCreateTableStatement.setCrudTableFragment(crudTableFragment);
+        }
+        treeBuilder.pushStatement(oracleCreateTableStatement);
+        return oracleCreateTableStatement;
     }
+
+    /**
+     * crud_table
+     * : CLUSTERED BY '(' column_name (',' column_name)* ')' INTO  DECIMAL BUCKETS STORED AS ORC TBLPROPERTIES
+     * '('TRANSACTIONAL '=' TRUE')'
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public CrudTableFragment visitCrud_table(PlsqlParser.Crud_tableContext ctx) {
+        CrudTableFragment crudTableFragment = new CrudTableFragment();
+        for (PlsqlParser.Column_nameContext column_nameContext : ctx.column_name()) {
+            visit(column_nameContext);
+            ColumnNameFragment columnNameFragment = (ColumnNameFragment) treeBuilder.popStatement();
+            crudTableFragment.addColumnName(columnNameFragment);
+        }
+        String bucketNumber = ctx.numeric().getText();
+        crudTableFragment.setBucketNumber(bucketNumber);
+        treeBuilder.pushStatement(crudTableFragment);
+        return crudTableFragment;
+    }
+
     /*========================================selectStament===============================*/
 
     /**
@@ -3236,4 +3297,42 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(truncateTableStatement);
         return truncateTableStatement;
     }
+
+
+    /**
+     * create_view
+     * : CREATE (OR REPLACE)? VIEW tableview_name ('('column_name?  (',' column_name )*  ')' )? AS subquery
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public OracleCreateViewStatment visitCreate_view(PlsqlParser.Create_viewContext ctx) {
+        OracleCreateViewStatment oracleCreateViewStatment = new OracleCreateViewStatment();
+
+
+        if (null != ctx.REPLACE()) {
+            oracleCreateViewStatment.setReplace(true);
+        }
+
+        visit(ctx.tableview_name());
+        TableViewNameFragment tableViewNameFragment = (TableViewNameFragment) treeBuilder.popStatement();
+        oracleCreateViewStatment.setTableViewNameFragment(tableViewNameFragment);
+
+        for (PlsqlParser.Column_nameContext column_nameContext : ctx.column_name()) {
+            visit(column_nameContext);
+            ColumnNameFragment columnNameFragment = (ColumnNameFragment) treeBuilder.popStatement();
+            oracleCreateViewStatment.addColumnName(columnNameFragment);
+        }
+
+        visit(ctx.subquery());
+        SubqueryFragment subqueryFragment = (SubqueryFragment) treeBuilder.popStatement();
+        oracleCreateViewStatment.setSubqueryFragment(subqueryFragment);
+
+        treeBuilder.pushStatement(oracleCreateViewStatment);
+        return oracleCreateViewStatment;
+    }
+
+
 }

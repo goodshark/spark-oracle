@@ -10,7 +10,7 @@ import java.util.List;
  * Created by dengrb1 on 6/9 0009.
  */
 public class SubqueryFragment extends SqlStatement {
-    private SubQuBaseElemFragment basicElement ;
+    private SubQuBaseElemFragment basicElement;
     private List<SubqueryOpPartFragment> operaionParts = new ArrayList<>();
 
     public void setBasicElement(SubQuBaseElemFragment stmt) {
@@ -22,7 +22,6 @@ public class SubqueryFragment extends SqlStatement {
     }
 
 
-
     @Override
     public String getSql() {
         return "";
@@ -32,9 +31,9 @@ public class SubqueryFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuilder sb = new StringBuilder();
         if (basicElement != null)
-            sb.append(FragMentUtils.appendOriginalSql(basicElement,getExecSession())).append(" ");
-        for (SqlStatement stmt: operaionParts) {
-            sb.append(FragMentUtils.appendOriginalSql(stmt,getExecSession())).append(" ");
+            sb.append(FragMentUtils.appendOriginalSql(basicElement, getExecSession())).append(" ");
+        for (SqlStatement stmt : operaionParts) {
+            sb.append(FragMentUtils.appendOriginalSql(stmt, getExecSession())).append(" ");
         }
         return sb.toString();
     }
@@ -43,12 +42,16 @@ public class SubqueryFragment extends SqlStatement {
     public String getFinalSql() throws Exception {
         StringBuilder sb = new StringBuilder();
         if (basicElement != null) {
-            sb.append(FragMentUtils.appendFinalSql(basicElement,getExecSession())).append(" ");
+            sb.append(FragMentUtils.appendFinalSql(basicElement, getExecSession())).append(" ");
         }
-        for (SqlStatement stmt: operaionParts) {
+        for (SqlStatement stmt : operaionParts) {
             stmt.setExecSession(getExecSession());
-            sb.append(FragMentUtils.appendFinalSql(stmt,getExecSession())).append(" ");
+            sb.append(FragMentUtils.appendFinalSql(stmt, getExecSession())).append(" ");
         }
         return sb.toString();
+    }
+
+    public SubQuBaseElemFragment getBasicElement() {
+        return basicElement;
     }
 }

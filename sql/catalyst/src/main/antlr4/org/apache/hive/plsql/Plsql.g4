@@ -196,13 +196,26 @@ rename_column_clause:
     ;
 
 create_table
-    : CREATE TABLE tableview_name '(' column_name type_spec column_constraint? (',' column_name type_spec column_constraint?)* ')' crud_table? ';' comments*
+    : CREATE  (GLOBAL TEMPORARY)? TABLE tableview_name
+    '(' column_name type_spec column_constraint?
+    (',' column_name type_spec column_constraint?)* ')' crud_table?
+     storage?
+    tmp_tb_comments?
+    table_space?
     ;
-
 //crud table
 crud_table
-    : CLUSTERED BY '(' column_name (',' column_name)* ')' INTO  DECIMAL BUCKETS STORED AS ORC TBLPROPERTIES
-    '('TRANSACTIONAL '=' TRUE')'
+    : CLUSTERED BY '(' column_name (',' column_name)* ')' INTO  numeric BUCKETS STORED AS ORC TBLPROPERTIES
+    '('TRANSACTIONAL '=' TRANSACTIONAL_VALUE ')'
+    ;
+table_space
+    :TABLESPACE id_expression
+    ;
+storage
+    : STORAGE ( INITIAL id_expression)
+    ;
+tmp_tb_comments
+    :ON COMMIT (DELETE|PRESERVE)  ROWS
     ;
 
 
@@ -216,7 +229,7 @@ drop_table
     ;
 
 create_view
-    : CREATE (OR REPLACE)? VIEW tableview_name AS data_manipulation_language_statements';'
+    : CREATE (OR REPLACE)? VIEW tableview_name ('('column_name?  (',' column_name )*  ')' )? AS subquery
     ;
 
 drop_view
@@ -3155,6 +3168,21 @@ REGR_:                        R E G R '_';
 STDDEV:                       S T D D E V;
 VAR_:                         V A R '_';
 COVAR_:                       C O V A R '_';
+GLOBAL:                       G L O B A L;
+TEMPORARY:                     T E M P O R A R Y;
+//add for crud
+BUCKETS:                               B U C K E T S;
+STORED:                                S T O R E D;
+ORC:                                   O R C;
+TBLPROPERTIES:                         T B L P R O P E R T I E S;
+TRANSACTIONAL:                         '"'T R A N S A C T I O N A L '"';
+TRANSACTIONAL_VALUE:                    '"'T R U E'"';
+CLUSTERED:                             C L U S T E R E D;
+TABLESPACE:                        T A B L E S P A C E;
+STORAGE:                           S T O R A G E;
+INITIAL:                           I N I T I A L;
+PRESERVE:                          P R E S E R V E;
+
 
 // Rule #358 <NATIONAL_CHAR_STRING_LIT> - subtoken typecast in <REGULAR_ID>, it also incorporates <character_representation>
 //  Lowercase 'n' is a usual addition to the standard

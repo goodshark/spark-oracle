@@ -99,4 +99,12 @@ public class QueryBlockFragment extends SqlStatement {
     }
 
 
+    public List<SelectElementFragment> getSelectElements() {
+        return elements;
+    }
+
+    public void replaceSelectElem(List<SelectElementFragment> selectElem) {
+        elements.clear();
+        elements.addAll(selectElem);
+    }
 }

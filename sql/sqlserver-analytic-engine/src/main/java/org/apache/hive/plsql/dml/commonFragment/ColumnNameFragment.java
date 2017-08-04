@@ -34,7 +34,7 @@ public class ColumnNameFragment extends SqlStatement {
         return sql.toString();
     }
 
-    public SqlStatement getId() {
+    public IdFragment getId() {
         return id;
     }
 
