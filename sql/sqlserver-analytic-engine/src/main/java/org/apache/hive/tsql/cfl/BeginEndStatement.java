@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.cfl;
 
+import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 
@@ -29,7 +30,7 @@ public class BeginEndStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = getChildrenNodes();
         int i=0;
@@ -41,7 +42,7 @@ public class BeginEndStatement extends BaseStatement {
             } else {
                 if(node instanceof BaseStatement){
                     BaseStatement bs = (BaseStatement)node;
-                    sb.append(bs.doCodegen());
+                    sb.append(bs.doCodegen(imports, variables, knownVars));
                     sb.append(CODE_LINE_END);
                 }
             }

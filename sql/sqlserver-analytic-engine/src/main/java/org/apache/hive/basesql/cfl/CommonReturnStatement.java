@@ -4,6 +4,8 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 
+import java.util.List;
+
 /**
  * Created by dengrb1 on 5/25 0025.
  */
@@ -35,11 +37,11 @@ public abstract class CommonReturnStatement extends BaseStatement {
     public abstract void postExecute(Var res) throws Exception;
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         sb.append("return ");
         BaseStatement bs = (BaseStatement)expr;
-        sb.append(bs.doCodegen());
+        sb.append(bs.doCodegen(imports, variables, knownVars));
         sb.append(CODE_END);
         return sb.toString();
     }

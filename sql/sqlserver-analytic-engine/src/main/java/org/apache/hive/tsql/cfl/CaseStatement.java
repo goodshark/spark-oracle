@@ -43,12 +43,12 @@ public class CaseStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = getChildrenNodes();
         for(TreeNode child : childs){
             if(child instanceof BaseStatement){
-                sb.append(((BaseStatement)child).doCodegen());
+                sb.append(((BaseStatement)child).doCodegen(imports, variables, knownVars));
             }
         }
         return sb.toString();

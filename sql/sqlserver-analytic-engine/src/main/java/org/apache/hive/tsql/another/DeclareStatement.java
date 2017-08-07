@@ -70,9 +70,10 @@ public class DeclareStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         String varName = declareVars.get(0).getVarName();
+        knownVars.add(declareVars.get(0));
         CreateFunctionStatement.SupportDataTypes dataType = CreateFunctionStatement.fromString(declareVars.get(0).getDataType().name());
         sb.append(dataType.toString());
         sb.append(BaseStatement.CODE_SEP);
@@ -81,7 +82,7 @@ public class DeclareStatement extends BaseStatement {
             if(declareVars.get(0).getExpr() instanceof BaseStatement){
                 sb.append(CODE_EQ);
                 BaseStatement bs = (BaseStatement)declareVars.get(0).getExpr();
-                sb.append(bs.doCodegen());
+                sb.append(bs.doCodegen(imports, variables, knownVars));
             }
         }
         sb.append(CODE_END);

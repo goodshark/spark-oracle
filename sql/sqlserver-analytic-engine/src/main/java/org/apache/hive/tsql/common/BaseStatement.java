@@ -177,5 +177,5 @@ public abstract class BaseStatement extends TreeNode {
         return labelSet;
     }
 
-    public String doCodegen(){return  null;};
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){return  null;};
 }

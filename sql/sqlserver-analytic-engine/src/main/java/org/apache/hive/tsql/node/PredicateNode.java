@@ -697,15 +697,15 @@ public class PredicateNode extends LogicNode {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         if(this.getChildrenNodes().size()==2){
             TreeNode left = this.getChildrenNodes().get(0);
             TreeNode rift = this.getChildrenNodes().get(0);
             if(left instanceof BaseStatement && rift instanceof BaseStatement){
-                sb.append(((BaseStatement) left).doCodegen());
+                sb.append(((BaseStatement) left).doCodegen(imports, variables, knownVars));
                 sb.append(this.operator);
-                sb.append(((BaseStatement) rift).doCodegen());
+                sb.append(((BaseStatement) rift).doCodegen(imports, variables, knownVars));
             }
         }
         return sb.toString();

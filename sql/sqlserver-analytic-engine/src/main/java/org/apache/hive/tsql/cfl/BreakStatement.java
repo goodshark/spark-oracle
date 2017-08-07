@@ -1,9 +1,12 @@
 package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.basesql.cfl.NonSeqStatement;
+import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.LogicNode;
+
+import java.util.List;
 
 /**
  * Created by dengrb1 on 12/7 0007.
@@ -31,11 +34,11 @@ public class BreakStatement extends NonSeqStatement {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         if(condition != null){
             sb.append("if(");
-            sb.append(condition.doCodegen());
+            sb.append(condition.doCodegen(imports, variables, knownVars));
             sb.append("){");
             sb.append(CODE_LINE_END);
             if(label != null){
