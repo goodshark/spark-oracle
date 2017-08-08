@@ -1,5 +1,7 @@
 package org.apache.hive.plsql.dml.fragment.insertFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
+import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
@@ -11,6 +13,20 @@ import org.apache.hive.tsql.common.SqlStatement;
 public class MultiTableElementFm extends SqlStatement {
     private InsertIntoClauseFm insertIntoClauseFm;
     private ValuesClauseFragment valuesClauseFragment;
+
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        ExecSession execSession = getExecSession();
+        if (null != insertIntoClauseFm) {
+            sql.append(FragMentUtils.appendOriginalSql(insertIntoClauseFm, execSession));
+        }
+        if (null != insertIntoClauseFm) {
+            sql.append(FragMentUtils.appendOriginalSql(valuesClauseFragment, execSession));
+        }
+        return sql.toString();
+    }
 
     public InsertIntoClauseFm getInsertIntoClauseFm() {
         return insertIntoClauseFm;

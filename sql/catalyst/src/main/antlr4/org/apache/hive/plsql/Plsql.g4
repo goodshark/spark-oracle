@@ -125,7 +125,6 @@ drop_package
 alter_package
     : ALTER PACKAGE package_name COMPILE DEBUG? (PACKAGE | BODY | SPECIFICATION)? compiler_parameters_clause* (REUSE SETTINGS)? ';'
     ;
-
 create_package
     : CREATE (OR REPLACE)? PACKAGE (package_spec | package_body)? ';'
     ;
@@ -177,14 +176,48 @@ package_obj_body
 // $<Procedure DDLs
 
 alter_table
-    : ALTER TABLE tableview_name (ADD column_name type_spec column_constraint?
-                                  | MODIFY column_name type_spec column_constraint?
-                                  | DROP column_name type_spec column_constraint?) ';'
+    : ALTER TABLE tableview_name (add_column_clause
+                                  | modify_column_clause
+                                  | drop_column_clause
+                                  | rename_column_clause)
+
+    ;
+add_column_clause:
+    ADD column_name type_spec column_constraint?
+    ;
+modify_column_clause:
+    MODIFY column_name type_spec column_constraint?
+    ;
+drop_column_clause:
+     DROP COLUMN column_name
+     ;
+rename_column_clause:
+    RENAME column_name TO column_name
     ;
 
 create_table
-    : CREATE TABLE tableview_name '(' column_name type_spec column_constraint? (',' column_name type_spec column_constraint?)* ')' ';' comments*
+    : CREATE  (GLOBAL TEMPORARY)? TABLE tableview_name
+    '(' column_name type_spec column_constraint?
+    (',' column_name type_spec column_constraint?)* ')' crud_table?
+     storage?
+    tmp_tb_comments?
+    table_space?
     ;
+//crud table
+crud_table
+    : CLUSTERED BY '(' column_name (',' column_name)* ')' INTO  numeric BUCKETS STORED AS ORC TBLPROPERTIES
+    '('TRANSACTIONAL '=' TRANSACTIONAL_VALUE ')'
+    ;
+table_space
+    :TABLESPACE id_expression
+    ;
+storage
+    : STORAGE ( INITIAL id_expression)
+    ;
+tmp_tb_comments
+    :ON COMMIT (DELETE|PRESERVE)  ROWS
+    ;
+
 
 comments
     : COMMENT ON TABLE tableview_name IS quoted_string ';'
@@ -196,7 +229,7 @@ drop_table
     ;
 
 create_view
-    : CREATE (OR REPLACE)? VIEW tableview_name AS data_manipulation_language_statements';'
+    : CREATE (OR REPLACE)? VIEW tableview_name ('('column_name?  (',' column_name )*  ')' )? AS subquery
     ;
 
 drop_view
@@ -1578,8 +1611,8 @@ case_else_part
 // $>
 
 atom
-    : table_element outer_join_sign
-    | bind_variable
+    //: table_element outer_join_sign
+    : bind_variable
     | constant
     | general_element
     | '(' (subquery ')' subquery_operation_part* | expression_or_vector ')')
@@ -3136,6 +3169,21 @@ REGR_:                        R E G R '_';
 STDDEV:                       S T D D E V;
 VAR_:                         V A R '_';
 COVAR_:                       C O V A R '_';
+GLOBAL:                       G L O B A L;
+TEMPORARY:                     T E M P O R A R Y;
+//add for crud
+BUCKETS:                               B U C K E T S;
+STORED:                                S T O R E D;
+ORC:                                   O R C;
+TBLPROPERTIES:                         T B L P R O P E R T I E S;
+TRANSACTIONAL:                         '"'T R A N S A C T I O N A L '"';
+TRANSACTIONAL_VALUE:                    '"'T R U E'"';
+CLUSTERED:                             C L U S T E R E D;
+TABLESPACE:                        T A B L E S P A C E;
+STORAGE:                           S T O R A G E;
+INITIAL:                           I N I T I A L;
+PRESERVE:                          P R E S E R V E;
+
 
 // Rule #358 <NATIONAL_CHAR_STRING_LIT> - subtoken typecast in <REGULAR_ID>, it also incorporates <character_representation>
 //  Lowercase 'n' is a usual addition to the standard

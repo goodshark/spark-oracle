@@ -25,18 +25,29 @@ public class FragMentUtils {
     }
 
     public static String appendOriginalSql(SqlStatement sqlStatement, ExecSession execSession) {
+        if (null == sqlStatement) {
+            return "";
+        }
         sqlStatement.setExecSession(execSession);
-        return sqlStatement.getOriginalSql();
+        return sqlStatement.getOriginalSql() + Common.SPACE;
     }
 
 
     public static String appendFinalSql(SqlStatement sqlStatement, ExecSession execSession) throws Exception {
+        if (null == sqlStatement) {
+            return "";
+        }
         StringBuffer sql = new StringBuffer();
         sqlStatement.setExecSession(execSession);
-        return sqlStatement.getFinalSql();
+        sql.append(sqlStatement.getFinalSql());
+        sql.append(Common.SPACE);
+        return sql.toString();
     }
 
     public static String appendFinalSql(List<? extends SqlStatement> list, ExecSession execSession) throws Exception {
+        if (null == list || list.isEmpty()) {
+            return "";
+        }
         StringBuffer sql = new StringBuffer();
         if (null != list && !list.isEmpty()) {
             for (SqlStatement s : list) {
@@ -50,6 +61,9 @@ public class FragMentUtils {
     }
 
     public static String appendOriginalSql(List<? extends SqlStatement> list, ExecSession execSession) {
+        if (null == list || list.isEmpty()) {
+            return "";
+        }
         StringBuffer sql = new StringBuffer();
         if (null != list && !list.isEmpty()) {
             for (SqlStatement s : list) {

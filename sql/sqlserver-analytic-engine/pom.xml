@@ -109,7 +109,7 @@
                         <option>-keep class org.apache.hive.tsql.func.** {*;}</option>
                         <option>-keep class org.apache.hive.tsql.udf.**{*;}</option>
                         <option>-keep class org.apache.hive.tsql.arg.**{*;}</option>
-                       <!-- <option>-keepnames enum org.apache.hive.tsql.arg.Var {*;}</option>-->
+                        <!-- <option>-keepnames enum org.apache.hive.tsql.arg.Var {*;}</option>-->
                         <!-- <option>-keepnames class org.apache.hive.tsql.var.*{*;}</option>-->
                         <!--<option>-keepnames class * implements java.io.Serializable</option>
                         <option>-keepclassmembers class * implements java.io.Serializable {

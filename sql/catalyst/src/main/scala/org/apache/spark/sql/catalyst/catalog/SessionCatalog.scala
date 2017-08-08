@@ -1037,6 +1037,13 @@ class SessionCatalog(
       }
   }
 
+  def lookupFunctionBuilder(name: FunctionIdentifier): Option[FunctionBuilder] = synchronized {
+    val database = name.database.orElse(Some(currentDb)).map(formatDatabaseName)
+    val qualifiedName = name.copy(database = database)
+    functionRegistry.lookupFunctionBuilder(name.funcName)
+      .orElse(functionRegistry.lookupFunctionBuilder(qualifiedName.unquotedString))
+  }
+
   /**
    * Return an [[Expression]] that represents the specified function, assuming it exists.
    *

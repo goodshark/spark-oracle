@@ -38,11 +38,18 @@ public class SelectElementFragment extends SqlStatement {
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
-        sql.append(FragMentUtils.appendOriginalSql(col,getExecSession()));
+        sql.append(FragMentUtils.appendOriginalSql(col, getExecSession()));
         if (null != colAlias) {
-            sql.append(FragMentUtils.appendOriginalSql(colAlias,getExecSession()));
+            sql.append(FragMentUtils.appendOriginalSql(colAlias, getExecSession()));
         }
         return sql.toString();
     }
 
+    public SelectListElementsFragment getCol() {
+        return col;
+    }
+
+    public ColumnAliasFragment getColAlias() {
+        return colAlias;
+    }
 }

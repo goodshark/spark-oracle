@@ -20,15 +20,15 @@ public class SubQuBaseElemFragment extends SqlStatement {
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         if (null != queryBlock) {
-            sql.append(FragMentUtils.appendOriginalSql(queryBlock,getExecSession()));
+            sql.append(FragMentUtils.appendOriginalSql(queryBlock, getExecSession()));
         }
         if (null != subQuery) {
-            sql.append(FragMentUtils.appendOriginalSql(subQuery,getExecSession()));
+            sql.append(FragMentUtils.appendOriginalSql(subQuery, getExecSession()));
         }
         return sql.toString();
     }
 
-    public SqlStatement getQueryBlock() {
+    public QueryBlockFragment getQueryBlock() {
         return queryBlock;
     }
 
@@ -36,7 +36,7 @@ public class SubQuBaseElemFragment extends SqlStatement {
         this.queryBlock = queryBlock;
     }
 
-    public SqlStatement getSubQuery() {
+    public SubqueryFragment getSubQuery() {
         return subQuery;
     }
 

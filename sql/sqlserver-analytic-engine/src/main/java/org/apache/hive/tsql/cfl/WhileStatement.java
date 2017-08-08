@@ -98,7 +98,7 @@ public class WhileStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         if(this.condtionNode.getBool()){
             sb.append("while(true){");
@@ -152,9 +152,9 @@ public class WhileStatement extends BaseStatement {
                 for (TreeNode node : left.getChildrenNodes()){
                     leftPredicateNode.addNode(node);
                 }
-                sb.append(andNode.doCodegen());
+                sb.append(andNode.doCodegen(imports, variables, knownVars));
             } else {
-                sb.append(condtionNode.doCodegen());
+                sb.append(condtionNode.doCodegen(imports, variables, knownVars));
             }
             sb.append("){");
             sb.append(CODE_LINE_END);
@@ -166,7 +166,7 @@ public class WhileStatement extends BaseStatement {
         List<TreeNode> childs = this.getChildrenNodes();
         for(TreeNode child : childs){
             if(child instanceof BaseStatement){
-                sb.append(((BaseStatement) child).doCodegen());
+                sb.append(((BaseStatement) child).doCodegen(imports, variables, knownVars));
                 sb.append(CODE_LINE_END);
             }
         }

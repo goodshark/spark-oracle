@@ -3,6 +3,7 @@ package org.apache.hive.plsql.dml.commonFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,7 +14,7 @@ import java.util.List;
  */
 public class ExpressionListFragment extends SqlStatement {
 
-    private List<ExpressionStatement> expressionStatements;
+    private List<ExpressionStatement> expressionStatements = new ArrayList<>();
 
     public void addExpression(ExpressionStatement es) {
         expressionStatements.add(es);
@@ -22,6 +23,12 @@ public class ExpressionListFragment extends SqlStatement {
 
     @Override
     public String getOriginalSql() {
-        return FragMentUtils.appendOriginalSql(expressionStatements,getExecSession());
+        String sql = "";
+        try {
+            sql = FragMentUtils.appendFinalSql(expressionStatements, getExecSession());
+        } catch (Exception e) {
+
+        }
+        return sql;
     }
 }

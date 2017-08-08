@@ -23,6 +23,8 @@ import java.util
 import java.util.{Arrays, UUID, Map => JMap}
 import java.util.concurrent.RejectedExecutionException
 
+import org.apache.commons.lang.StringUtils
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.{ArrayBuffer, Map => SMap}
 import scala.util.control.NonFatal
@@ -222,13 +224,13 @@ private[hive] class SparkExecuteStatementOperation(
     }
     var plan: LogicalPlan = null
     var sqlServerPlans: java.util.List[LogicalPlan] = new util.ArrayList[LogicalPlan]()
-    val sqlServerEngine = sqlContext.sessionState.
-      conf.getConfString("spark.sql.analytical.engine.sqlserver", "false")
+    val engineName = sqlContext.sessionState.
+      conf.getConfString("spark.sql.analytical.engine")
     try {
       // 执行sqlserver
-      if (sqlServerEngine.equalsIgnoreCase("true")) {
+      if (StringUtils.isNotBlank(engineName)) {
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
-        procCli.callProcedure(statement)
+        procCli.callProcedure(statement, engineName)
         val sqlServerRs = procCli.getExecSession().getResultSets()
         sqlServerPlans = procCli.getExecSession.getLogicalPlans
         if (null == sqlServerRs || sqlServerRs.size() == 0) {
@@ -294,7 +296,7 @@ private[hive] class SparkExecuteStatementOperation(
         throw new HiveSQLException(e.toString)
     } finally {
        clearCrudTableMap(plan)
-      if (sqlServerEngine.equalsIgnoreCase("true")) {
+      if (StringUtils.isNotBlank(engineName)) {
         clearCrudTableMapForSqlServer(sqlServerPlans)
         dropSqlserverTables
       } else {

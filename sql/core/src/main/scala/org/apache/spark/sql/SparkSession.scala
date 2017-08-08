@@ -37,9 +37,10 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
 import org.apache.spark.sql.catalog.Catalog
 import org.apache.spark.sql.catalyst._
+import org.apache.spark.sql.catalyst.analysis.FunctionRegistry.FunctionBuilder
 import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.encoders._
-import org.apache.spark.sql.catalyst.expressions.AttributeReference
+import org.apache.spark.sql.catalyst.expressions.{AttributeReference, ExpressionInfo}
 import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LocalRelation, Range}
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.command.{CacheTableCommand, UncacheTableCommand}
@@ -161,6 +162,14 @@ class SparkSession private(
     SparkSession.reflect[SessionState, SparkSession](
       SparkSession.sessionStateClassName(sparkContext.conf),
       self)
+  }
+
+  def getFunctionInfo(name: FunctionIdentifier): ExpressionInfo = {
+    sessionState.catalog.lookupFunctionInfo(name)
+  }
+
+  def getFunctionBuilder(name: FunctionIdentifier): Option[FunctionBuilder] = {
+    sessionState.catalog.lookupFunctionBuilder(name)
   }
 
   /**

@@ -1,6 +1,7 @@
 package org.apache.hive.plsql.dml.fragment.insertFragment;
 
 import org.apache.hive.plsql.dml.commonFragment.ExpressionListFragment;
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.tsql.common.SqlStatement;
 
 /**
@@ -12,6 +13,15 @@ public class ValuesClauseFragment extends SqlStatement {
 
 
     private ExpressionListFragment expressionListFragment;
+
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        sql.append(" VALUES ");
+        sql.append(FragMentUtils.appendOriginalSql(expressionListFragment, getExecSession()));
+        return sql.toString();
+    }
 
     public ExpressionListFragment getExpressionListFragment() {
         return expressionListFragment;

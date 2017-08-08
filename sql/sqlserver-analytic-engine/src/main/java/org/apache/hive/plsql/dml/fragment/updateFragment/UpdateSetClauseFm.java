@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.dml.fragment.updateFragment;
 
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.plsql.dml.commonFragment.IdFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
@@ -19,6 +20,17 @@ public class UpdateSetClauseFm extends SqlStatement {
     private IdFragment idFragment;
     private ExpressionStatement expressionStatement;
 
+
+    @Override
+    public String getOriginalSql() {
+        StringBuffer sql = new StringBuffer();
+        sql.append(" SET ");
+        sql.append(FragMentUtils.appendOriginalSql(columnBasedUpDateFms, getExecSession()));
+
+        //TODO 暂时没有发现这样的语法 VALUE '(' id ')' '=' expression)
+
+        return sql.toString();
+    }
 
     public void addColumnBaseUpdate(ColumnBasedUpDateFm cbudf) {
         columnBasedUpDateFms.add(cbudf);

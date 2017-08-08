@@ -2,6 +2,7 @@ package org.apache.hive.plsql.dml.fragment.selectFragment;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
+import org.apache.hive.plsql.dml.fragment.selectFragment.groupByFragment.GroupByFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 
 import java.util.ArrayList;
@@ -29,9 +30,8 @@ public class QueryBlockFragment extends SqlStatement {
 
 
     private IntoClauseFragment intoClause;
-    private SqlStatement hierachyClause;
-    private SqlStatement groupClause;
-    private SqlStatement modelClasue;
+
+    private GroupByFragment groupClause;
 
 
     @Override
@@ -49,15 +49,18 @@ public class QueryBlockFragment extends SqlStatement {
         if (elements.isEmpty()) {
             sb.append(" * ");
         } else {
-            sb.append(FragMentUtils.appendOriginalSql(elements,getExecSession()));
+            sb.append(FragMentUtils.appendOriginalSql(elements, getExecSession()));
         }
 
         if (null != intoClause) {
-            sb.append(FragMentUtils.appendOriginalSql(intoClause,getExecSession()));
+            sb.append(FragMentUtils.appendOriginalSql(intoClause, getExecSession()));
         }
-        sb.append(FragMentUtils.appendOriginalSql(fromClause,getExecSession()));
+        sb.append(FragMentUtils.appendOriginalSql(fromClause, getExecSession()));
         if (null != whereClause) {
-            sb.append(FragMentUtils.appendOriginalSql(whereClause,getExecSession()));
+            sb.append(FragMentUtils.appendOriginalSql(whereClause, getExecSession()));
+        }
+        if (null != groupClause) {
+            sb.append(FragMentUtils.appendOriginalSql(groupClause, getExecSession()));
         }
         return sb.toString();
     }
@@ -78,16 +81,12 @@ public class QueryBlockFragment extends SqlStatement {
         whereClause = stmt;
     }
 
-    public void setHierachyClause(SqlStatement stmt) {
-        hierachyClause = stmt;
+    public GroupByFragment getGroupClause() {
+        return groupClause;
     }
 
-    public void setGroupClause(SqlStatement stmt) {
-        groupClause = stmt;
-    }
-
-    public void setModelClasue(SqlStatement stmt) {
-        modelClasue = stmt;
+    public void setGroupClause(GroupByFragment groupClause) {
+        this.groupClause = groupClause;
     }
 
 
@@ -100,4 +99,16 @@ public class QueryBlockFragment extends SqlStatement {
     }
 
 
+    public List<SelectElementFragment> getSelectElements() {
+        return elements;
+    }
+
+    public void replaceSelectElem(List<SelectElementFragment> selectElem) {
+        elements.clear();
+        elements.addAll(selectElem);
+    }
+
+    public IntoClauseFragment getIntoClause() {
+        return intoClause;
+    }
 }
