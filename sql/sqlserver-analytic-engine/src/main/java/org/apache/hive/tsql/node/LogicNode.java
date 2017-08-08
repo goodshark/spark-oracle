@@ -303,7 +303,7 @@ public class LogicNode extends ExpressionStatement {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         String op = this.getNodeType().name();
         if(this.boolFlag){
@@ -314,7 +314,7 @@ public class LogicNode extends ExpressionStatement {
                 if(node instanceof BaseStatement){
                     sb.append(CODE_NOT);
                     sb.append("(");
-                    sb.append(((BaseStatement) node).doCodegen());
+                    sb.append(((BaseStatement) node).doCodegen(imports, variables, knownVars));
                     sb.append(")");
                 }
             }
@@ -323,9 +323,9 @@ public class LogicNode extends ExpressionStatement {
                 TreeNode rift = this.getChildrenNodes().get(1);
                 if(left instanceof BaseStatement && rift instanceof BaseStatement){
                     sb.append("(");
-                    sb.append(((BaseStatement) left).doCodegen());
+                    sb.append(((BaseStatement) left).doCodegen(imports, variables, knownVars));
                     sb.append(CODE_OR);
-                    sb.append(((BaseStatement) rift).doCodegen());
+                    sb.append(((BaseStatement) rift).doCodegen(imports, variables, knownVars));
                     sb.append(")");
                 }
             }
@@ -336,7 +336,7 @@ public class LogicNode extends ExpressionStatement {
                 for(TreeNode child : childs){
                     i++;
                     if(child instanceof BaseStatement){
-                        sb.append(((BaseStatement) child).doCodegen());
+                        sb.append(((BaseStatement) child).doCodegen(imports, variables, knownVars));
                         if(i != childs.size()){
                             sb.append(CODE_AND);
                         }

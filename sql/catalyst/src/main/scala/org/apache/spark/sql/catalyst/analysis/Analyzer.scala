@@ -93,6 +93,7 @@ class Analyzer(
       ResolveMissingReferences ::
       ExtractGenerator ::
       ResolveGenerate ::
+      ResolvePlFunctions ::
       ResolveFunctions ::
       ResolveAliases ::
       ResolveSubquery ::
@@ -871,6 +872,25 @@ class Analyzer(
           case other => resolved
         }
       }
+    }
+  }
+
+  /**
+    * Replaces [[UnresolvedFunction]]s with concrete [[Expression]]s.
+    */
+  object ResolvePlFunctions extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
+      case q: LogicalPlan =>
+        q transformExpressions {
+          case u @ UnresolvedFunction(funcId, children, isDistinct) =>
+            withPosition(u) {
+              if ("plsql".equalsIgnoreCase(funcId.funcName)) {
+                PlFunction(children, funcId.funcName)
+              } else {
+                u
+              }
+            }
+        }
     }
   }
 

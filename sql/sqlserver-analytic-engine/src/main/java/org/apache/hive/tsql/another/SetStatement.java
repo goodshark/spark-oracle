@@ -9,6 +9,8 @@ import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.exception.NotDeclaredException;
 import org.glassfish.jersey.message.internal.StringBuilderUtils;
 
+import java.util.List;
+
 /**
  * Created by zhongdg1 on 2016/12/2.
  */
@@ -123,11 +125,11 @@ public class SetStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(){
+    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
         StringBuffer sb = new StringBuffer();
         String varName = var.getVarName();
         String op = aop.val;
-        String result = ((BaseStatement)var.getExpr()).doCodegen();
+        String result = ((BaseStatement)var.getExpr()).doCodegen(imports, variables, knownVars);
         sb.append(varName);
         sb.append(op);
         sb.append(result);
