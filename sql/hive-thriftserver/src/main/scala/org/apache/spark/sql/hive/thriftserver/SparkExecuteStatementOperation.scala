@@ -296,7 +296,7 @@ private[hive] class SparkExecuteStatementOperation(
         throw new HiveSQLException(e.toString)
     } finally {
        clearCrudTableMap(plan)
-      if (sqlServerEngine.equalsIgnoreCase("true")) {
+      if (StringUtils.isNotBlank(engineName)) {
         clearCrudTableMapForSqlServer(sqlServerPlans)
         dropSqlserverTables
       } else {
