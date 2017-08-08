@@ -1610,8 +1610,8 @@ case_else_part
 // $>
 
 atom
-    : table_element outer_join_sign
-    | bind_variable
+    //: table_element outer_join_sign
+    : bind_variable
     | constant
     | general_element
     | '(' (subquery ')' subquery_operation_part* | expression_or_vector ')')

@@ -243,7 +243,47 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Var.DataType visitType_spec(PlsqlParser.Type_specContext ctx) {
-        String typeName = "";
+        String dataType ="";
+        if (ctx.datatype() != null) {
+            // receive from native_datatype_element only, abandon precision_part
+//            typeName = (String) visit(ctx.datatype());
+            dataType = (String) visitNative_datatype_element(ctx.datatype().native_datatype_element());
+        }
+        dataType = dataType.toUpperCase();
+        if (dataType.contains("BIGINT")) {
+            return Var.DataType.LONG;
+        } else if (dataType.contains("INT")|| dataType.contains("NUMBER")) {
+            return Var.DataType.INT;
+        } else if (dataType.contains("BINARY")) {
+            return Var.DataType.BINARY;
+        } else if (dataType.contains("DATETIME") || dataType.contains("TIMESTAMP")) {
+            return Var.DataType.DATETIME;
+        } else if (dataType.equalsIgnoreCase("TIME")) {
+            return Var.DataType.TIME;
+        } else if (dataType.contains("DATE")) {
+            return Var.DataType.DATE;
+        } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
+            return Var.DataType.STRING;
+        } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
+            return Var.DataType.FLOAT;
+        } else if (dataType.contains("BIT")
+                || dataType.contains("XML")
+                || dataType.contains("IMAGE")
+                || dataType.contains("UNIQUEIDENTIFIER")
+                || dataType.contains("GEOGRAPHY")
+                || dataType.contains("GEOMETRY")
+                || dataType.contains("HIERARCHYID")) {
+            treeBuilder.addException(dataType, locate(ctx));
+            return Var.DataType.NULL;
+        } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
+                || dataType.contains("NUMERIC")) {
+            return Var.DataType.DOUBLE;
+        } else {
+            return Var.DataType.STRING;
+        }
+
+
+       /* String typeName = "";
         if (ctx.datatype() != null) {
             // receive from native_datatype_element only, abandon precision_part
 //            typeName = (String) visit(ctx.datatype());
@@ -269,7 +309,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.BOOLEAN;
             default:
                 return Var.DataType.DEFAULT;
-        }
+        }*/
     }
 
     @Override

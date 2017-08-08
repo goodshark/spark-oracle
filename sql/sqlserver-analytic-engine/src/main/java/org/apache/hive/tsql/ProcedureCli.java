@@ -52,9 +52,9 @@ public class ProcedureCli {
     }
 
 
-    public void callProcedure(String sql) throws Throwable {
+    public void callProcedure(String sql,String engine) throws Throwable {
         try {
-           // engineName = sparkSession.conf().get("spark.sql.analytical.engine");
+            engineName = engine;
             LOG.info("spark-engine: " + engineName + ", query sql is " + sql);
             // generate execute plan
             buildExecutePlan(sql);
