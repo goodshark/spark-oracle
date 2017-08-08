@@ -1,10 +1,14 @@
 package org.apache.hive.tsql.another;
 
+import org.apache.hive.plsql.cursor.OracleCursor;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.ddl.CreateFunctionStatement;
+import org.apache.spark.sql.catalog.Column;
+import org.apache.spark.sql.catalog.Table;
+import org.apache.spark.sql.Dataset;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +34,22 @@ public class DeclareStatement extends BaseStatement {
 //            if (null != findVar(var.getVarName())) {
 //                throw new AlreadyDeclaredException(var.getVarName());
 //            }
+            if (var.getDataType() == Var.DataType.REF) {
+                resolveRefVar(var);
+//                findRefType(var);
+                // REF has no default value
+//                continue;
+            }
+            if (var.getDataType() == Var.DataType.COMPLEX) {
+                resolveComplexVar(var);
+//                findComplexType(var);
+                // COMPLEX has no default value
+//                continue;
+            }
+            if (var.getDataType() == Var.DataType.CUSTOM) {
+                resolveCustomType(var);
+            }
+
             switch (var.getValueType()) {
                 case TABLE:
                     TmpTableNameUtils tableNameUtils =new  TmpTableNameUtils();
@@ -63,6 +83,52 @@ public class DeclareStatement extends BaseStatement {
 
         return 0;
     }
+
+    /*private void findRefType(Var var) throws Exception {
+        String refTypeName = var.getRefTypeName();
+        Var refVar = findVar(refTypeName);
+        if (refVar == null) {
+            // refType reference table column
+            String[] strs = refTypeName.split("\\.");
+            if (strs.length < 2)
+                throw new Exception("REF %Type is unknown Type: " + var.getRefTypeName());
+            String tblName = strs[0];
+            String colName = strs[1];
+            Dataset<Column> cols = getExecSession().getSparkSession().catalog().listColumns(tblName);
+            Column[] columns = (Column[]) cols.collect();
+            for (Column col: columns) {
+                if (col.name().equalsIgnoreCase(colName)) {
+                    var.setDataType(Var.DataType.valueOf(col.dataType().toUpperCase().replaceAll("\\(.*\\)", "")));
+                    break;
+                }
+            }
+        } else {
+            // refType reference pre-exists var Type
+            var.setDataType(refVar.getDataType());
+        }
+    }*/
+
+    /*private void findComplexType(Var var) throws Exception {
+        String complexRefName= var.getRefTypeName();
+        OracleCursor cursor = (OracleCursor) findCursor(complexRefName);
+        if (cursor == null) {
+            // reference table
+            String tblName = complexRefName;
+            Dataset<Column> cols = getExecSession().getSparkSession().catalog().listColumns(tblName);
+            Column[] columns = (Column[]) cols.collect();
+            for (Column col: columns) {
+                Var innerVar = new Var();
+                String colVarName = col.name();
+                Var.DataType colDataType = Var.DataType.valueOf(col.dataType().toUpperCase().replaceAll("\\(.*\\)", ""));
+                innerVar.setDataType(colDataType);
+                innerVar.setVarName(colVarName);
+                var.addInnerVar(innerVar);
+            }
+            var.setCompoundResolved();
+        } else {
+            // cursor ref complex Type will postpone Type inference after open cursor
+        }
+    }*/
 
     @Override
     public BaseStatement createStatement() {

@@ -2,6 +2,7 @@ package org.apache.hive.tsql.arg;
 
 import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.basesql.func.CommonProcedureStatement;
+import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
@@ -10,6 +11,7 @@ import org.apache.hive.tsql.func.Procedure;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +40,8 @@ public class VariableContainer {
     private ConcurrentHashMap<String, CommonCursor> globalCursors = new ConcurrentHashMap<>();//全局游标
     //系统变量
     private ConcurrentHashMap<String,Var> systemVariables = new ConcurrentHashMap<>();
+    // custom type
+    private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, LocalTypeDeclare>> types = new ConcurrentHashMap<>();
 
     private ExecSession session;
 
@@ -275,6 +279,28 @@ public class VariableContainer {
 
     }
 
+    private Var searchDotVar(Var rootVar, String[] tagNames) {
+        Var curVar = rootVar;
+        for (int i = 0; i < tagNames.length; i++) {
+            if (i == 0 && rootVar == null) {
+                curVar = getVarInBlocks(tagNames[i].toUpperCase());
+                if (curVar == null) {
+                    break;
+                }
+            } else {
+                if (curVar != null) {
+                    if (tagNames[i].equalsIgnoreCase("count") && curVar.getDataType() == Var.DataType.ARRAY) {
+                        return new Var("", curVar.getArraySize(), Var.DataType.INTEGER);
+                    }
+                    curVar = curVar.getInnerVar(tagNames[i].toUpperCase());
+                } else {
+                    return null;
+                }
+            }
+        }
+        return curVar;
+    }
+
     /**
      * 按变量名查找，找不到按变量别名查找
      *
@@ -291,8 +317,9 @@ public class VariableContainer {
 //        return null == vars.get(var.getVarName().toUpperCase()) ? vars.get(var.getAliasName()) : vars.get(var.getVarName().toUpperCase());
     }
 
+    // need "." more than 1 for x.y.z, the first tag maybe scope-name
     public Var findVar(String varName) {
-        String scopeName = "";
+        /*String scopeName = "";
         if (varName.contains(".")) {
             String[] fullVarArray = varName.split("\\.");
             // ignore . counts more than 2
@@ -300,6 +327,13 @@ public class VariableContainer {
                 scopeName = fullVarArray[0];
                 varName = fullVarArray[1];
             }
+        }
+        // first use scope name as var name to search
+        Var prefixVar = getVarInBlocks(scopeName.toUpperCase());
+        if (prefixVar != null) {
+            Var innerVar = prefixVar.getInnerVar(varName.toUpperCase());
+            if (innerVar != null)
+                return innerVar;
         }
         TreeNode[] blocks = session.getCurrentScopes();
         // search all nested scope
@@ -317,13 +351,57 @@ public class VariableContainer {
                     return null;
             }
         }
+        return getVarInGlobal(varName);*/
+        String scopeName = "";
+
+        String[] fullVarArray = varName.split("\\.");
+        Var targetVar = searchDotVar(null, fullVarArray);
+        if (targetVar != null)
+            return targetVar;
+
+        if (fullVarArray.length <= 1)
+            return getVarInGlobal(varName);
+        else {
+            TreeNode[] blocks = session.getCurrentScopes();
+            scopeName = fullVarArray[0];
+            varName = fullVarArray[1];
+            for (TreeNode blk : blocks) {
+                if (!scopeName.isEmpty()) {
+                    BaseStatement stmt = (BaseStatement) blk;
+                    if (!stmt.existLabel(scopeName))
+                        continue;
+                }
+                ConcurrentHashMap<String, Var> blkVars = newVars.get(blk);
+                if (blkVars != null && blkVars.get(varName.toUpperCase()) != null) {
+                    Var rootVar = blkVars.get(varName.toUpperCase());
+                    return searchDotVar(rootVar, Arrays.copyOfRange(fullVarArray, 2, fullVarArray.length));
+                } else {
+                    if (!scopeName.isEmpty())
+                        return null;
+                }
+            }
+            return null;
+        }
+    }
+
+    private Var getVarInGlobal(String varName) {
         // search global scope
         ConcurrentHashMap<String, Var> rootScope = newVars.get(session.getRootNode());
         if (rootScope != null) {
             return rootScope.get(varName.toUpperCase());
         }
-        // var do not exists
         return null;
+    }
+
+    private Var getVarInBlocks(String varName) {
+        TreeNode[] blocks = session.getCurrentScopes();
+        for (TreeNode blk: blocks) {
+            ConcurrentHashMap<String, Var> blkVars = newVars.get(blk);
+            if (blkVars != null && blkVars.get(varName.toUpperCase()) != null) {
+                return blkVars.get(varName.toUpperCase());
+            }
+        }
+        return getVarInGlobal(varName);
     }
 
     public CommonProcedureStatement findFunc(String varName) {
@@ -393,6 +471,52 @@ public class VariableContainer {
         v.setVarValue(val);
         v.setExecuted(true);
         return true;
+    }
+
+    public void addType(LocalTypeDeclare typeDeclare) {
+        TreeNode curBlock = session.getCurrentScope();
+        ConcurrentHashMap<String, LocalTypeDeclare> typeMap = new ConcurrentHashMap<>();
+        typeMap.put(typeDeclare.getTypeName().toUpperCase(), typeDeclare);
+        if (curBlock != null) {
+            if (types.containsKey(curBlock)) {
+                types.get(curBlock).put(typeDeclare.getTypeName().toUpperCase(), typeDeclare);
+            } else {
+                types.put(curBlock, typeMap);
+            }
+        } else {
+            if (types.containsKey(session.getRootNode())) {
+                types.get(session.getRootNode()).put(typeDeclare.getTypeName().toUpperCase(), typeDeclare);
+            } else {
+                types.put(curBlock, typeMap);
+            }
+        }
+    }
+
+    public LocalTypeDeclare findType(String name) {
+        String scopeName = "";
+        if (name.contains(".")) {
+            String[] fullVarArray = name.split("\\.");
+            if (fullVarArray.length == 2) {
+                scopeName = fullVarArray[0];
+                name = fullVarArray[1];
+            }
+        }
+        TreeNode[] blocks = session.getCurrentScopes();
+        for (TreeNode blk: blocks) {
+            if (!scopeName.isEmpty()) {
+                BaseStatement stmt = (BaseStatement) blk;
+                if (!stmt.existLabel(scopeName))
+                    continue;
+            }
+            ConcurrentHashMap<String, LocalTypeDeclare> typeMap = types.get(blk);
+            if (typeMap != null && typeMap.get(name.toUpperCase()) != null) {
+                return typeMap.get(name.toUpperCase());
+            } else {
+                if (!scopeName.isEmpty())
+                    return null;
+            }
+        }
+        return null;
     }
 
 }

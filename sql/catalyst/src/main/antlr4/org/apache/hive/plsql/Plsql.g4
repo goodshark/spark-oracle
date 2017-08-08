@@ -1468,7 +1468,8 @@ like_escape_part
 
 in_elements
     : '(' subquery ')'
-    | '(' concatenation (',' concatenation)* ')'
+//    | '(' concatenation (',' concatenation)* ')'
+    | '(' expression (',' expression)*  ')'
     | constant
     | bind_variable
     | general_element
@@ -1930,7 +1931,7 @@ trigger_name
 
 variable_name
     // TODO id_expression -> expression
-    : (INTRODUCER char_set_name)? id_expression ('.' id_expression)?
+    : (INTRODUCER char_set_name)? id_expression ('.' id_expression)*
     | bind_variable
     ;
 
