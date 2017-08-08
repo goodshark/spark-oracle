@@ -107,4 +107,8 @@ public class QueryBlockFragment extends SqlStatement {
         elements.clear();
         elements.addAll(selectElem);
     }
+
+    public IntoClauseFragment getIntoClause() {
+        return intoClause;
+    }
 }

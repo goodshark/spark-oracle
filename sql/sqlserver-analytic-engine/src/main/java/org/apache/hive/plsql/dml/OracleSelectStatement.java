@@ -1,9 +1,18 @@
 package org.apache.hive.plsql.dml;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
+import org.apache.hive.plsql.dml.commonFragment.VariableNameFragment;
+import org.apache.hive.plsql.dml.fragment.selectFragment.IntoClauseFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.OrderByClauseFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryFactoringClause;
 import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryFragment;
+import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.SqlStatement;
+
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by dengrb1 on 6/8 0008.
@@ -20,42 +29,40 @@ public class OracleSelectStatement extends SqlStatement {
         setAddResult(true);
     }
 
-    private void genFinalSql() throws Exception {
-        if (withQueryStatement != null) {
-            finalSql += withQueryStatement.getFinalSql();
-        }
-        if (queryBlockStatement == null)
-            throw new Exception("missing query block statement in gen final sql");
-        finalSql += queryBlockStatement.getFinalSql();
-
-        if (orderByStatement != null) {
-            finalSql += orderByStatement.getFinalSql();
-        }
-    }
-
-    private String genOriginalSql() throws Exception {
-        StringBuilder sb = new StringBuilder();
-        if (withQueryStatement != null) {
-            sb.append(withQueryStatement.getOriginalSql());
-        }
-        if (queryBlockStatement == null)
-            throw new Exception("missing query block statement in gen original sql");
-        sb.append(queryBlockStatement.getOriginalSql());
-        if (orderByStatement != null) {
-            sb.append(orderByStatement.getOriginalSql());
-        }
-        return sb.toString();
-    }
 
     @Override
     public int execute() throws Exception {
-        // TODO check all variable in original sql
-//        genFinalSql();
         finalSql = getFinalSql();
         if (finalSql.isEmpty())
             return 0;
-        setRs(commitStatement(finalSql));
-        // TODO check into ?
+
+        List<String> commonVariableNames = new ArrayList<>();
+        IntoClauseFragment intoClause = queryBlockStatement.getBasicElement().getQueryBlock().getIntoClause();
+        if (null != intoClause) {
+            ExecSession execSession = getExecSession();
+            List<VariableNameFragment> variables = intoClause.getVariableNameFragments();
+            String bulkInto = intoClause.getBulk();
+            for (VariableNameFragment vnf : variables) {
+                if (StringUtils.isBlank(bulkInto)) {
+                    //获取变量名字
+                    String vName = FragMentUtils.appendOriginalSql(vnf, execSession);
+                    //TODO 判断变量类型，如果是表类型，要使用create table as
+                    commonVariableNames.add(vName.trim());//普通变量
+
+                } else {
+                    //TODO 批量获取游标里面的数据，存入到一个变量里
+
+                }
+            }
+        }
+        ResultSet rs = commitStatement(finalSql);
+        setRs(rs);
+
+        for (int i = 0; i < commonVariableNames.size(); i++) {
+            String valuse = rs.getString(i);
+            //TODO 设置变量的值
+            commonVariableNames.get(i);
+        }
         return 0;
     }
 
@@ -65,7 +72,7 @@ public class OracleSelectStatement extends SqlStatement {
         if (sql != null)
             return sql;
         try {
-            sql = genOriginalSql();
+            sql = getOriginalSql();
         } catch (Exception e) {
             // TODO test only
             e.printStackTrace();

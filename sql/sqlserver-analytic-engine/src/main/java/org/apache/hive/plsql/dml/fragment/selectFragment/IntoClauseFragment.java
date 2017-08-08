@@ -3,6 +3,7 @@ package org.apache.hive.plsql.dml.fragment.selectFragment;
 import org.apache.hive.plsql.dml.commonFragment.VariableNameFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -14,7 +15,9 @@ import java.util.List;
  */
 public class IntoClauseFragment extends SqlStatement {
     private String bulk;
-    private List<VariableNameFragment> variableNameFragments;
+
+
+    private List<VariableNameFragment> variableNameFragments = new ArrayList<>();
 
     public String getBulk() {
         return bulk;
@@ -31,5 +34,13 @@ public class IntoClauseFragment extends SqlStatement {
     @Override
     public String getSql() {
         return "";
+    }
+
+    public List<VariableNameFragment> getVariableNameFragments() {
+        return variableNameFragments;
+    }
+
+    public void setVariableNameFragments(List<VariableNameFragment> variableNameFragments) {
+        this.variableNameFragments = variableNameFragments;
     }
 }

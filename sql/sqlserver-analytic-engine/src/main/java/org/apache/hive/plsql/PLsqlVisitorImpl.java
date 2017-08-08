@@ -24,6 +24,7 @@ import org.apache.hive.plsql.dml.commonFragment.*;
 import org.apache.hive.plsql.dml.fragment.delFragment.OracleDelStatement;
 import org.apache.hive.plsql.dml.fragment.explainFragment.OracleExplainStatment;
 import org.apache.hive.plsql.dml.fragment.insertFragment.*;
+import org.apache.hive.plsql.dml.fragment.mergeFragment.*;
 import org.apache.hive.plsql.dml.fragment.selectFragment.*;
 import org.apache.hive.plsql.dml.fragment.selectFragment.groupByFragment.GroupByElemFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.groupByFragment.GroupByFragment;
@@ -54,13 +55,13 @@ import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.cursor.DeclareCursorStatement;
 import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
-import org.apache.hive.tsql.ddl.CreateTableStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.exception.Position;
 import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
+import src.test.testsql.dml.MergerIntoSqlCase;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -1102,7 +1103,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         List<ExpressionStatement> idExpressions = new ArrayList<>();
         columnNameFragment.setId(id);
         for (PlsqlParser.Id_expressionContext idExpressionContext : ctx.id_expression()) {
-            ExpressionStatement idExpression = visitId_expression(idExpressionContext);
+            visit(idExpressionContext);
+            ExpressionStatement idExpression = (ExpressionStatement) treeBuilder.popStatement();
             columnNameFragment.addExpress(idExpression);
         }
         treeBuilder.pushStatement(columnNameFragment);
@@ -1369,6 +1371,11 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             SelectElementFragment element = (SelectElementFragment) treeBuilder.popStatement();
             queryBlockFragment.addElement(element);
         }
+        if (null != ctx.into_clause()) {
+            visit(ctx.into_clause());
+            IntoClauseFragment intoClauseFragment = (IntoClauseFragment) treeBuilder.popStatement();
+            queryBlockFragment.setIntoClause(intoClauseFragment);
+        }
         visit(ctx.from_clause());
         FromClauseFragment fromFrag = (FromClauseFragment) treeBuilder.popStatement();
         queryBlockFragment.setFromClause(fromFrag);
@@ -1391,6 +1398,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(queryBlockFragment);
         return queryBlockFragment;
     }
+
 
     /**
      * group_by_clause
@@ -2782,10 +2790,177 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      * @return
      */
     @Override
-    public Object visitMerge_statement(PlsqlParser.Merge_statementContext ctx) {
-        //TODO MERGEiNTO
-        return super.visitMerge_statement(ctx);
+    public OracleMergeIntoStatment visitMerge_statement(PlsqlParser.Merge_statementContext ctx) {
+        OracleMergeIntoStatment oracleMergeIntoStatment = new OracleMergeIntoStatment();
+
+        visit(ctx.tableview_name());
+        TableViewNameFragment tableViewNameFragment = (TableViewNameFragment) treeBuilder.popStatement();
+        oracleMergeIntoStatment.setTableViewNameFragment(tableViewNameFragment);
+
+        if (null != ctx.table_alias()) {
+            visit(ctx.table_alias());
+            TableAliasFragment tableAliasFragment = (TableAliasFragment) treeBuilder.popStatement();
+            oracleMergeIntoStatment.setTableAliasFragment(tableAliasFragment);
+        }
+        visit(ctx.selected_tableview());
+        SelectTableViewFragment selectTableViewFragment = (SelectTableViewFragment) treeBuilder.popStatement();
+        oracleMergeIntoStatment.setSelectTableViewFragment(selectTableViewFragment);
+
+        visit(ctx.condition());
+        ExpressionStatement expressionStatement = (ExpressionStatement) treeBuilder.popStatement();
+        oracleMergeIntoStatment.setExpressionStatement(expressionStatement);
+
+        if (null != ctx.merge_insert_clause()) {
+            visit(ctx.merge_insert_clause());
+            MergerInsertClauseFm mergerInsertClauseFm = (MergerInsertClauseFm) treeBuilder.popStatement();
+            oracleMergeIntoStatment.setMergerInsertClauseFm(mergerInsertClauseFm);
+        }
+
+        if (null != ctx.merge_update_clause()) {
+            visit(ctx.merge_update_clause());
+            MergerUpdateClauseFm mergerUpdateClauseFm = (MergerUpdateClauseFm) treeBuilder.popStatement();
+            oracleMergeIntoStatment.setMergerUpdateClauseFm(mergerUpdateClauseFm);
+        }
+
+        if (null != ctx.error_logging_clause()) {
+            //TODO
+        }
+        treeBuilder.pushStatement(oracleMergeIntoStatment);
+        return oracleMergeIntoStatment;
     }
+
+    /**
+     * merge_update_clause
+     * : WHEN MATCHED THEN UPDATE SET merge_element (',' merge_element)* where_clause? merge_update_delete_part?
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public MergerUpdateClauseFm visitMerge_update_clause(PlsqlParser.Merge_update_clauseContext ctx) {
+        MergerUpdateClauseFm mergeUpdateClauseFm = new MergerUpdateClauseFm();
+
+        for (PlsqlParser.Merge_elementContext me : ctx.merge_element()) {
+            visit(me);
+            MergerElementFragement mergerElementFragement = (MergerElementFragement) treeBuilder.popStatement();
+            mergeUpdateClauseFm.addMergerElem(mergerElementFragement);
+        }
+        if (null != ctx.where_clause()) {
+            visit(ctx.where_clause());
+            WhereClauseFragment whereClauseFragment = (WhereClauseFragment) treeBuilder.popStatement();
+            mergeUpdateClauseFm.setWhereClauseFragment(whereClauseFragment);
+        }
+        if (null != ctx.merge_update_delete_part()) {
+            visit(ctx.merge_update_delete_part());
+            MergerUpdateDelFragment mergerUpdateDelFragment = (MergerUpdateDelFragment) treeBuilder.popStatement();
+            mergeUpdateClauseFm.setMergerUpdateDelFragment(mergerUpdateDelFragment);
+        }
+        treeBuilder.pushStatement(mergeUpdateClauseFm);
+        return mergeUpdateClauseFm;
+    }
+
+    /**
+     * merge_update_delete_part
+     * : DELETE where_clause
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public Object visitMerge_update_delete_part(PlsqlParser.Merge_update_delete_partContext ctx) {
+        MergerUpdateDelFragment mergerUpdateDelFragment = new MergerUpdateDelFragment();
+        visit(ctx.where_clause());
+        WhereClauseFragment whereClauseFragment = (WhereClauseFragment) treeBuilder.popStatement();
+        mergerUpdateDelFragment.setWhereClauseFragment(whereClauseFragment);
+
+        treeBuilder.pushStatement(mergerUpdateDelFragment);
+        return mergerUpdateDelFragment;
+    }
+
+    /**
+     * merge_element
+     * : column_name '=' expression
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public MergerElementFragement visitMerge_element(PlsqlParser.Merge_elementContext ctx) {
+        MergerElementFragement mergerElementFragement = new MergerElementFragement();
+
+        visit(ctx.column_name());
+        ColumnNameFragment columnNameFragment = (ColumnNameFragment) treeBuilder.popStatement();
+        mergerElementFragement.setColumnNameFragment(columnNameFragment);
+        visit(ctx.expression());
+        ExpressionStatement expressionStatement = (ExpressionStatement) treeBuilder.popStatement();
+        mergerElementFragement.setExpressionStatement(expressionStatement);
+
+        treeBuilder.pushStatement(mergerElementFragement);
+        return mergerElementFragement;
+    }
+
+    /**
+     * selected_tableview
+     * : (tableview_name | '(' select_statement ')') table_alias?
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public SelectTableViewFragment visitSelected_tableview(PlsqlParser.Selected_tableviewContext ctx) {
+        SelectTableViewFragment selectTableViewFragment = new SelectTableViewFragment();
+        if (null != ctx.tableview_name()) {
+            visit(ctx.tableview_name());
+            TableViewNameFragment tableViewNameFragment = (TableViewNameFragment) treeBuilder.popStatement();
+            selectTableViewFragment.setTableViewNameFragment(tableViewNameFragment);
+        }
+        if (null != ctx.select_statement()) {
+            visit(ctx.select_statement());
+            OracleSelectStatement oracleSelectStatement = (OracleSelectStatement) treeBuilder.popStatement();
+            selectTableViewFragment.setSelectStatement(oracleSelectStatement);
+        }
+        if (null != ctx.table_alias()) {
+            visit(ctx.table_alias());
+            TableAliasFragment tableAliasFragment = (TableAliasFragment) treeBuilder.popStatement();
+            selectTableViewFragment.setTableAliasFragment(tableAliasFragment);
+        }
+        treeBuilder.pushStatement(selectTableViewFragment);
+        return selectTableViewFragment;
+    }
+
+    /**
+     * merge_insert_clause
+     * : WHEN NOT MATCHED THEN INSERT ('(' column_name (',' column_name)* ')')? VALUES expression_list where_clause?
+     * ;
+     *
+     * @param ctx
+     * @return
+     */
+    @Override
+    public MergerInsertClauseFm visitMerge_insert_clause(PlsqlParser.Merge_insert_clauseContext ctx) {
+        MergerInsertClauseFm mergerInsertClauseFm = new MergerInsertClauseFm();
+        for (PlsqlParser.Column_nameContext column_nameContext : ctx.column_name()) {
+            visit(column_nameContext);
+            ColumnNameFragment columnNameFragment = (ColumnNameFragment) treeBuilder.popStatement();
+            mergerInsertClauseFm.addColumnName(columnNameFragment);
+        }
+        if (null != ctx.where_clause()) {
+            visit(ctx.where_clause());
+            WhereClauseFragment whereFrag = (WhereClauseFragment) treeBuilder.popStatement();
+            mergerInsertClauseFm.setWhereClauseFragment(whereFrag);
+        }
+        if (null != ctx.expression_list()) {
+            visit(ctx.expression_list());
+            ExpressionListFragment es = (ExpressionListFragment) treeBuilder.popStatement();
+            mergerInsertClauseFm.setExpressionListFragment(es);
+        }
+        treeBuilder.pushStatement(mergerInsertClauseFm);
+        return mergerInsertClauseFm;
+    }
+
     //=======================================explain================================
 
     /**
