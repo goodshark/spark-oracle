@@ -1,5 +1,7 @@
 package org.apache.hive.tsql.common;
 
+import org.apache.hive.plsql.cursor.OracleCursor;
+import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.GotoStatement;
 import org.apache.spark.sql.Dataset;
@@ -51,7 +53,7 @@ public abstract class BaseStatement extends TreeNode {
     public ResultSet commitStatement(String exeSql) {
         System.out.println("SparkServer Executing SQL: [" + exeSql + "]");
 //        //For testing
- /*       SparkResultSet sparkResultSet = new SparkResultSet();
+        /*SparkResultSet sparkResultSet = new SparkResultSet();
         sparkResultSet.addColumn(new Column("id", ColumnDataType.INT));
         sparkResultSet.addColumn(new Column("name", ColumnDataType.STRING));
         sparkResultSet.addColumn(new Column("age", ColumnDataType.INT));
@@ -63,7 +65,7 @@ public abstract class BaseStatement extends TreeNode {
         }
         return sparkResultSet;*/
         //For testing end
-      /*  SparkSession sparkSession = getExecSession().getSparkSession();
+        SparkSession sparkSession = getExecSession().getSparkSession();
         LogicalPlan plan = sparkSession.sqlContext().sessionState().sqlParser().parsePlan(exeSql);
         getExecSession().addLogicalPlans(plan);
         Dataset dataset = sparkSession.sql(exeSql);
@@ -71,8 +73,7 @@ public abstract class BaseStatement extends TreeNode {
         if(isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
-        return sparkResultSet;*/
-        return null;
+        return sparkResultSet;
     }
 
     /**
@@ -177,5 +178,72 @@ public abstract class BaseStatement extends TreeNode {
         return labelSet;
     }
 
+
+    protected void resolveRefVar(Var var) throws Exception {
+        String refTypeName = var.getRefTypeName();
+        Var refVar = findVar(refTypeName);
+        if (refVar == null) {
+            // refType reference table column
+            String[] strs = refTypeName.split("\\.");
+            if (strs.length < 2)
+                throw new Exception("REF %Type is unknown Type: " + var.getRefTypeName());
+            String tblName = strs[0];
+            String colName = strs[1];
+            Dataset<org.apache.spark.sql.catalog.Column> cols = getExecSession().getSparkSession().catalog().listColumns(tblName);
+            org.apache.spark.sql.catalog.Column[] columns = (org.apache.spark.sql.catalog.Column[]) cols.collect();
+            for (org.apache.spark.sql.catalog.Column col: columns) {
+                if (col.name().equalsIgnoreCase(colName)) {
+                    var.setDataType(Var.DataType.valueOf(col.dataType().toUpperCase().replaceAll("\\(.*\\)", "")));
+                    break;
+                }
+            }
+        } else {
+            // refType reference pre-exists var Type
+            var.setDataType(refVar.getDataType());
+            // TODO data type is complex, need add inner var
+        }
+    }
+
+    protected void resolveComplexVar(Var var) throws Exception {
+        String complexRefName= var.getRefTypeName();
+        OracleCursor cursor = (OracleCursor) findCursor(complexRefName);
+        if (cursor == null) {
+            // reference table
+            String tblName = complexRefName;
+            Dataset<org.apache.spark.sql.catalog.Column> cols = getExecSession().getSparkSession().catalog().listColumns(tblName);
+            org.apache.spark.sql.catalog.Column[] columns = (org.apache.spark.sql.catalog.Column[]) cols.collect();
+            for (org.apache.spark.sql.catalog.Column col: columns) {
+                Var innerVar = new Var();
+                String colVarName = col.name();
+                Var.DataType colDataType = Var.DataType.valueOf(col.dataType().toUpperCase().replaceAll("\\(.*\\)", ""));
+                innerVar.setDataType(colDataType);
+                innerVar.setVarName(colVarName);
+                var.addInnerVar(innerVar);
+            }
+            var.setCompoundResolved();
+        } else {
+            // cursor ref complex Type will postpone Type inference after open cursor
+        }
+    }
+
+    protected void resolveCustomType(Var var) throws Exception {
+        LocalTypeDeclare typeDeclare = findType(var.getRefTypeName());
+        if (typeDeclare == null)
+            throw new Exception("type " + var.getRefTypeName() + " not exist");
+        if (typeDeclare.getDeclareType() == LocalTypeDeclare.Type.RECORD) {
+            var.setDataType(Var.DataType.COMPLEX);
+            if (typeDeclare.isResolved())
+                var.setCompoundResolved();
+            Map<String, Var> typeVars = typeDeclare.getTypeVars();
+            for (String fieldName: typeVars.keySet()) {
+                Var typeVar = typeVars.get(fieldName);
+                var.addInnerVar(typeVar.typeClone());
+            }
+        } else {
+            var.setDataType(Var.DataType.ARRAY);
+            Var typeVar = typeDeclare.getArrayVar();
+            var.addArrayVar(typeVar.typeClone());
+        }
+    }
     public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){return  null;};
 }

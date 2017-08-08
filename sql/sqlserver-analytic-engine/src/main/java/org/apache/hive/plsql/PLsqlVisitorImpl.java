@@ -44,9 +44,13 @@ import org.apache.hive.plsql.dml.fragment.updateFragment.ColumnBasedUpDateFm;
 import org.apache.hive.plsql.dml.fragment.updateFragment.OracleUpdateStatement;
 import org.apache.hive.plsql.dml.fragment.updateFragment.StaticReturningClauseFm;
 import org.apache.hive.plsql.dml.fragment.updateFragment.UpdateSetClauseFm;
+import org.apache.hive.plsql.expression.GeneralExpression;
 import org.apache.hive.plsql.function.FakeFunction;
 import org.apache.hive.plsql.function.Function;
 import org.apache.hive.plsql.function.ProcedureCall;
+import org.apache.hive.plsql.type.LocalTypeDeclare;
+import org.apache.hive.plsql.type.RecordTypeDeclare;
+import org.apache.hive.plsql.type.TableTypeDeclare;
 import org.apache.hive.tsql.another.DeclareStatement;
 import org.apache.hive.tsql.another.SetStatement;
 import org.apache.hive.tsql.arg.Var;
@@ -61,6 +65,7 @@ import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
+import org.apache.spark.sql.catalyst.expressions.Expression;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -224,12 +229,13 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitVariable_declaration(PlsqlParser.Variable_declarationContext ctx) {
         DeclareStatement declareStatement = new DeclareStatement();
-        Var var = new Var();
+        Var var = null;
         String varName = ctx.variable_name().getText();
         checkDuplicateVariable(varName, ctx);
-        var.setVarName(varName);
-        Var.DataType varType = (Var.DataType) visit(ctx.type_spec());
-        var.setDataType(varType);
+        var = genVarBasedTypeSpec(varName, ctx.type_spec());
+//        var.setVarName(varName);
+//        Var.DataType varType = (Var.DataType) visit(ctx.type_spec());
+//        var.setDataType(varType);
         if (ctx.default_value_part() != null) {
             visit(ctx.default_value_part());
             var.setExpr(treeBuilder.popStatement());
@@ -240,75 +246,69 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return declareStatement;
     }
 
+    private Var genVarBasedTypeSpec(String varName, PlsqlParser.Type_specContext type_specCtx) {
+        Var var = new Var();
+        var.setVarName(varName);
+        Var.DataType dataType = (Var.DataType) visit(type_specCtx);
+        var.setDataType(dataType);
+        if (dataType == Var.DataType.REF || dataType == Var.DataType.COMPLEX || dataType == Var.DataType.CUSTOM) {
+            var.setRefTypeName(type_specCtx.type_name().getText());
+        }
+        return var;
+    }
+
     @Override
     public Var.DataType visitType_spec(PlsqlParser.Type_specContext ctx) {
         String dataType ="";
+        // primitive type
         if (ctx.datatype() != null) {
             // receive from native_datatype_element only, abandon precision_part
 //            typeName = (String) visit(ctx.datatype());
             dataType = (String) visitNative_datatype_element(ctx.datatype().native_datatype_element());
-        }
-        dataType = dataType.toUpperCase();
-        if (dataType.contains("BIGINT")) {
-            return Var.DataType.LONG;
-        } else if (dataType.contains("INT")|| dataType.contains("NUMBER")) {
-            return Var.DataType.INT;
-        } else if (dataType.contains("BINARY")) {
-            return Var.DataType.BINARY;
-        } else if (dataType.contains("DATETIME") || dataType.contains("TIMESTAMP")) {
-            return Var.DataType.DATETIME;
-        } else if (dataType.equalsIgnoreCase("TIME")) {
-            return Var.DataType.TIME;
-        } else if (dataType.contains("DATE")) {
-            return Var.DataType.DATE;
-        } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
-            return Var.DataType.STRING;
-        } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
-            return Var.DataType.FLOAT;
-        } else if (dataType.contains("BIT")
-                || dataType.contains("XML")
-                || dataType.contains("IMAGE")
-                || dataType.contains("UNIQUEIDENTIFIER")
-                || dataType.contains("GEOGRAPHY")
-                || dataType.contains("GEOMETRY")
-                || dataType.contains("HIERARCHYID")) {
-            treeBuilder.addException(dataType, locate(ctx));
-            return Var.DataType.NULL;
-        } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
-                || dataType.contains("NUMERIC")) {
-            return Var.DataType.DOUBLE;
-        } else {
-            return Var.DataType.STRING;
-        }
-
-
-       /* String typeName = "";
-        if (ctx.datatype() != null) {
-            // receive from native_datatype_element only, abandon precision_part
-//            typeName = (String) visit(ctx.datatype());
-            typeName = (String) visitNative_datatype_element(ctx.datatype().native_datatype_element());
-        }
-        switch (typeName.toUpperCase()) {
-            case "BINARY_INTEGER":
-            case "PLS_INTEGER":
-            case "INTEGER":
-            case "INT":
-            case "NUMERIC":
-            case "SMALLINT":
-            case "NUMBER":
-            case "DECIMAL":
-            case "FLOAT":
+            dataType = dataType.toUpperCase();
+            if (dataType.contains("BIGINT")) {
+                return Var.DataType.LONG;
+            } else if (dataType.contains("INT")|| dataType.contains("NUMBER")) {
                 return Var.DataType.INT;
-            case "VARCHAR2":
-            case "VARCHAR":
-            case "STRING":
-            case "CHAR":
+            } else if (dataType.contains("BINARY")) {
+                return Var.DataType.BINARY;
+            } else if (dataType.contains("DATETIME") || dataType.contains("TIMESTAMP")) {
+                return Var.DataType.DATETIME;
+            } else if (dataType.equalsIgnoreCase("TIME")) {
+                return Var.DataType.TIME;
+            } else if (dataType.contains("DATE")) {
+                return Var.DataType.DATE;
+            } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
                 return Var.DataType.STRING;
-            case "BOOLEAN":
-                return Var.DataType.BOOLEAN;
-            default:
-                return Var.DataType.DEFAULT;
-        }*/
+            } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
+                return Var.DataType.FLOAT;
+            } else if (dataType.contains("BIT")
+                    || dataType.contains("XML")
+                    || dataType.contains("IMAGE")
+                    || dataType.contains("UNIQUEIDENTIFIER")
+                    || dataType.contains("GEOGRAPHY")
+                    || dataType.contains("GEOMETRY")
+                    || dataType.contains("HIERARCHYID")) {
+                treeBuilder.addException(dataType, locate(ctx));
+                return Var.DataType.NULL;
+            } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
+                    || dataType.contains("NUMERIC")) {
+                return Var.DataType.DOUBLE;
+            } else {
+                return Var.DataType.STRING;
+            }
+        }
+
+        // complex Type
+        if (ctx.type_name() != null) {
+            if (ctx.PERCENT_ROWTYPE() != null)
+                return Var.DataType.COMPLEX;
+            if (ctx.PERCENT_TYPE() != null)
+                return Var.DataType.REF;
+            // local type declare
+            return Var.DataType.CUSTOM;
+        }
+        return Var.DataType.DEFAULT;
     }
 
     @Override
@@ -316,21 +316,66 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return ctx.getText();
     }
 
+    @Override
+    public Object visitGeneral_element_part(PlsqlParser.General_element_partContext ctx) {
+        GeneralExpression generalExpression = new GeneralExpression();
+        for (PlsqlParser.Id_expressionContext id_expressionCtx: ctx.id_expression()) {
+            visit(id_expressionCtx);
+            ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
+            generalExpression.addGeneralExpr(es);
+        }
+        if (ctx.function_argument() != null) {
+            List<Var> list = (List<Var>) visitFunction_argument(ctx.function_argument());
+            if (list.size() != 1)
+                treeBuilder.addException("general element index error", locate(ctx));
+            ExpressionStatement expressionStatement = new ExpressionStatement();
+            ExpressionBean eb = new ExpressionBean();
+            Var indexVar = list.get(0);
+            eb.setVar(indexVar);
+            expressionStatement.setExpressionBean(eb);
+            generalExpression.addGeneralExpr(expressionStatement);
+        }
+        treeBuilder.pushStatement(generalExpression);
+        return generalExpression;
+    }
+
+    @Override
+    public Object visitGeneral_element(PlsqlParser.General_elementContext ctx) {
+        GeneralExpression generalExpression = new GeneralExpression();
+        for (PlsqlParser.General_element_partContext partCtx: ctx.general_element_part()) {
+            visit(partCtx);
+            GeneralExpression partExpr = (GeneralExpression) treeBuilder.popStatement();
+            generalExpression.mergeGeneralExpr(partExpr);
+        }
+        treeBuilder.pushStatement(generalExpression);
+        return generalExpression;
+    }
+
     /*@Override
+    public Object visitAtom(PlsqlParser.AtomContext ctx) {
+        if (ctx.general_element() != null)
+            visit(ctx.general_element());
+        return visitChildren(ctx);
+    }*/
+
+    @Override
     public Object visitStandard_function(PlsqlParser.Standard_functionContext ctx) {
         // TODO only implement cursor attribute
         OracleCursorAttribute ca = new OracleCursorAttribute();
         if (ctx.cursor_name() != null) {
             ca.setCursorName(ctx.cursor_name().getText());
             if (ctx.PERCENT_FOUND() != null)
-                else if (ctx.PERCENT_NOTFOUND() != null)
-                else if (ctx.PERCENT_ISOPEN() != null)
-                else if (ctx.PERCENT_ROWCOUNT() != null)
-                else
+                ca.setMark(ctx.PERCENT_FOUND().getText());
+            else if (ctx.PERCENT_NOTFOUND() != null)
+                ca.setMark(ctx.PERCENT_NOTFOUND().getText());
+            else if (ctx.PERCENT_ISOPEN() != null)
+                ca.setMark(ctx.PERCENT_ISOPEN().getText());
+            else if (ctx.PERCENT_ROWCOUNT() != null)
+                ca.setMark(ctx.PERCENT_ROWCOUNT().getText());
             treeBuilder.pushStatement(ca);
         }
         return ca;
-    }*/
+    }
 
     @Override
     public Object visitUnary_expression(PlsqlParser.Unary_expressionContext ctx) {
@@ -338,6 +383,11 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         // TODO only implement standard funciton
         if (ctx.standard_function() != null) {
             visit(ctx.standard_function());
+            unaryEs = (ExpressionStatement) treeBuilder.popStatement();
+        }
+        // TODO only implement general_element_part for x(i).y
+        if (ctx.atom() != null) {
+            visit(ctx.atom());
             unaryEs = (ExpressionStatement) treeBuilder.popStatement();
         }
         treeBuilder.pushStatement(unaryEs);
@@ -594,7 +644,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         IfStatement rootIfStatement = ifStatement;
         if (ctx.condition() != null) {
             visit(ctx.condition());
-            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            TreeNode conditionNode = treeBuilder.popStatement();
             ifStatement.setCondtion(conditionNode);
         }
         if (ctx.seq_of_statements() != null) {
@@ -2246,7 +2296,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitCursor_declaration(PlsqlParser.Cursor_declarationContext ctx) {
         DeclareCursorStatement stmt = new DeclareCursorStatement();
         OracleCursor cursor = new OracleCursor(ctx.cursor_name().getText());
-        // TODO cursor return type
+        // TODO cursor return Type
         // TODO cursor parameter
         for (PlsqlParser.Parameter_specContext para : ctx.parameter_spec()) {
             visit(para);
@@ -2282,6 +2332,9 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         for (PlsqlParser.Variable_nameContext varNameCtx : ctx.variable_name()) {
             String varName = varNameCtx.getText();
             fetchCursorStmt.addVarname(varName);
+        }
+        if (ctx.BULK() != null) {
+            fetchCursorStmt.setBulkCollect();
         }
         treeBuilder.pushStatement(fetchCursorStmt);
         return fetchCursorStmt;
@@ -3171,6 +3224,29 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         treeBuilder.pushStatement(caseStatement);
         return caseStatement;
+    }
+
+    @Override
+    public Object visitRecord_type_dec(PlsqlParser.Record_type_decContext ctx) {
+        LocalTypeDeclare typeDeclare = new RecordTypeDeclare();
+        typeDeclare.setTypeName(ctx.type_name().getText());
+        for (PlsqlParser.Field_specContext fieldCtx: ctx.field_spec()) {
+            String fieldVarName = fieldCtx.column_name().getText();
+            Var fieldVar = genVarBasedTypeSpec(fieldVarName, fieldCtx.type_spec());
+            typeDeclare.addTypeVar(fieldVarName, fieldVar);
+        }
+        treeBuilder.pushStatement(typeDeclare);
+        return typeDeclare;
+    }
+
+    @Override
+    public Object visitTable_type_dec(PlsqlParser.Table_type_decContext ctx) {
+        LocalTypeDeclare typeDeclare = new TableTypeDeclare();
+        typeDeclare.setTypeName(ctx.type_name().getText());
+        Var arrayTypeVar = genVarBasedTypeSpec("", ctx.type_spec());
+        typeDeclare.setArrayVar(arrayTypeVar);
+        treeBuilder.pushStatement(typeDeclare);
+        return typeDeclare;
     }
 
 

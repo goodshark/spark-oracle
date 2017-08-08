@@ -2,6 +2,7 @@ package org.apache.hive.tsql.common;
 
 import org.apache.hive.basesql.cursor.CommonCursor;
 import org.apache.hive.basesql.func.CommonProcedureStatement;
+import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.another.GoStatement;
 import org.apache.hive.tsql.arg.Var;
@@ -288,6 +289,14 @@ public abstract class TreeNode implements Serializable {
 
     public GoStatement currentGoStmt() {
         return goStmt;
+    }
+
+    public void addType(LocalTypeDeclare typeDeclare) {
+        execSession.getVariableContainer().addType(typeDeclare);
+    }
+
+    public LocalTypeDeclare findType(String name) {
+        return execSession.getVariableContainer().findType(name);
     }
 
 

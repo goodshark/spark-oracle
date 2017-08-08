@@ -9,8 +9,7 @@ import org.apache.hive.tsql.util.StrUtils;
 
 import java.io.Serializable;
 import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by zhongdg1 on 2016/12/1.
@@ -23,7 +22,8 @@ public class Var implements Serializable {
 
     public enum DataType {
         STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, DATETIME, DATETIME2, TIME, LIST, TIMESTAMP,
-        BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION, BYTE, DECIMAL, EXCEPTION
+        BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION, BYTE, DECIMAL, EXCEPTION,
+        SHORT, REF, COMPLEX, CUSTOM, ARRAY
     }
 
     public enum ValueType {
@@ -47,6 +47,18 @@ public class Var implements Serializable {
     private boolean noCopy = false;
     // oracle a => b, a is OUT
     private String mapOutName = null;
+
+
+    // REF, COMPLEX
+    private String refTypeName = "";
+    // compound Type, like (int, string, string)
+    private Map<String, Var> compoundVarMap = new HashMap<>();
+    // compound Type mark
+    private boolean compoundResolved = false;
+    // array Type, like ((int, string), ...), first index 0 var is type only, real vars from 1 to size - 1
+    private List<Var> arrayVars = new ArrayList<>();
+    // only for general_element_part x(1).y
+    private Var searchIndex = null;
 
 
     public Var(String varName, Object varValue, DataType dataType) {
@@ -88,6 +100,7 @@ public class Var implements Serializable {
     }
 
 
+    // TODO deep copy all inner vars
     public Var clone() {
         Var v = new Var(this.varName, this.varValue, this.dataType);
         v.setValueType(this.valueType);
@@ -95,6 +108,38 @@ public class Var implements Serializable {
         v.setVarType(this.varType);
         v.setExecuted(this.isExecuted);
         v.setExpr(this.expr);
+        v.refTypeName = refTypeName;
+        v.compoundResolved = compoundResolved;
+        if (dataType == DataType.COMPLEX) {
+            for (String innerVarName: compoundVarMap.keySet()) {
+                Var innerVar = compoundVarMap.get(innerVarName).typeClone();
+                v.addInnerVar(innerVar);
+            }
+        }
+        if (dataType == DataType.ARRAY) {
+            for (Var arrayVar: arrayVars) {
+                v.addArrayVar(arrayVar);
+            }
+        }
+        return v;
+    }
+
+    public Var typeClone() {
+        Var v = new Var(varName, null, dataType);
+        v.setAliasName(aliasName);
+        v.setVarType(varType);
+        v.setExecuted(isExecuted);
+        if (dataType == DataType.COMPLEX) {
+            for (String innerVarName: compoundVarMap.keySet()) {
+                Var innerVar = compoundVarMap.get(innerVarName).typeClone();
+                v.addInnerVar(innerVar);
+            }
+        }
+        if (dataType == DataType.ARRAY) {
+            for (Var arrayVar: arrayVars) {
+                v.addArrayVar(arrayVar);
+            }
+        }
         return v;
     }
 
@@ -438,6 +483,55 @@ public class Var implements Serializable {
 
     public String getString() {
         return varValue.toString();
+    }
+
+    public void setRefTypeName(String ref) {
+        refTypeName = ref;
+    }
+
+    public String getRefTypeName() {
+        return refTypeName;
+    }
+
+    public void addInnerVar(Var var) {
+        compoundVarMap.put(var.getVarName(), var);
+    }
+
+    public Var getInnerVar(String name) {
+        return compoundVarMap.get(name);
+    }
+
+    public void addArrayVar(Var var) {
+        arrayVars.add(var);
+    }
+
+    public Var getArrayVar(int index) {
+        return arrayVars.get(index);
+    }
+
+    public int getArraySize() {
+        // the index 0 is the TYPE meaning
+        return arrayVars.size() - 1;
+    }
+
+    public void setSearchIndex(Var i) {
+        searchIndex = i;
+    }
+
+    public Var getSearchIndex() {
+        return searchIndex;
+    }
+
+    public int getRecordSize() {
+        return compoundVarMap.size();
+    }
+
+    public void setCompoundResolved() {
+        compoundResolved = true;
+    }
+
+    public boolean isCompoundResolved() {
+        return compoundResolved;
     }
 
     @Override
