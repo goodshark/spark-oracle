@@ -61,7 +61,6 @@ import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
-import src.test.testsql.dml.MergerIntoSqlCase;
 
 import java.util.ArrayList;
 import java.util.HashSet;
