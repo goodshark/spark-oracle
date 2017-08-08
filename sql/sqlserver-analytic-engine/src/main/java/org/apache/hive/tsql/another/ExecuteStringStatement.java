@@ -32,7 +32,7 @@ public class ExecuteStringStatement extends BaseStatement {
 //            cli.setExecSession(getExecSession());
             cli.getExecSession().setVariableContainer(getExecSession().getVariableContainer());
             cli.getExecSession().setReset(false);
-            cli.callProcedure(StrUtils.trimQuot(getExecSql()));
+            cli.callProcedure(StrUtils.trimQuot(getExecSql()), getExecSession().getEngineName());
 //            getExecSession().getResultSets().addAll(cli.getExecSession().getResultSets());
             int size = cli.getExecSession().getResultSets().size();
             if (size > 0) {

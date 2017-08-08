@@ -20,15 +20,6 @@ public class ProcedureCli {
     private ParserErrorListener listener;
     private SparkSession sparkSession = null;
     private static final Logger LOG = LoggerFactory.getLogger(ProcedureCli.class);
-    private String engineName;
-
-    public String getEngineName() {
-        return engineName;
-    }
-
-    public void setEngineName(String engineName) {
-        this.engineName = engineName;
-    }
 
     static {
         // load all supported sql engine
@@ -52,12 +43,12 @@ public class ProcedureCli {
     }
 
 
-    public void callProcedure(String sql,String engine) throws Throwable {
+    public void callProcedure(String sql, String engineName) throws Throwable {
         try {
-            engineName = engine;
+            session.setEngineName(engineName);
             LOG.info("spark-engine: " + engineName + ", query sql is " + sql);
             // generate execute plan
-            buildExecutePlan(sql);
+            buildExecutePlan(sql, engineName);
             // check treenode
             check();
             // optimize
@@ -149,7 +140,7 @@ public class ProcedureCli {
         }
     }
 
-    private void buildExecutePlan(String sql) throws Throwable {
+    private void buildExecutePlan(String sql, String engineName) throws Throwable {
         Engine engine = EngineManager.getEngine(engineName);
         engine.setSession(session);
         engine.parse(sql);

@@ -26,16 +26,29 @@ public class ExecSession {
     private SparkSession sparkSession;
     private List<ResultSet> resultSets;
     private Stack<BaseStatement> jumpCmds = new Stack<>();
-//    private List<Exception> exceptions;
+    //    private List<Exception> exceptions;
     private AbstractParseTreeVisitor visitor;
     private boolean isReset = true;
     private String errorStr = "";
+
+
     // mark break/continue/goto/return/raise/throw cmd
     public enum Scope {
         BEGIN, IF, WHILE, PROCEDURE, TRY, CATCH
     }
+
     private LinkedList<TreeNode> scopes = new LinkedList<>();
 
+
+    private String engineName;
+
+    public String getEngineName() {
+        return engineName;
+    }
+
+    public void setEngineName(String engineName) {
+        this.engineName = engineName;
+    }
 //    private static class SessionHolder {
 //        private final static ExecSession session = new ExecSession();
 //    }
@@ -52,7 +65,7 @@ public class ExecSession {
 
 //    }
 
-    public void addLogicalPlans(LogicalPlan plan){
+    public void addLogicalPlans(LogicalPlan plan) {
         logicalPlans.add(plan);
     }
 
@@ -113,22 +126,22 @@ public class ExecSession {
     }
 
 
-    public String getRealTableName(String tableName)throws Exception{
+    public String getRealTableName(String tableName) throws Exception {
         TmpTableNameUtils tmpTableNameUtils = new TmpTableNameUtils();
         String realTableName = "";
         if (tableName.indexOf("@") != -1) {
             realTableName = getVariableContainer().findTableVarAlias(tableName);
-        } else if(tmpTableNameUtils.checkIsTmpTable(tableName)){
-            realTableName=sparkSession.getRealTable(tableName);
-        }else if(tmpTableNameUtils.checkIsGlobalTmpTable(tableName)){
-            realTableName=tmpTableNameUtils.getGlobalTbName(tableName);
-        }else{
-            realTableName=tableName;
+        } else if (tmpTableNameUtils.checkIsTmpTable(tableName)) {
+            realTableName = sparkSession.getRealTable(tableName);
+        } else if (tmpTableNameUtils.checkIsGlobalTmpTable(tableName)) {
+            realTableName = tmpTableNameUtils.getGlobalTbName(tableName);
+        } else {
+            realTableName = tableName;
         }
-        if(StringUtils.isBlank(realTableName)){
-            throw new Exception("Table "+ tableName +" is not  exist ");
+        if (StringUtils.isBlank(realTableName)) {
+            throw new Exception("Table " + tableName + " is not  exist ");
         }
-        return  realTableName;
+        return realTableName;
     }
 
     public void enterScope(TreeNode node) {
