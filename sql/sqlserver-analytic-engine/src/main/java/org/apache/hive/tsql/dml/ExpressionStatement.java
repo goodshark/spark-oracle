@@ -359,7 +359,7 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         Var var = getExpressionBean().getVar();
         OperatorSign op = getExpressionBean().getOperatorSign();
@@ -394,17 +394,17 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
             if(getChildrenNodes().get(0) instanceof BaseStatement){
                 BaseStatement bs = (BaseStatement)getChildrenNodes().get(0);
                 sb.append(BaseStatement.CODE_SEP);
-                sb.append(bs.doCodegen(imports, variables, knownVars));
+                sb.append(bs.doCodegen(variables, childPlfuncs));
                 sb.append(BaseStatement.CODE_SEP);
             }
         } else if(op != null && var == null && getChildrenNodes().size() == 2){
             sb.append(CODE_SEP);
             if(getChildrenNodes().get(0) instanceof BaseStatement && getChildrenNodes().get(1) instanceof BaseStatement){
                 BaseStatement bs0 = (BaseStatement)getChildrenNodes().get(0);
-                sb.append(bs0.doCodegen(imports, variables, knownVars));
+                sb.append(bs0.doCodegen(variables, childPlfuncs));
                 sb.append(op.getOperator());
                 BaseStatement bs1 = (BaseStatement)getChildrenNodes().get(1);
-                sb.append(bs1.doCodegen(imports, variables, knownVars));
+                sb.append(bs1.doCodegen(variables, childPlfuncs));
             }
             sb.append(CODE_SEP);
         }

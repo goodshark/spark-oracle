@@ -125,11 +125,11 @@ public class SetStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         String varName = var.getVarName();
         String op = aop.val;
-        String result = ((BaseStatement)var.getExpr()).doCodegen(imports, variables, knownVars);
+        String result = ((BaseStatement)var.getExpr()).doCodegen(variables, childPlfuncs);
         sb.append(varName);
         sb.append(op);
         sb.append(result);

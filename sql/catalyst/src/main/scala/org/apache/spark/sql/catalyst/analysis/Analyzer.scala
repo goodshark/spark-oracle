@@ -885,7 +885,19 @@ class Analyzer(
           case u @ UnresolvedFunction(funcId, children, isDistinct) =>
             withPosition(u) {
               if ("plsql".equalsIgnoreCase(funcId.funcName)) {
-                PlFunction(children, funcId.funcName)
+                val codeString =
+                  """
+                   public Object generate(Object[] references) {
+                   return new plsql();
+                   }
+                   final class plsql implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{
+                   public Object eval(Object[] inputdatas) {
+                   Long N=(Long)(inputdatas[0]);
+                   return   N * N  ;
+                   }
+                   }
+                  """.stripMargin
+                PlFunction(children, funcId.funcName, codeString, "Long")
               } else {
                 u
               }

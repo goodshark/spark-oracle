@@ -1,7 +1,5 @@
 package org.apache.hive.tsql.ddl;
 
-import javolution.io.Struct;
-import org.antlr.v4.runtime.misc.Interval;
 import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.plsql.PlsqlParser;
 import org.apache.hive.tsql.arg.Var;
@@ -111,22 +109,39 @@ public class CreateFunctionStatement extends BaseStatement {
     }
 
     public String doCodeGen() {
+        List<String> variables = new ArrayList<>();
+        List<String> childPlfuncs = new ArrayList<>();
         StringBuffer sb = new StringBuffer();
-        sb.append("private ");
-        sb.append(returnType.toString());
-        sb.append(" eval(");
+        sb.append("public Object generate(Object[] references) {\n");
+        sb.append("return new ");
+        sb.append(function.getName().getFuncName());
+        sb.append("(); \n}\n");
+
+        sb.append("final class " + function.getName().getFuncName() + " implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{\n");
+        sb.append("public Object eval(Object[");
         List<Var> paras = function.getInAndOutputs();
+        sb.append("] inputdatas) {\n");
         int i = 0;
         for (Var var : paras) {
-            i++;
-            sb.append(fromString(var.getValueType().name()).toString());
-            sb.append(" ");
+            sb.append(fromString(var.getDataType().name()).toString());
+            sb.append(CODE_SEP);
             sb.append(var.getVarName());
-            if(i != paras.size()){
-                sb.append(",");
+            sb.append(CODE_EQ);
+            sb.append("(");
+            sb.append(fromString(var.getDataType().name()).toString());
+            sb.append(")inputdatas[" + i + "];\n");
+            i++;
+        }
+        List<TreeNode> children = this.function.getSqlClauses().getChildrenNodes();
+        if(children != null){
+            for(TreeNode node : children){
+                if(node instanceof BaseStatement){
+                    sb.append(((BaseStatement) node).doCodegen(variables, childPlfuncs));
+                }
             }
         }
-        sb.append(") {\n");
+        sb.append("}\n");
+        sb.append("}\n");
         return sb.toString();
     }
 

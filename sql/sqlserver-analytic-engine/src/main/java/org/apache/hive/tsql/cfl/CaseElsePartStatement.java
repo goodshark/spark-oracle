@@ -29,14 +29,14 @@ public class CaseElsePartStatement extends BaseStatement{
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         sb.append("else {");
         sb.append(CODE_LINE_END);
         List<TreeNode> childs = getChildrenNodes();
         for(TreeNode child : childs){
             if(child instanceof BaseStatement){
-                sb.append(((BaseStatement)child).doCodegen(imports, variables, knownVars));
+                sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs));
                 sb.append(CODE_LINE_END);
             }
         }

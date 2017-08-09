@@ -30,7 +30,7 @@ public class BeginEndStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = getChildrenNodes();
         int i=0;
@@ -42,7 +42,7 @@ public class BeginEndStatement extends BaseStatement {
             } else {
                 if(node instanceof BaseStatement){
                     BaseStatement bs = (BaseStatement)node;
-                    sb.append(bs.doCodegen(imports, variables, knownVars));
+                    sb.append(bs.doCodegen(variables, childPlfuncs));
                     sb.append(CODE_LINE_END);
                 }
             }

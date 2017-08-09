@@ -51,7 +51,7 @@ public class CaseWhenPartStatement extends BaseStatement{
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         String ifstr = null;
         if(first){
@@ -61,7 +61,7 @@ public class CaseWhenPartStatement extends BaseStatement{
         }
         if(isSimple){
             if(whenCondition instanceof  BaseStatement){
-                String str = ((BaseStatement)whenCondition).doCodegen(imports, variables, knownVars);
+                String str = ((BaseStatement)whenCondition).doCodegen(variables, childPlfuncs);
                 if(str != null && str.startsWith("\"") && str.endsWith("\"")){
                     sb.append(ifstr);
                     sb.append("(");
@@ -82,7 +82,7 @@ public class CaseWhenPartStatement extends BaseStatement{
                 List<TreeNode> childs = getChildrenNodes();
                 for(TreeNode child : childs){
                     if(child instanceof BaseStatement){
-                        sb.append(((BaseStatement)child).doCodegen(imports, variables, knownVars));
+                        sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs));
                         sb.append(CODE_LINE_END);
                     }
                 }
@@ -91,7 +91,7 @@ public class CaseWhenPartStatement extends BaseStatement{
             }
         } else {
             if(whenCondition instanceof  BaseStatement){
-                String str = ((BaseStatement)whenCondition).doCodegen(imports, variables, knownVars);
+                String str = ((BaseStatement)whenCondition).doCodegen(variables, childPlfuncs);
                 sb.append(ifstr);
                 sb.append("(");
                 sb.append(str);
@@ -100,7 +100,7 @@ public class CaseWhenPartStatement extends BaseStatement{
                 List<TreeNode> childs = getChildrenNodes();
                 for(TreeNode child : childs){
                     if(child instanceof BaseStatement){
-                        sb.append(((BaseStatement)child).doCodegen(imports, variables, knownVars));
+                        sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs));
                         sb.append(CODE_LINE_END);
                     }
                 }

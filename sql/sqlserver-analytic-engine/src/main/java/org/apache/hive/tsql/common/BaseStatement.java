@@ -178,7 +178,6 @@ public abstract class BaseStatement extends TreeNode {
         return labelSet;
     }
 
-
     protected void resolveRefVar(Var var) throws Exception {
         String refTypeName = var.getRefTypeName();
         Var refVar = findVar(refTypeName);
@@ -245,5 +244,5 @@ public abstract class BaseStatement extends TreeNode {
             var.addArrayVar(typeVar.typeClone());
         }
     }
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){return  null;};
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){return  null;};
 }
