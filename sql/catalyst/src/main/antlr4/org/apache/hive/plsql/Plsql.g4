@@ -373,8 +373,6 @@ referencing_element
 // $>
 // $>
 
-
-
 // $<Type DDLs
 
 drop_type
@@ -1953,7 +1951,7 @@ exception_name
     ;
 
 function_name
-    : id ('.' id_expression)?
+    : id_expression ('.' id_expression)?
     ;
 
 procedure_name

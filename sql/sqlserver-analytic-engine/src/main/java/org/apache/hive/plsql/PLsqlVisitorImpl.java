@@ -874,9 +874,20 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitCreate_function_body(PlsqlParser.Create_function_bodyContext ctx) {
         String sourceFunction = ctx.start.getInputStream().getText(
                 new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        String functionName = ctx.function_name().getText();
+        List<PlsqlParser.Id_expressionContext> idExprs = ctx.function_name().id_expression();
+        String functionName = null;
+        String dbName = null;
+        if(idExprs.size() == 1){
+            functionName = idExprs.get(0).getText();
+        } else if(idExprs.size() ==2){
+            dbName = idExprs.get(0).getText();
+            functionName = idExprs.get(1).getText();
+        }
         FuncName funcId = new FuncName();
         funcId.setFuncName(functionName);
+        if(dbName != null){
+            funcId.setDatabase(dbName);
+        }
         Function function = new Function(funcId);
         function.setProcSql(sourceFunction);
         function.setMd5(MD5Util.md5Hex(sourceFunction));
