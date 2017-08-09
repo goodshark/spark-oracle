@@ -18,6 +18,7 @@ import org.apache.hive.plsql.ddl.fragment.createViewFragment.OracleCreateViewSta
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropTableStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropViewStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleTruncateTableStatement;
+import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleUseStatement;
 import org.apache.hive.plsql.ddl.fragment.packageFragment.*;
 import org.apache.hive.plsql.dml.OracleSelectStatement;
 import org.apache.hive.plsql.dml.commonFragment.*;
@@ -51,8 +52,10 @@ import org.apache.hive.plsql.function.ProcedureCall;
 import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.plsql.type.RecordTypeDeclare;
 import org.apache.hive.plsql.type.TableTypeDeclare;
+import org.apache.hive.tsql.TSqlParser;
 import org.apache.hive.tsql.another.DeclareStatement;
 import org.apache.hive.tsql.another.SetStatement;
+import org.apache.hive.tsql.another.UseStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.*;
@@ -259,7 +262,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Var.DataType visitType_spec(PlsqlParser.Type_specContext ctx) {
-        String dataType ="";
+        String dataType = "";
         // primitive type
         if (ctx.datatype() != null) {
             // receive from native_datatype_element only, abandon precision_part
@@ -268,7 +271,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             dataType = dataType.toUpperCase();
             if (dataType.contains("BIGINT")) {
                 return Var.DataType.LONG;
-            } else if (dataType.contains("INT")|| dataType.contains("NUMBER")) {
+            } else if (dataType.contains("INT") || dataType.contains("NUMBER")) {
                 return Var.DataType.INT;
             } else if (dataType.contains("BINARY")) {
                 return Var.DataType.BINARY;
@@ -319,7 +322,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitGeneral_element_part(PlsqlParser.General_element_partContext ctx) {
         GeneralExpression generalExpression = new GeneralExpression();
-        for (PlsqlParser.Id_expressionContext id_expressionCtx: ctx.id_expression()) {
+        for (PlsqlParser.Id_expressionContext id_expressionCtx : ctx.id_expression()) {
             visit(id_expressionCtx);
             ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
             generalExpression.addGeneralExpr(es);
@@ -342,7 +345,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitGeneral_element(PlsqlParser.General_elementContext ctx) {
         GeneralExpression generalExpression = new GeneralExpression();
-        for (PlsqlParser.General_element_partContext partCtx: ctx.general_element_part()) {
+        for (PlsqlParser.General_element_partContext partCtx : ctx.general_element_part()) {
             visit(partCtx);
             GeneralExpression partExpr = (GeneralExpression) treeBuilder.popStatement();
             generalExpression.mergeGeneralExpr(partExpr);
@@ -3241,7 +3244,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitRecord_type_dec(PlsqlParser.Record_type_decContext ctx) {
         LocalTypeDeclare typeDeclare = new RecordTypeDeclare();
         typeDeclare.setTypeName(ctx.type_name().getText());
-        for (PlsqlParser.Field_specContext fieldCtx: ctx.field_spec()) {
+        for (PlsqlParser.Field_specContext fieldCtx : ctx.field_spec()) {
             String fieldVarName = fieldCtx.column_name().getText();
             Var fieldVar = genVarBasedTypeSpec(fieldVarName, fieldCtx.type_spec());
             typeDeclare.addTypeVar(fieldVarName, fieldVar);
@@ -3633,6 +3636,41 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
         treeBuilder.pushStatement(oracleCreateViewStatment);
         return oracleCreateViewStatment;
+    }
+
+
+    @Override
+    public SqlStatement visitShow_tables(PlsqlParser.Show_tablesContext ctx) {
+        SqlStatement sqlStatement = new SqlStatement(Common.SHOW_TABLES);
+        StringBuffer sql = new StringBuffer();
+        sql.append(ctx.SHOW().getText()).append(Common.SPACE);
+        sql.append(ctx.TABLES().getText()).append(Common.SPACE);
+        sqlStatement.setSql(sql.toString());
+        sqlStatement.setAddResult(true);
+        treeBuilder.pushStatement(sqlStatement);
+        return sqlStatement;
+    }
+
+    @Override
+    public SqlStatement visitShow_databases(PlsqlParser.Show_databasesContext ctx) {
+        SqlStatement sqlStatement = new SqlStatement(Common.SHOW_TABLES);
+        StringBuffer sql = new StringBuffer();
+        sql.append(ctx.SHOW().getText()).append(Common.SPACE);
+        sql.append(ctx.DATABASES().getText()).append(Common.SPACE);
+        sqlStatement.setSql(sql.toString());
+        sqlStatement.setAddResult(true);
+        treeBuilder.pushStatement(sqlStatement);
+        return sqlStatement;
+    }
+
+    @Override
+    public OracleUseStatement visitUse_statement(PlsqlParser.Use_statementContext ctx) {
+        OracleUseStatement oracleUseStatement = new OracleUseStatement();
+        visitId(ctx.id());
+        IdFragment dbName = (IdFragment) treeBuilder.popStatement();
+        oracleUseStatement.setDbName(dbName);
+        this.treeBuilder.pushStatement(oracleUseStatement);
+        return oracleUseStatement;
     }
 
 
