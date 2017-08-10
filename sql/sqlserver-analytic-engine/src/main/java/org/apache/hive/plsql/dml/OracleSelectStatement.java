@@ -61,6 +61,7 @@ public class OracleSelectStatement extends SqlStatement {
 
                 }
             }
+            setAddResult(false);
         }
         ResultSet rs = commitStatement(finalSql);
         setRs(rs);
