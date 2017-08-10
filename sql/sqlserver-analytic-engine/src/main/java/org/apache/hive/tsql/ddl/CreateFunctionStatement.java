@@ -151,6 +151,8 @@ public class CreateFunctionStatement extends BaseStatement {
         String db = null;
         if(function.getName().getDatabase() == null) {
             db = sparkSession.getSessionState().catalog().getCurrentDatabase();
+        } else {
+            db = function.getName().getDatabase();
         }
         sb.append("final class " + db + "_" + function.getName().getFuncName() + " implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{\n");
         StringBuilder sb2 = new StringBuilder();

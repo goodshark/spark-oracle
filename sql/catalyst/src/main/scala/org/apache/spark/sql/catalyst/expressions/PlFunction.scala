@@ -30,6 +30,9 @@ case class PlFunction(children: Seq[Expression], database: String, funcname: Str
     }
   }
 
+  override def toString: String = "PL SQL FUNC " + database + "." +
+    funcname + "(args):returnType=" + returnType
+
   override def nullable: Boolean = children.exists(_.nullable)
   override def foldable: Boolean = children.forall(_.foldable)
 
@@ -49,7 +52,7 @@ case class PlFunction(children: Seq[Expression], database: String, funcname: Str
       "= new org.apache.spark.sql.catalyst.expressions.PlFunctionInstanceGenerator();")
     ev.copy(evals.map(_.code).mkString("\n") + s"""
       boolean ${ev.isNull} = false;
-      ${returnType} ${ev.value} = (${returnType})((${funcname}${ev.value}."""
+      ${returnType} ${ev.value} = (${returnType})((${database}_${funcname}."""
        + s"""getFuncInstance("${database}_${funcname}")).eval(new Object[]{${inputs}}));
       if (${ev.value} == null) {
         ${ev.isNull} = true;

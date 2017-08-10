@@ -276,9 +276,11 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 //            typeName = (String) visit(ctx.datatype());
             dataType = (String) visitNative_datatype_element(ctx.datatype().native_datatype_element());
             dataType = dataType.toUpperCase();
-            if (dataType.contains("BIGINT")) {
+            if (dataType.contains("BIGINT") || dataType.contains("LONG")) {
                 return Var.DataType.LONG;
-            } else if (dataType.contains("INT") || dataType.contains("NUMBER")) {
+            } else if (dataType.contains("BOOLEAN")) {
+                return Var.DataType.BOOLEAN;
+            } else if (dataType.contains("INT") || dataType.contains("NUMBER") || dataType.contains("INTEGER")) {
                 return Var.DataType.INT;
             } else if (dataType.contains("BINARY")) {
                 return Var.DataType.BINARY;
@@ -302,7 +304,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 treeBuilder.addException(dataType, locate(ctx));
                 return Var.DataType.NULL;
             } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
-                    || dataType.contains("NUMERIC")) {
+                    || dataType.contains("NUMERIC") || dataType.contains("DOUBLE")) {
                 return Var.DataType.DOUBLE;
             } else {
                 return Var.DataType.STRING;
