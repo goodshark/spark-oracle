@@ -164,13 +164,7 @@ class SparkSession private(
       self)
   }
 
-  def getFunctionInfo(name: FunctionIdentifier): ExpressionInfo = {
-    sessionState.catalog.lookupFunctionInfo(name)
-  }
-
-  def getFunctionBuilder(name: FunctionIdentifier): Option[FunctionBuilder] = {
-    sessionState.catalog.lookupFunctionBuilder(name)
-  }
+  def getSessionState: SessionState = sessionState
 
   /**
     * A wrapped version of this session in the form of a [[SQLContext]], for backward compatibility.

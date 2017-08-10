@@ -301,7 +301,7 @@ public class LogicNode extends ExpressionStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         String op = this.getNodeType().name();
         if(this.boolFlag){

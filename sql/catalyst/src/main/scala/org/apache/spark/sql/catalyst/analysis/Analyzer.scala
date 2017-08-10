@@ -19,7 +19,6 @@ package org.apache.spark.sql.catalyst.analysis
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.{CatalystConf, ScalaReflection, SimpleCatalystConf}
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, InMemoryCatalog, SessionCatalog}
@@ -30,6 +29,7 @@ import org.apache.spark.sql.catalyst.expressions.objects.NewInstance
 import org.apache.spark.sql.catalyst.optimizer.BooleanSimplification
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, _}
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry
 import org.apache.spark.sql.catalyst.rules._
 import org.apache.spark.sql.catalyst.trees.TreeNodeRef
 import org.apache.spark.sql.catalyst.util.toPrettySQL
@@ -884,20 +884,15 @@ class Analyzer(
         q transformExpressions {
           case u @ UnresolvedFunction(funcId, children, isDistinct) =>
             withPosition(u) {
-              if ("plsql".equalsIgnoreCase(funcId.funcName)) {
-                val codeString =
-                  """
-                   public Object generate(Object[] references) {
-                   return new plsql();
-                   }
-                   final class plsql implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{
-                   public Object eval(Object[] inputdatas) {
-                   Long N=(Long)(inputdatas[0]);
-                   return   N * N  ;
-                   }
-                   }
-                  """.stripMargin
-                PlFunction(children, funcId.funcName, codeString, "Long")
+              val db = funcId.database
+              val dbstr = if (db != None && db.get != null) funcId.
+                database.get else catalog.getCurrentDatabase
+              val func = PlFunctionRegistry.getInstance()
+                .getPlFunc(new PlFunctionRegistry.PlFunctionIdentify(funcId.funcName, dbstr))
+              if (func != null) {
+                val codeString = func.getCode
+                val returnType = func.getReturnType
+                PlFunction(children, dbstr, funcId.funcName, codeString, returnType)
               } else {
                 u
               }

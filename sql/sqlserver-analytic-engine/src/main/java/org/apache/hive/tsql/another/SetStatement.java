@@ -125,7 +125,7 @@ public class SetStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         String varName = var.getVarName();
         String op = aop.val;

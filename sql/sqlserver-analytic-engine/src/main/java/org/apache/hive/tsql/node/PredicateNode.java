@@ -697,7 +697,7 @@ public class PredicateNode extends LogicNode {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         if(this.getChildrenNodes().size()==2){
             TreeNode left = this.getChildrenNodes().get(0);

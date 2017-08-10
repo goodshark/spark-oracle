@@ -5,6 +5,9 @@ import org.apache.hive.plsql.PlsqlParser;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +22,7 @@ public class CreateFunctionStatement extends BaseStatement {
     public PlsqlParser.Create_function_bodyContext ctx;
     private CommonProcedureStatement function;
     private SupportDataTypes returnType;
+    private SparkSession sparkSession;
     public enum SupportDataTypes {
         STRING, CHAR,VARCHAR,VARCHAR2, LONG, DOUBLE, FLOAT, INT, INTEGER, BOOLEAN, NONE;
 
@@ -85,12 +89,13 @@ public class CreateFunctionStatement extends BaseStatement {
     private CreateFunctionStatement.Action create;
     private CreateFunctionStatement.Action replace;
 
-    public CreateFunctionStatement(CommonProcedureStatement function, Action create, Action replace, SupportDataTypes returnType) {
+    public CreateFunctionStatement(CommonProcedureStatement function, Action create, Action replace, SupportDataTypes returnType, SparkSession sparkSession) {
         super(STATEMENT_NAME);
         this.function = function;
         this.create = create;
         this.replace = replace;
         this.returnType = returnType;
+        this.sparkSession = sparkSession;
     }
 
     @Override
@@ -105,48 +110,81 @@ public class CreateFunctionStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception{
+        String db = null;
+        if(function.getName().getDatabase() == null) {
+            db = sparkSession.getSessionState().catalog().getCurrentDatabase();
+        }
+        PlFunctionRegistry.PlFunctionIdentify id = new PlFunctionRegistry.PlFunctionIdentify(function.getName().getFuncName(), db);
+        PlFunctionRegistry.PlFunctionDescription old = PlFunctionRegistry.getInstance().getPlFunc(id);
+        if(replace == null && old != null){
+            throw new Exception("Function exsits in current database.");
+        } else if (old != null && old.getMd5().equals(function.getMd5())){
+            return 0;
+        } else {
+            List<String> childPlfuncs = new ArrayList<>();
+            String code = this.doCodeGen(childPlfuncs);
+            List<PlFunctionRegistry.PlFunctionIdentify> children = new ArrayList<>();
+            for(String str : childPlfuncs){
+                if(str.contains(".")){
+                    String[] ns = str.split("\\.");
+                    if(ns.length != 2){
+                        throw new Exception("Function call invalid. [db].[name] or [name].");
+                    }
+                    children.add(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]));
+                } else {
+                    children.add(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str));
+                }
+            }
+            PlFunctionRegistry.getInstance().registerOrReplacePlFunc(new PlFunctionRegistry.
+                    PlFunctionDescription(id, function.getProcSql(),function.getMd5(), code, returnType.toString(), children));
+        }
         return 0;
     }
 
-    public String doCodeGen() {
+    public String doCodeGen(List<String> childPlfuncs) throws Exception{
         List<String> variables = new ArrayList<>();
-        List<String> childPlfuncs = new ArrayList<>();
         StringBuffer sb = new StringBuffer();
-        sb.append("public Object generate(Object[] references) {\n");
-        sb.append("return new ");
-        sb.append(function.getName().getFuncName());
-        sb.append("(); \n}\n");
-
-        sb.append("final class " + function.getName().getFuncName() + " implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{\n");
-        sb.append("public Object eval(Object[");
+//        sb.append("public Object generate(Object[] references) {\n");
+//        sb.append("return new ");
+//        sb.append(function.getName().getFuncName());
+//        sb.append("(); \n}\n");
+        String db = null;
+        if(function.getName().getDatabase() == null) {
+            db = sparkSession.getSessionState().catalog().getCurrentDatabase();
+        } else {
+            db = function.getName().getDatabase();
+        }
+        sb.append("final class " + db + "_" + function.getName().getFuncName() + " implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{\n");
+        StringBuilder sb2 = new StringBuilder();
+        sb2.append("public Object eval(Object[");
         List<Var> paras = function.getInAndOutputs();
-        sb.append("] inputdatas) {\n");
+        sb2.append("] inputdatas) {\n");
         int i = 0;
         for (Var var : paras) {
-            sb.append(fromString(var.getDataType().name()).toString());
-            sb.append(CODE_SEP);
-            sb.append(var.getVarName());
-            sb.append(CODE_EQ);
-            sb.append("(");
-            sb.append(fromString(var.getDataType().name()).toString());
-            sb.append(")inputdatas[" + i + "];\n");
+            sb2.append(fromString(var.getDataType().name()).toString());
+            sb2.append(CODE_SEP);
+            sb2.append(var.getVarName());
+            sb2.append(CODE_EQ);
+            sb2.append("(");
+            sb2.append(fromString(var.getDataType().name()).toString());
+            sb2.append(")inputdatas[" + i + "];\n");
             i++;
         }
         List<TreeNode> children = this.function.getSqlClauses().getChildrenNodes();
         if(children != null){
             for(TreeNode node : children){
                 if(node instanceof BaseStatement){
-                    sb.append(((BaseStatement) node).doCodegen(variables, childPlfuncs));
+                    sb2.append(((BaseStatement) node).doCodegen(variables, childPlfuncs));
                 }
             }
         }
-        sb.append("}\n");
-        sb.append("}\n");
-        return sb.toString();
-    }
-
-    private String genDeclare(){
-        StringBuffer sb = new StringBuffer();
+        sb2.append("}\n");
+        sb2.append("}\n");
+        for(String str : variables){
+            sb.append(str);
+            sb.append(CODE_END);
+        }
+        sb.append(sb2.toString());
         return sb.toString();
     }
 

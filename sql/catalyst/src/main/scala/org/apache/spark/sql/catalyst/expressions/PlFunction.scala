@@ -7,8 +7,8 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.types._
 
-case class PlFunction(children: Seq[Expression], funcname: String, funccode: String,
-                      returnType: String)
+case class PlFunction(children: Seq[Expression], database: String, funcname: String,
+                      funccode: String, returnType: String)
       extends Expression with ImplicitCastInputTypes{
 
   lazy val plFunctionExecutor: PlFunctionExecutor = PlFunction.generateInstance(funccode);
@@ -30,6 +30,9 @@ case class PlFunction(children: Seq[Expression], funcname: String, funccode: Str
     }
   }
 
+  override def toString: String = "PL SQL FUNC " + database + "." +
+    funcname + "(args):returnType=" + returnType
+
   override def nullable: Boolean = children.exists(_.nullable)
   override def foldable: Boolean = children.forall(_.foldable)
 
@@ -39,18 +42,18 @@ case class PlFunction(children: Seq[Expression], funcname: String, funccode: Str
   }
 
   override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
-    PlFunctionInstanceGenerator.addCode(funcname, funccode)
+    PlFunctionInstanceGenerator.addCode(database + "_" + funcname, funccode)
     val evals = children.map(_.genCode(ctx))
     val inputs = evals.map { eval =>
       s"${eval.isNull} ? null : ((Object)${eval.value})"
     }.mkString(", ")
     ctx.addMutableState("org.apache.spark.sql.catalyst.expressions.PlFunctionInstanceGenerator",
-      funcname + ev.value, funcname + ev.value +
+      database + "_" + funcname, database + "_" + funcname +
       "= new org.apache.spark.sql.catalyst.expressions.PlFunctionInstanceGenerator();")
     ev.copy(evals.map(_.code).mkString("\n") + s"""
       boolean ${ev.isNull} = false;
-      ${returnType} ${ev.value} = (${returnType})((${funcname}${ev.value}."""
-       + s"""getFuncInstance("${funcname}")).eval(new Object[]{${inputs}}));
+      ${returnType} ${ev.value} = (${returnType})((${database}_${funcname}."""
+       + s"""getFuncInstance("${database}_${funcname}")).eval(new Object[]{${inputs}}));
       if (${ev.value} == null) {
         ${ev.isNull} = true;
       }

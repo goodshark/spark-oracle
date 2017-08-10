@@ -43,7 +43,7 @@ public class CaseStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = getChildrenNodes();
         for(TreeNode child : childs){

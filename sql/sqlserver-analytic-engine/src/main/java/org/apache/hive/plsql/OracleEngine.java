@@ -72,6 +72,7 @@ public class OracleEngine implements Engine {
     public void visitTree() throws Throwable {
         PLsqlVisitorImpl pLsqlVisitor = new PLsqlVisitorImpl(session.getRootNode());
         session.setVisitor(pLsqlVisitor);
+        pLsqlVisitor.setSparkSession(session.getSparkSession());
         pLsqlVisitor.visit(tree);
         LOG.info("Visit " + _name + " Tree completed, waiting for executing....");
         if (pLsqlVisitor.getExceptions().size() > 0) {

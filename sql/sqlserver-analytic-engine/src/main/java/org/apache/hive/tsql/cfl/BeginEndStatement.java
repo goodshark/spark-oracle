@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.cfl;
 
+import org.apache.hive.plsql.function.ProcedureCall;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
@@ -30,7 +31,7 @@ public class BeginEndStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = getChildrenNodes();
         int i=0;
@@ -40,7 +41,12 @@ public class BeginEndStatement extends BaseStatement {
                 sb.append(((GotoStatement) node).getLabel());
                 sb.append(":");
             } else {
-                if(node instanceof BaseStatement){
+                if(node instanceof ProcedureCall){
+                    ProcedureCall bs = (ProcedureCall)node;
+                    sb.append(bs.doCodegen(variables, childPlfuncs));
+                    sb.append(CODE_END);
+                    sb.append(CODE_LINE_END);
+                } else if (node instanceof BaseStatement){
                     BaseStatement bs = (BaseStatement)node;
                     sb.append(bs.doCodegen(variables, childPlfuncs));
                     sb.append(CODE_LINE_END);
