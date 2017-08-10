@@ -29,7 +29,7 @@ import org.apache.spark.sql.catalyst.expressions.objects.NewInstance
 import org.apache.spark.sql.catalyst.optimizer.BooleanSimplification
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, _}
-import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry
+import org.apache.spark.sql.catalyst.plfunc.{PlFunctionRegistry, PlFunctionUtils}
 import org.apache.spark.sql.catalyst.rules._
 import org.apache.spark.sql.catalyst.trees.TreeNodeRef
 import org.apache.spark.sql.catalyst.util.toPrettySQL
@@ -890,7 +890,7 @@ class Analyzer(
               val func = PlFunctionRegistry.getInstance()
                 .getPlFunc(new PlFunctionRegistry.PlFunctionIdentify(funcId.funcName, dbstr))
               if (func != null) {
-                val codeString = func.getCode
+                val codeString = PlFunctionUtils.generateCode(new PlFunctionRegistry.PlFunctionIdentify(funcId.funcName, dbstr), PlFunctionRegistry.getInstance())
                 val returnType = func.getReturnType
                 PlFunction(children, dbstr, funcId.funcName, codeString, returnType)
               } else {
