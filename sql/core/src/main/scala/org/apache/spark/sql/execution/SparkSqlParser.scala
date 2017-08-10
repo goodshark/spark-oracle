@@ -47,6 +47,10 @@ class SparkSqlParser(conf: SQLConf) extends AbstractSqlParser {
   private val substitutor = new VariableSubstitution(conf)
 
   protected override def parse[T](command: String)(toResult: SqlBaseParser => T): T = {
+    if ( command.startsWith("compact ")) {
+      val cmd = CompactTableCommand.parseToCommand(command)
+      return cmd.asInstanceOf[T]
+    }
     super.parse(substitutor.substitute(command))(toResult)
   }
 }
