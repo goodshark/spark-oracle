@@ -263,6 +263,9 @@ private[hive] class SparkExecuteStatementOperation(
           case _ =>
         }
       }
+      logInfo(s"HiveThriftServer: ${HiveThriftServer2}, result: ${result}")
+      logInfo(s"lister: ${HiveThriftServer2.listener}")
+      logInfo(s"queryExecution: ${result.queryExecution}")
       HiveThriftServer2.listener.onStatementParsed(statementId, result.queryExecution.toString())
       iter = {
         val useIncrementalCollect =

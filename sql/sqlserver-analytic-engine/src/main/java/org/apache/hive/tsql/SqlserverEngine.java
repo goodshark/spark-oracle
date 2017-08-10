@@ -51,7 +51,9 @@ public class SqlserverEngine implements Engine {
 
             parser.addErrorListener(listener);
             tree = parser.tsql_file();
-
+            if (!listener.getExceptions().isEmpty()) {
+                throw new Exception(listener.getExceptions().get(0));
+            }
         } catch (Exception e) {
             throw new ParserException("Parse " + _name + " SQL ERROR # " + e);
         } finally {
@@ -62,10 +64,9 @@ public class SqlserverEngine implements Engine {
                     e.printStackTrace();
                 }
             }
+            listener.getExceptions().clear();
         }
-        if (!listener.getExceptions().isEmpty()) {
-            throw new Exception(listener.getExceptions().get(0));
-        }
+
     }
 
     @Override

@@ -51,6 +51,9 @@ public class OracleEngine implements Engine {
 
             parser.addErrorListener(listener);
             tree = parser.compilation_unit();
+            if (!listener.getExceptions().isEmpty()) {
+                throw new Exception(listener.getExceptions().get(0));
+            }
         } catch (Exception e) {
             throw new ParserException("Parse " + _name + " SQL ERROR # " + e);
         } finally {
@@ -61,9 +64,7 @@ public class OracleEngine implements Engine {
                     e.printStackTrace();
                 }
             }
-        }
-        if (!listener.getExceptions().isEmpty()) {
-            throw new Exception(listener.getExceptions().get(0));
+            listener.getExceptions().clear();
         }
     }
 

@@ -8,7 +8,12 @@ import org.apache.hive.plsql.dml.fragment.selectFragment.OrderByClauseFragment;
 import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryFactoringClause;
 import org.apache.hive.plsql.dml.fragment.selectFragment.SubqueryFragment;
 import org.apache.hive.tsql.ExecSession;
+import org.apache.hive.tsql.common.Row;
+import org.apache.hive.tsql.common.SparkResultSet;
 import org.apache.hive.tsql.common.SqlStatement;
+import org.apache.hive.tsql.dml.SelectStatement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -18,6 +23,8 @@ import java.util.List;
  * Created by dengrb1 on 6/8 0008.
  */
 public class OracleSelectStatement extends SqlStatement {
+
+    private static final Logger LOG = LoggerFactory.getLogger(OracleSelectStatement.class);
     private String finalSql = "";
 
     private SubqueryFactoringClause withQueryStatement;
@@ -57,13 +64,29 @@ public class OracleSelectStatement extends SqlStatement {
         }
         ResultSet rs = commitStatement(finalSql);
         setRs(rs);
-
-        for (int i = 0; i < commonVariableNames.size(); i++) {
+        if (null != intoClause)
+            updateResultVar((SparkResultSet) rs,commonVariableNames);
+        /*for (int i = 0; i < commonVariableNames.size(); i++) {
             String valuse = rs.getString(i);
             //TODO 设置变量的值
             commonVariableNames.get(i);
-        }
+        }*/
         return 0;
+    }
+
+    public void updateResultVar(SparkResultSet resultSet,List<String> commonVariableNames) throws Exception {
+        List<String> filedNames = resultSet.getFiledName();
+        if (commonVariableNames.size() != filedNames.size()) {
+            throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
+        }
+        Row row = null;
+        while (resultSet.next()) {
+            row = resultSet.fetchRow();
+        }
+        for (int i = 0; i < commonVariableNames.size(); i++) {
+            LOG.info("var :" + commonVariableNames.get(i) + " equals:" + row.getColumnVal(i));
+            getExecSession().getVariableContainer().setVarValue(commonVariableNames.get(i), row.getColumnVal(i));
+        }
     }
 
     @Override
