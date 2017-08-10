@@ -225,7 +225,7 @@ private[hive] class SparkExecuteStatementOperation(
     var plan: LogicalPlan = null
     var sqlServerPlans: java.util.List[LogicalPlan] = new util.ArrayList[LogicalPlan]()
     val engineName = sqlContext.sessionState.
-      conf.getConfString("spark.sql.analytical.engine")
+      conf.getConfString("spark.sql.analytical.engine", "")
     try {
       // 执行sqlserver
       if (StringUtils.isNotBlank(engineName)) {

@@ -37,11 +37,11 @@ public abstract class CommonReturnStatement extends BaseStatement {
     public abstract void postExecute(Var res) throws Exception;
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         sb.append("return ");
         BaseStatement bs = (BaseStatement)expr;
-        sb.append(bs.doCodegen(imports, variables, knownVars));
+        sb.append(bs.doCodegen(variables, childPlfuncs));
         sb.append(CODE_END);
         return sb.toString();
     }

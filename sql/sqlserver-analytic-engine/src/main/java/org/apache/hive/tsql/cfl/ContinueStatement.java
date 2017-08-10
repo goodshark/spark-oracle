@@ -12,10 +12,6 @@ import java.util.List;
  * Created by dengrb1 on 12/7 0007.
  */
 public class ContinueStatement extends NonSeqStatement {
-    private String label = "";
-    private LogicNode condition = null;
-    // is continue work
-    private boolean enable = true;
 
     public ContinueStatement() {
     }
@@ -79,11 +75,11 @@ public class ContinueStatement extends NonSeqStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         if(condition != null){
             sb.append("if(");
-            sb.append(condition.doCodegen(imports, variables, knownVars));
+            sb.append(condition.doCodegen(variables, childPlfuncs));
             sb.append("){");
             sb.append(CODE_LINE_END);
             if(label != null){

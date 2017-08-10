@@ -50,7 +50,7 @@ public class FakeFunction extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         StringBuilder result = new StringBuilder();
         for (Var var: vars) {
@@ -72,7 +72,7 @@ public class FakeFunction extends BaseStatement {
             if (var.getValueType() == Var.ValueType.EXPRESSION) {
                 TreeNode baseStatement = var.getExpr();
                 if(baseStatement instanceof BaseStatement){
-                    String code = ((BaseStatement) baseStatement).doCodegen(imports, variables, knownVars);
+                    String code = ((BaseStatement) baseStatement).doCodegen(variables, childPlfuncs);
                     result.append(code);
                     result.append("+\" \"");
                 }

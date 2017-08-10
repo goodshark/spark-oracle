@@ -66,8 +66,19 @@ unit_statement
     | data_manipulation_language_statements
     | top_anonymous_block
     | label_declaration
+    | use_statement
+    | show_tables
+    | show_databases
     ;
-
+show_databases:
+    SHOW DATABASES ';'?
+    ;
+show_tables:
+    SHOW TABLES ';'?
+    ;
+use_statement
+    : USE database=id ';'?
+    ;
 top_anonymous_block
     : anonymous_block ';'?
     ;
@@ -1951,7 +1962,7 @@ exception_name
     ;
 
 function_name
-    : id ('.' id_expression)?
+    : id_expression ('.' id_expression)?
     ;
 
 procedure_name
@@ -3034,6 +3045,9 @@ SETS:                         S E T S;
 SETTINGS:                     S E T T I N G S;
 SHARE:                        S H A R E;
 SHOW:                         S H O W;
+//add for show table
+TABLES:                                 T A B L E S;
+DATABASES:                              D A T A B A S E S;
 SHUTDOWN:                     S H U T D O W N;
 SIBLINGS:                     S I B L I N G S;
 SIGNTYPE:                     S I G N T Y P E;

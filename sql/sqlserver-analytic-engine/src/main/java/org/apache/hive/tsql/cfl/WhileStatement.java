@@ -98,75 +98,74 @@ public class WhileStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         if(this.condtionNode.getBool()){
             sb.append("while(true){");
             sb.append(CODE_LINE_END);
         } else {
-            String needAppend = null;
             boolean reverse = false;
             if(this.condtionNode.getIndexIter() != null){
                 Var loopvar = this.condtionNode.getIndexIter().getIndexVar();
                 reverse = this.condtionNode.getIndexIter().isReverse();
                 CreateFunctionStatement.SupportDataTypes type = CreateFunctionStatement.fromString(loopvar.getDataType().name());
                 if(type != null){
+                    sb.append("for(");
                     sb.append(type.toString());
                     sb.append(CODE_SEP);
                     sb.append(loopvar.getVarName());
                     sb.append(CODE_EQ);
                     try{
                         if(!reverse){
-                            sb.append(this.condtionNode.getIndexIter().getLower().getVarValue().toString());
+                            if(this.condtionNode.getIndexIter().getLower().getVarValue() != null){
+                                sb.append(this.condtionNode.getIndexIter().getLower().getVarValue().toString());
+                            } else {
+                                sb.append(this.condtionNode.getIndexIter().getLower().getVarName());
+                            }
+                            sb.append(CODE_END);
+                            sb.append(loopvar.getVarName());
+                            sb.append("<=");
+                            if(this.condtionNode.getIndexIter().getUpper().getVarValue() != null) {
+                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarValue().toString());
+                            } else {
+                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarName());
+                            }
+                            sb.append(CODE_END);
+                            sb.append(loopvar.getVarName());
+                            sb.append("++");
                         } else {
-                            sb.append(this.condtionNode.getIndexIter().getUpper().getVarValue().toString());
+                            if(this.condtionNode.getIndexIter().getUpper().getVarValue() != null) {
+                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarValue().toString());
+                            } else {
+                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarName());
+                            }
+                            sb.append(CODE_END);
+                            sb.append(loopvar.getVarName());
+                            sb.append("<=");
+                            if(this.condtionNode.getIndexIter().getLower().getVarValue() != null){
+                                sb.append(this.condtionNode.getIndexIter().getLower().getVarValue().toString());
+                            } else {
+                                sb.append(this.condtionNode.getIndexIter().getLower().getVarName());
+                            }
+                            sb.append(CODE_END);
+                            sb.append(loopvar.getVarName());
+                            sb.append("++");
                         }
                     } catch (ParseException e){
                         //TODO
                     }
-                    sb.append(CODE_END);
-                    sb.append(CODE_LINE_END);
-                    needAppend = loopvar.getVarName()+"++" + CODE_END;
                 }
-            }
-            sb.append("while(");
-            if(reverse && condtionNode.getChildrenNodes().size() == 2){
-                LogicNode andNode = new LogicNode(TreeNode.Type.AND);
-                LogicNode leftNotNode = new LogicNode(TreeNode.Type.AND);
-                LogicNode rightNotNode = new LogicNode(TreeNode.Type.AND);
-                andNode.addNode(leftNotNode);
-                andNode.addNode(rightNotNode);
-                PredicateNode leftPredicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
-                leftPredicateNode.setEvalType(PredicateNode.CompType.COMP);
-                leftNotNode.addNode(leftPredicateNode);
-                PredicateNode rightPredicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
-                rightPredicateNode.setEvalType(PredicateNode.CompType.COMP);
-                rightNotNode.addNode(rightPredicateNode);
-                leftPredicateNode.setOp(">=");
-                rightPredicateNode.setOp("<=");
-                TreeNode left = condtionNode.getChildrenNodes().get(0);
-                for (TreeNode node : left.getChildrenNodes()){
-                    rightPredicateNode.addNode(node);
-                }
-                TreeNode rift = condtionNode.getChildrenNodes().get(1);
-                for (TreeNode node : left.getChildrenNodes()){
-                    leftPredicateNode.addNode(node);
-                }
-                sb.append(andNode.doCodegen(imports, variables, knownVars));
             } else {
-                sb.append(condtionNode.doCodegen(imports, variables, knownVars));
+                sb.append("while(");
+                sb.append(condtionNode.doCodegen(variables, childPlfuncs));
             }
             sb.append("){");
             sb.append(CODE_LINE_END);
-            if(needAppend != null){
-                sb.append(needAppend);
-                sb.append(CODE_LINE_END);
-            }
         }
         List<TreeNode> childs = this.getChildrenNodes();
         for(TreeNode child : childs){
             if(child instanceof BaseStatement){
-                sb.append(((BaseStatement) child).doCodegen(imports, variables, knownVars));
+                sb.append(((BaseStatement) child).doCodegen(variables, childPlfuncs));
                 sb.append(CODE_LINE_END);
             }
         }

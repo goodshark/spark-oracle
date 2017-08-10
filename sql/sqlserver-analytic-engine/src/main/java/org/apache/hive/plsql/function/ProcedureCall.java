@@ -158,22 +158,19 @@ public class ProcedureCall extends CallStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         String classname = funcclass.getClassName();
-        if(!imports.contains(classname)) {
-            imports.add(classname);
-        }
         String[] sim = classname.split(".");
         String simpleName = sim[sim.length-1];
         String funcVar = "v" + simpleName.toLowerCase() + arguments.size();
         StringBuilder declare = new StringBuilder();
-        declare.append(simpleName);
+        declare.append(classname);
         declare.append(CODE_SEP);
         declare.append(funcVar);
         declare.append(CODE_EQ);
         declare.append("new ");
-        declare.append(simpleName);
+        declare.append(classname);
 
         if(isExtendFrom(classname, UDF.class)){
             declare.append("()");
@@ -200,7 +197,7 @@ public class ProcedureCall extends CallStatement {
                 } else  if (arg.getValueType() == Var.ValueType.EXPRESSION) {
                     TreeNode baseStatement = arg.getExpr();
                     if(baseStatement instanceof BaseStatement){
-                        String code = ((BaseStatement) baseStatement).doCodegen(imports, variables, knownVars);
+                        String code = ((BaseStatement) baseStatement).doCodegen(variables, childPlfuncs);
                         sb.append(code);
                     }
                 } else {
@@ -216,26 +213,10 @@ public class ProcedureCall extends CallStatement {
         }
 
         if(isExtendFrom(classname, Expression.class) && !isExtendFrom(classname, UnaryExpression.class)){
-            if(!imports.contains(Expression.class.getName())){
-                imports.add(Expression.class.getName());
-            }
-            if(!imports.contains(UpdateValue.class.getName())){
-                imports.add(UpdateValue.class.getName());
-            }
-            if(!imports.contains(FunctionValueExpression.class.getName())){
-                imports.add(FunctionValueExpression.class.getName());
-            }
-            if(!imports.contains(Arrays.class.getName())){
-                imports.add(Arrays.class.getName());
-            }
-            if(!imports.contains(JavaConversions.class.getName())){
-                imports.add(JavaConversions.class.getName());
-            }
-
-            declare.append("(JavaConversions.asScalaBuffer(Arrays.asList(new Expression[]{");
+            declare.append("(scala.collection.JavaConversions.asScalaBuffer(java.util.Arrays.asList(new org.apache.spark.sql.catalyst.expressions.Expression[]{");
             int i = 0;
             while (i < arguments.size()) {
-                declare.append("new FunctionValueExpression(" + i + ")");
+                declare.append("new org.apache.spark.sql.catalyst.expressions.FunctionValueExpression(" + i + ")");
                 i++;
                 if(i != arguments.size()){
                     declare.append(",");
@@ -246,22 +227,14 @@ public class ProcedureCall extends CallStatement {
                 variables.add(declare.toString());
             }
 
-            String rclass = FunctionArgsRow.class.getName();
-            String rsclass = FunctionArgsRow.class.getSimpleName();
-            if(!imports.contains(rclass)){
-                imports.add(rclass);
-            }
-            if(!imports.contains(UpdateValue.class.getName())){
-                imports.add(UpdateValue.class.getName());
-            }
             String rowVarName = this.realFuncName + "row" + arguments.size();
             StringBuilder rowDeclare = new StringBuilder();
-            rowDeclare.append(rsclass + CODE_SEP + rowVarName + CODE_EQ + "new FunctionArgsRow(" + arguments.size() +")");
+            rowDeclare.append("org.apache.spark.sql.catalyst.expressions.FunctionArgsRow" + CODE_SEP + rowVarName + CODE_EQ + "new org.apache.spark.sql.catalyst.expressions.FunctionArgsRow(" + arguments.size() +")");
             if(!variables.contains(rowDeclare.toString())){
                 variables.add(rowDeclare.toString());
             }
             sb.append(funcVar);
-            sb.append(".eval(row.update(new UpdateValue[]{");
+            sb.append(".eval(row.update(new org.apache.spark.sql.catalyst.expressions.UpdateValue[]{");
             int j = 0;
             for(Var arg : arguments){
                 if (arg.getDataType() == Var.DataType.VAR) {
@@ -272,13 +245,13 @@ public class ProcedureCall extends CallStatement {
                         //TODO
                     }
                     if(value != null){
-                        sb.append("new UpdateValue(");
+                        sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                         sb.append(j);
                         sb.append(",\"");
                         sb.append(value.toString());
                         sb.append("\")");
                     } else {
-                        sb.append("new UpdateValue(");
+                        sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                         sb.append(j);
                         sb.append(",");
                         sb.append(arg.getVarName());
@@ -287,15 +260,15 @@ public class ProcedureCall extends CallStatement {
                 } else  if (arg.getValueType() == Var.ValueType.EXPRESSION) {
                     TreeNode baseStatement = arg.getExpr();
                     if(baseStatement instanceof BaseStatement){
-                        String code = ((BaseStatement) baseStatement).doCodegen(imports, variables, knownVars);
-                        sb.append("new UpdateValue(");
+                        String code = ((BaseStatement) baseStatement).doCodegen(variables, childPlfuncs);
+                        sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                         sb.append(j);
                         sb.append(",");
                         sb.append(code);
                         sb.append(")");
                     }
                 } else {
-                    sb.append("new UpdateValue(");
+                    sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                     sb.append(j);
                     sb.append(",\"");
                     sb.append(arg.toString());
@@ -309,43 +282,20 @@ public class ProcedureCall extends CallStatement {
             sb.append("}))");
         }
         if(isExtendFrom(classname, UnaryExpression.class) && arguments.size() == 1){
-            if(!imports.contains(Expression.class.getName())){
-                imports.add(Expression.class.getName());
-            }
-            if(!imports.contains(UpdateValue.class.getName())){
-                imports.add(UpdateValue.class.getName());
-            }
-            if(!imports.contains(FunctionValueExpression.class.getName())){
-                imports.add(FunctionValueExpression.class.getName());
-            }
-            if(!imports.contains(Arrays.class.getName())){
-                imports.add(Arrays.class.getName());
-            }
-            if(!imports.contains(JavaConversions.class.getName())){
-                imports.add(JavaConversions.class.getName());
-            }
 
-            declare.append("(new FunctionValueExpression(0))");
+            declare.append("(new new org.apache.spark.sql.catalyst.expressions.FunctionValueExpression(0))");
             if(!variables.contains(declare.toString())){
                 variables.add(declare.toString());
             }
 
-            String rclass = FunctionArgsRow.class.getName();
-            String rsclass = FunctionArgsRow.class.getSimpleName();
-            if(!imports.contains(rclass)){
-                imports.add(rclass);
-            }
-            if(!imports.contains(UpdateValue.class.getName())){
-                imports.add(UpdateValue.class.getName());
-            }
             String rowVarName = this.realFuncName + "row" + arguments.size();
             StringBuilder rowDeclare = new StringBuilder();
-            rowDeclare.append(rsclass + CODE_SEP + rowVarName + CODE_EQ + "new FunctionArgsRow(" + arguments.size() +")");
+            rowDeclare.append("org.apache.spark.sql.catalyst.expressions.FunctionArgsRow" + CODE_SEP + rowVarName + CODE_EQ + "new org.apache.spark.sql.catalyst.expressions.FunctionArgsRow(" + arguments.size() +")");
             if(!variables.contains(rowDeclare.toString())){
                 variables.add(rowDeclare.toString());
             }
             sb.append(funcVar);
-            sb.append(".eval(row.update(new UpdateValue[]{");
+            sb.append(".eval(row.update(new org.apache.spark.sql.catalyst.expressions.UpdateValue[]{");
             Var arg = arguments.get(0);
             if (arg.getDataType() == Var.DataType.VAR) {
                 Object value = null;
@@ -354,13 +304,13 @@ public class ProcedureCall extends CallStatement {
                 } catch (ParseException e) {
                 }
                 if(value != null){
-                    sb.append("new UpdateValue(");
+                    sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                     sb.append(0);
                     sb.append(",\"");
                     sb.append(value.toString());
                     sb.append("\")");
                 } else {
-                    sb.append("new UpdateValue(");
+                    sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                     sb.append(0);
                     sb.append(",");
                     sb.append(arg.getVarName());
@@ -369,15 +319,15 @@ public class ProcedureCall extends CallStatement {
             } else  if (arg.getValueType() == Var.ValueType.EXPRESSION) {
                 TreeNode baseStatement = arg.getExpr();
                 if(baseStatement instanceof BaseStatement){
-                    String code = ((BaseStatement) baseStatement).doCodegen(imports, variables, knownVars);
-                    sb.append("new UpdateValue(");
+                    String code = ((BaseStatement) baseStatement).doCodegen(variables, childPlfuncs);
+                    sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                     sb.append(0);
                     sb.append(",");
                     sb.append(code);
                     sb.append(")");
                 }
             } else {
-                sb.append("new UpdateValue(");
+                sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                 sb.append(0);
                 sb.append(",\"");
                 sb.append(arg.toString());

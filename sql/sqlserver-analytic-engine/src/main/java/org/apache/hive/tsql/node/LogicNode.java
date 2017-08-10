@@ -1,13 +1,11 @@
 package org.apache.hive.tsql.node;
 
-import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.arg.VariableContainer;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.SparkResultSet;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
-import org.apache.hive.tsql.udf.BaseCalculator;
 
 import java.util.List;
 
@@ -303,18 +301,18 @@ public class LogicNode extends ExpressionStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         String op = this.getNodeType().name();
         if(this.boolFlag){
             sb.append("(true)");
         } else {
-            if("NOT".equalsIgnoreCase(op) && this.getChildrenNodes().size() == 1){
+            if(notFlag && this.getChildrenNodes().size() == 1){
                 TreeNode node = this.getChildrenNodes().get(0);
                 if(node instanceof BaseStatement){
                     sb.append(CODE_NOT);
                     sb.append("(");
-                    sb.append(((BaseStatement) node).doCodegen(imports, variables, knownVars));
+                    sb.append(((BaseStatement) node).doCodegen(variables, childPlfuncs));
                     sb.append(")");
                 }
             }
@@ -323,20 +321,20 @@ public class LogicNode extends ExpressionStatement {
                 TreeNode rift = this.getChildrenNodes().get(1);
                 if(left instanceof BaseStatement && rift instanceof BaseStatement){
                     sb.append("(");
-                    sb.append(((BaseStatement) left).doCodegen(imports, variables, knownVars));
+                    sb.append(((BaseStatement) left).doCodegen(variables, childPlfuncs));
                     sb.append(CODE_OR);
-                    sb.append(((BaseStatement) rift).doCodegen(imports, variables, knownVars));
+                    sb.append(((BaseStatement) rift).doCodegen(variables, childPlfuncs));
                     sb.append(")");
                 }
             }
-            if("AND".equalsIgnoreCase(op)){
+            if(("AND".equalsIgnoreCase(op)) || ("NOT".equalsIgnoreCase(op) && !notFlag)){
                 List<TreeNode> childs = this.getChildrenNodes();
                 sb.append("(");
                 int i = 0;
                 for(TreeNode child : childs){
                     i++;
                     if(child instanceof BaseStatement){
-                        sb.append(((BaseStatement) child).doCodegen(imports, variables, knownVars));
+                        sb.append(((BaseStatement) child).doCodegen(variables, childPlfuncs));
                         if(i != childs.size()){
                             sb.append(CODE_AND);
                         }

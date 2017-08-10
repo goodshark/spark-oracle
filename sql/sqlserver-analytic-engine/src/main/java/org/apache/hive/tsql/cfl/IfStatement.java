@@ -49,17 +49,17 @@ public class IfStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> imports, List<String> variables, List<Var> knownVars){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs){
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = this.getChildrenNodes();
         if(childs.size() == 1){
             TreeNode child = childs.get(0);
             if(this.condtionNode instanceof BaseStatement && child instanceof BeginEndStatement){
                 sb.append("if(");
-                sb.append(((LogicNode)condtionNode).doCodegen(imports, variables, knownVars));
+                sb.append(((BaseStatement)condtionNode).doCodegen(variables, childPlfuncs));
                 sb.append("){");
                 sb.append(CODE_LINE_END);
-                sb.append(((BeginEndStatement) child).doCodegen(imports, variables, knownVars));
+                sb.append(((BeginEndStatement) child).doCodegen(variables, childPlfuncs));
                 sb.append("}");
                 sb.append(CODE_LINE_END);
             }
@@ -70,28 +70,28 @@ public class IfStatement extends BaseStatement {
             if(this.condtionNode instanceof BaseStatement){
                 if(left instanceof BeginEndStatement && rift instanceof BeginEndStatement){
                     sb.append("if(");
-                    sb.append(((LogicNode)condtionNode).doCodegen(imports, variables, knownVars));
+                    sb.append(((BaseStatement)condtionNode).doCodegen(variables, childPlfuncs));
                     sb.append("){");
                     sb.append(CODE_LINE_END);
-                    sb.append(((BeginEndStatement) left).doCodegen(imports, variables, knownVars));
+                    sb.append(((BeginEndStatement) left).doCodegen(variables, childPlfuncs));
                     sb.append("}");
                     sb.append(CODE_LINE_END);
                     sb.append("else{");
                     sb.append(CODE_LINE_END);
-                    sb.append(((BeginEndStatement) rift).doCodegen(imports, variables, knownVars));
+                    sb.append(((BeginEndStatement) rift).doCodegen(variables, childPlfuncs));
                     sb.append("}");
                     sb.append(CODE_LINE_END);
                 }
                 if(left instanceof BeginEndStatement && rift instanceof IfStatement){
                     sb.append("if(");
-                    sb.append(((LogicNode)condtionNode).doCodegen(imports, variables, knownVars));
+                    sb.append(((BaseStatement)condtionNode).doCodegen(variables, childPlfuncs));
                     sb.append("){");
                     sb.append(CODE_LINE_END);
-                    sb.append(((BeginEndStatement) left).doCodegen(imports, variables, knownVars));
+                    sb.append(((BeginEndStatement) left).doCodegen(variables, childPlfuncs));
                     sb.append("}");
                     sb.append(CODE_LINE_END);
                     sb.append("else ");
-                    sb.append(((BeginEndStatement) rift).doCodegen(imports, variables, knownVars));
+                    sb.append(((IfStatement) rift).doCodegen(variables, childPlfuncs));
                     sb.append(CODE_LINE_END);
                 }
             }
