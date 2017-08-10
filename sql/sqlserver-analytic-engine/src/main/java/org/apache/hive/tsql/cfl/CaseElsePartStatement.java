@@ -29,7 +29,7 @@ public class CaseElsePartStatement extends BaseStatement{
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         sb.append("else {");
         sb.append(CODE_LINE_END);

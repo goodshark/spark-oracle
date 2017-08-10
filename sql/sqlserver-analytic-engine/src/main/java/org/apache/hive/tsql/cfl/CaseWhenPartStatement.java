@@ -51,7 +51,7 @@ public class CaseWhenPartStatement extends BaseStatement{
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         String ifstr = null;
         if(first){

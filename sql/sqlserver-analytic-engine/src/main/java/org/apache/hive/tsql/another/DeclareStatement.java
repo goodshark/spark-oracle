@@ -136,7 +136,7 @@ public class DeclareStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         String varName = declareVars.get(0).getVarName();
         CreateFunctionStatement.SupportDataTypes dataType = CreateFunctionStatement.fromString(declareVars.get(0).getDataType().name());

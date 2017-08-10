@@ -75,7 +75,7 @@ public class ContinueStatement extends NonSeqStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         if(condition != null){
             sb.append("if(");

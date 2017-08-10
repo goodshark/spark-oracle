@@ -50,7 +50,7 @@ public class FakeFunction extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs){
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
         StringBuilder result = new StringBuilder();
         for (Var var: vars) {

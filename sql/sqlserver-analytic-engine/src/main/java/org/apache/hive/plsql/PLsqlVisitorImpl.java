@@ -68,6 +68,8 @@ import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.FunctionIdentifier;
 import org.apache.spark.sql.catalyst.expressions.Expression;
 
 import java.util.ArrayList;
@@ -81,6 +83,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     private TreeBuilder treeBuilder = null;
     // check duplicate names
     private HashSet<String> variableNames = new HashSet<>();
+    private SparkSession sparkSession;
 
     public PLsqlVisitorImpl(TreeNode rootNode) {
         treeBuilder = new TreeBuilder(rootNode);
@@ -88,6 +91,10 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     public List<Exception> getExceptions() {
         return treeBuilder.getExceptions();
+    }
+
+    public void setSparkSession(SparkSession sparkSession) {
+        this.sparkSession = sparkSession;
     }
 
     @Override
@@ -908,7 +915,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.addException("Not Supported Type " + returnType, ctx);
             return null;
         }
-        CreateFunctionStatement statement = new CreateFunctionStatement(function, create, replace, rt);
+        CreateFunctionStatement statement = new CreateFunctionStatement(function, create, replace, rt, sparkSession);
         treeBuilder.pushStatement(statement);
         return statement;
     }
@@ -957,6 +964,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 Var arg = (Var) visit(argCtx);
                 statement.addArgument(arg);
             }
+            statement.setFuncclass(sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName())));
             treeBuilder.pushStatement(statement);
             return statement;
         }
