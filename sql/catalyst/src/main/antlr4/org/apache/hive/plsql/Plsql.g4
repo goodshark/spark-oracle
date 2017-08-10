@@ -80,7 +80,7 @@ use_statement
     : USE database=id ';'?
     ;
 top_anonymous_block
-    : anonymous_block ';'
+    : anonymous_block ';'?
     ;
 
 anonymous_block
@@ -102,7 +102,7 @@ alter_function
 create_function_body
     : (CREATE (OR REPLACE)?)? FUNCTION function_name ('(' parameter (',' parameter)* ')')?
       RETURN type_spec (invoker_rights_clause|parallel_enable_clause|result_cache_clause|DETERMINISTIC)*
-      ((PIPELINED? (IS | AS) (anonymous_block | call_spec)) | (PIPELINED | AGGREGATE) USING implementation_type_name) ';'
+      ((PIPELINED? (IS | AS) (anonymous_block | call_spec)) | (PIPELINED | AGGREGATE) USING implementation_type_name) ';'?
     ;
 
 // $<Creation Function - Specific Clauses
@@ -266,7 +266,7 @@ alter_procedure
 create_procedure_body
     : (CREATE (OR REPLACE)?)? PROCEDURE procedure_name ('(' parameter (',' parameter)* ')')?
       invoker_rights_clause? (IS | AS)
-      (anonymous_block| call_spec | EXTERNAL) ';'
+      (anonymous_block| call_spec | EXTERNAL) ';'?
     ;
 
 // $>
@@ -656,16 +656,16 @@ declare_spec
 
 //incorporates constant_declaration
 variable_declaration
-    : variable_name CONSTANT? type_spec (NOT NULL)? default_value_part? ';'
+    : variable_name CONSTANT? type_spec (NOT NULL)? default_value_part? ';'?
     ;
 
 subtype_declaration
-    : SUBTYPE type_name IS type_spec (RANGE expression '..' expression)? (NOT NULL)? ';'
+    : SUBTYPE type_name IS type_spec (RANGE expression '..' expression)? (NOT NULL)? ';'?
     ;
 
 //cursor_declaration incorportates curscursor_body and cursor_spec
 cursor_declaration
-    : CURSOR cursor_name ('(' parameter_spec (',' parameter_spec)* ')' )? (RETURN type_spec)? (IS select_statement)? ';'
+    : CURSOR cursor_name ('(' parameter_spec (',' parameter_spec)* ')' )? (RETURN type_spec)? (IS select_statement)? ';'?
     ;
 
 parameter_spec
@@ -673,7 +673,7 @@ parameter_spec
     ;
 
 exception_declaration
-    : exception_name EXCEPTION ';'
+    : exception_name EXCEPTION ';'?
     ;
 
 pragma_declaration
@@ -681,7 +681,7 @@ pragma_declaration
     | AUTONOMOUS_TRANSACTION
     | EXCEPTION_INIT '(' exception_name ',' numeric_negative ')'
     | INLINE '(' id1=id ',' expression ')'
-    | RESTRICT_REFERENCES '(' (id | DEFAULT) (',' id)+ ')') ';'
+    | RESTRICT_REFERENCES '(' (id | DEFAULT) (',' id)+ ')') ';'?
     ;
 
 record_declaration
@@ -693,7 +693,7 @@ record_declaration
 
 //incorporates ref_cursor_type_definition
 record_type_dec
-    : TYPE type_name IS (RECORD '(' field_spec (',' field_spec)* ')' | REF CURSOR (RETURN type_spec)?) ';'
+    : TYPE type_name IS (RECORD '(' field_spec (',' field_spec)* ')' | REF CURSOR (RETURN type_spec)?) ';'?
     ;
 
 field_spec
@@ -701,13 +701,13 @@ field_spec
     ;
 
 record_var_dec
-    : record_name type_name (PERCENT_ROWTYPE | PERCENT_TYPE) ';'
+    : record_name type_name (PERCENT_ROWTYPE | PERCENT_TYPE) ';'?
     ;
 
 // $>
 
 table_declaration
-    : (table_type_dec | table_var_dec) ';'
+    : (table_type_dec | table_var_dec) ';'?
     ;
 
 table_type_dec
@@ -731,7 +731,7 @@ table_var_dec
 // $<PL/SQL Statements
 
 seq_of_statements
-    : (statement (';' | EOF) | label_declaration)+
+    : (statement (';'? | EOF) | label_declaration)+
     ;
 
 label_declaration
