@@ -297,6 +297,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             } else if (dataType.contains("MONEY") || dataType.contains("DECIMAL")
                     || dataType.contains("NUMERIC")) {
                 return Var.DataType.DOUBLE;
+            } else if (dataType.contains("BOOLEAN")) {
+                return Var.DataType.BOOLEAN;
             } else {
                 return Var.DataType.STRING;
             }
