@@ -1,5 +1,8 @@
 package org.apache.spark.sql.catalyst.plfunc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -8,6 +11,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Created by chenfolin on 2017/8/9.
  */
 public class PlFunctionRegistry {
+
+    private static final Logger logger = LoggerFactory.getLogger(PlFunctionRegistry.class);
 
     private static PlFunctionRegistry plFunctionRegistry;
     private static AtomicBoolean singleLetonDone = new AtomicBoolean(false);
@@ -52,6 +57,7 @@ public class PlFunctionRegistry {
     }
 
     public boolean registerOrReplacePlFunc(PlFunctionDescription function) {
+        logger.info("register function : " + function.getCode());
         writeLock();
         try {
             if(function != null){
@@ -74,6 +80,7 @@ public class PlFunctionRegistry {
     }
 
     public boolean registerPlFunc(PlFunctionDescription function) {
+        logger.info("register function : " + function.getCode());
         writeLock();
         try {
             if(function != null){
