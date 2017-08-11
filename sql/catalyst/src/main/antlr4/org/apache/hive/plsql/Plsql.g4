@@ -2349,7 +2349,7 @@ regular_id
     //| EXCLUSIVE
     | EXECUTE
     //| EXISTS
-    | EXIT
+//    | EXIT
     | EXPLAIN
     | EXTERNAL
     | EXTRACT

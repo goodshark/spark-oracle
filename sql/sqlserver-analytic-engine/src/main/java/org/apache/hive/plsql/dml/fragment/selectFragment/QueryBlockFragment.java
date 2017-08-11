@@ -53,7 +53,7 @@ public class QueryBlockFragment extends SqlStatement {
         }
 
         if (null != intoClause) {
-            sb.append(FragMentUtils.appendOriginalSql(intoClause, getExecSession()));
+            //sb.append(FragMentUtils.appendOriginalSql(intoClause, getExecSession()));
         }
         sb.append(FragMentUtils.appendOriginalSql(fromClause, getExecSession()));
         if (null != whereClause) {
