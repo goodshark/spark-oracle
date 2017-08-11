@@ -11,8 +11,8 @@ import java.util.List;
  */
 public class PlFunctionUtils {
 
-    public static String generateCode(PlFunctionIdentify id) {
-        PlFunctionDescription func = PlFunctionRegistry.getInstance().getPlFunc(id);
+    public static String generateCode(PlFunctionIdentify id, PlFunctionRegistry registry) {
+        PlFunctionDescription func = registry.getPlFunc(id);
         if(func != null){
             StringBuilder sb = new StringBuilder();
             sb.append("public Object generate(Object[] references) {\n");
@@ -20,7 +20,7 @@ public class PlFunctionUtils {
             sb.append(id.getDb() + "_" + id.getName());
             sb.append("(); \n}\n");
             List<PlFunctionIdentify> list = new ArrayList<>();
-            getCode(sb, id, PlFunctionRegistry.getInstance(),list);
+            getCode(sb, id, registry,list);
             return sb.toString();
         } else {
             return null;
