@@ -731,7 +731,7 @@ table_var_dec
 // $<PL/SQL Statements
 
 seq_of_statements
-    : (statement (';'? | EOF) | label_declaration)+
+    : (statement (';'? | EOF ?) | label_declaration)+
     ;
 
 label_declaration
