@@ -23,8 +23,10 @@ public class BreakStatement extends NonSeqStatement {
 
     public int execute() throws Exception {
         if (condition != null) {
+            condition.setExecSession(getExecSession());
             condition.execute();
-            enable = condition.getBool();
+            Var res = (Var) condition.getRs().getObject(0);
+            enable = (boolean) res.getVarValue();
         }
         return 0;
     }
@@ -38,7 +40,7 @@ public class BreakStatement extends NonSeqStatement {
         StringBuffer sb = new StringBuffer();
         if(condition != null){
             sb.append("if(");
-            sb.append(condition.doCodegen(variables, childPlfuncs));
+            sb.append(((LogicNode)condition).doCodegen(variables, childPlfuncs));
             sb.append("){");
             sb.append(CODE_LINE_END);
             if(label != null){

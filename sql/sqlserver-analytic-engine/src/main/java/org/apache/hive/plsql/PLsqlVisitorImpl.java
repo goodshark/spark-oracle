@@ -62,6 +62,7 @@ import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.cursor.DeclareCursorStatement;
 import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
+import org.apache.hive.tsql.dml.ExpressionListStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.exception.Position;
 import org.apache.hive.tsql.func.FuncName;
@@ -631,14 +632,25 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
-        List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
-        if (expressCtxList.size() == 1) {
-            return visit(expressCtxList.get(0));
+        PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
+        if (ctx.compound_expression().size() == 0) {
+            // in || between || like
+            if (ctx.NOT() != null)
+                predicateNode.setNotComp();
+            if (ctx.IN() != null)
+                predicateIn(ctx, predicateNode);
+            if (ctx.BETWEEN() != null)
+                predicateBetween(ctx, predicateNode);
+            if (ctx.like_type() != null)
+                predicateLike(ctx, predicateNode);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
         }
+        // expression compare expression
+        List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
         if (expressCtxList.size() != 2) {
             return null;
         }
-        PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
         predicateNode.setEvalType(PredicateNode.CompType.COMP);
         String op = ctx.relational_operator().getText();
         predicateNode.setOp(op);
@@ -648,6 +660,50 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         treeBuilder.pushStatement(predicateNode);
         return predicateNode;
+    }
+
+    private void predicateIn(PlsqlParser.Relational_expressionContext relaCtx, PredicateNode node) {
+        node.setEvalType(PredicateNode.CompType.IN);
+        visit(relaCtx.sub_expression());
+        treeBuilder.addNode(node);
+        if (relaCtx.in_elements().subquery() != null) {
+            // subquery
+            node.setCompInQuery();
+            visit(relaCtx.in_elements().subquery());
+            treeBuilder.addNode(node);
+        } else {
+            // expression list
+            ExpressionListStatement exprs = new ExpressionListStatement();
+            List<TreeNode> rs = new ArrayList<>();
+            for (PlsqlParser.ExpressionContext exprCtx: relaCtx.in_elements().expression()) {
+                visit(exprCtx);
+                rs.add(treeBuilder.popStatement());
+            }
+            exprs.addExpresses(rs);
+            node.addNode(exprs);
+        }
+    }
+
+    private void predicateBetween(PlsqlParser.Relational_expressionContext relaCtx, PredicateNode node) {
+        node.setEvalType(PredicateNode.CompType.BETWEEN);
+        visit(relaCtx.sub_expression());
+        treeBuilder.addNode(node);
+        for (PlsqlParser.ExpressionContext exprCtx: relaCtx.between_elements().expression()) {
+            visit(exprCtx);
+            treeBuilder.addNode(node);
+        }
+    }
+
+    private void predicateLike(PlsqlParser.Relational_expressionContext relaCtx, PredicateNode node) {
+        node.setEvalType(PredicateNode.CompType.LIKE);
+        visit(relaCtx.sub_expression());
+        treeBuilder.addNode(node);
+        visit(relaCtx.expression());
+        treeBuilder.addNode(node);
+        if (relaCtx.like_escape_part() != null) {
+            visit(relaCtx.like_escape_part().expression());
+            treeBuilder.addNode(node);
+        }
     }
 
     @Override
@@ -707,7 +763,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         if (ctx.condition() != null) {
             visit(ctx.condition());
-            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            TreeNode conditionNode = treeBuilder.popStatement();
             continueStmt.setCondition(conditionNode);
         }
         treeBuilder.pushStatement(continueStmt);
@@ -722,7 +778,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         if (ctx.condition() != null) {
             visit(ctx.condition());
-            LogicNode conditionNode = (LogicNode) treeBuilder.popStatement();
+            TreeNode conditionNode = treeBuilder.popStatement();
             exitStmt.setCondition(conditionNode);
         }
         treeBuilder.pushStatement(exitStmt);

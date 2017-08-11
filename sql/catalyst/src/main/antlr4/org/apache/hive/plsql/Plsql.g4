@@ -1489,12 +1489,13 @@ multiset_type
 relational_expression
 //    : relational_expression relational_operator relational_expression
     : compound_expression relational_operator compound_expression
-    | compound_expression
+    | sub_expression NOT? (IN in_elements | BETWEEN between_elements | like_type expression like_escape_part?)
+//    | compound_expression
     ;
 
 compound_expression
     : sub_expression
-      (NOT? (IN in_elements | BETWEEN between_elements | like_type concatenation like_escape_part?))?
+//      (NOT? (IN in_elements | BETWEEN between_elements | like_type expression like_escape_part?))?
     ;
 relational_operator
     : '=' | not_equal_op | '<' | '>' | less_than_or_equals_op | greater_than_or_equals_op
@@ -1507,20 +1508,20 @@ like_type
     ;
 
 like_escape_part
-    : ESCAPE concatenation
+    : ESCAPE expression
     ;
 
 in_elements
     : '(' subquery ')'
 //    | '(' concatenation (',' concatenation)* ')'
     | '(' expression (',' expression)*  ')'
-    | constant
-    | bind_variable
-    | general_element
+//    | constant
+//    | bind_variable
+//    | general_element
     ;
 
 between_elements
-    : concatenation AND concatenation
+    : expression AND expression
     ;
 
 
@@ -2166,6 +2167,7 @@ constant
 
 numeric
     : UNSIGNED_INTEGER
+    | SIGNED_INEGER
     | APPROXIMATE_NUM_LIT
     ;
 
@@ -3230,6 +3232,7 @@ PERIOD:        '.';
     ;*/
 
 UNSIGNED_INTEGER: UNSIGNED_INTEGER_FRAGMENT;
+SIGNED_INEGER: SINGNED_INTEGER_FRAGMENT;
 APPROXIMATE_NUM_LIT: FLOAT_FRAGMENT (('e'|'E') ('+'|'-')? (FLOAT_FRAGMENT | UNSIGNED_INTEGER_FRAGMENT))? (D | F)?;
 
 // Rule #--- <CHAR_STRING> is a base for Rule #065 <char_string_lit> , it incorporates <character_representation>
@@ -3322,6 +3325,7 @@ SIMPLE_LETTER
 //{ Rule #615 <UNSIGNED_INTEGER> - subtoken typecast in <EXACT_NUM_LIT>
 fragment
 UNSIGNED_INTEGER_FRAGMENT: ('0'..'9')+ ;
+SINGNED_INTEGER_FRAGMENT: '-'('0'..'9')+;
 
 fragment
 FLOAT_FRAGMENT

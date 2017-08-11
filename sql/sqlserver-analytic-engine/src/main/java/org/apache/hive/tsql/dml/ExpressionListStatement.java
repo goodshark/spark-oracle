@@ -80,6 +80,8 @@ public class ExpressionListStatement extends SqlStatement {
 //            } catch (Exception e) {
 //                throw new SQLException(e);
 //            }
+
+
 //            return exprsResults;
 //        }
 //    }
@@ -98,4 +100,22 @@ public class ExpressionListStatement extends SqlStatement {
         }
         return sb.toString();
     }
+
+    @Override
+    public String getFinalSql() throws Exception {
+        if (null == exprs || exprs.size() == 0) {
+            return "";
+        }
+        StringBuffer sb = new StringBuffer();
+        for (TreeNode expr : exprs) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            expr.setExecSession(getExecSession());
+            sb.append(expr.getFinalSql());
+        }
+        return sb.toString();
+    }
+
+
 }
