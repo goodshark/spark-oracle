@@ -330,7 +330,7 @@ public class PredicateNode extends LogicNode {
 
         if (!exec) {
             String not = notComp ? " NOT" : "";
-            predicateStr = expr.getSql() + not + " BETWEEN " + exprStart.getSql() + " AND " + exprEnd.getSql();
+            predicateStr = expr.getFinalSql() + not + " BETWEEN " + exprStart.getFinalSql() + " AND " + exprEnd.getFinalSql();
             return true;
         }
 

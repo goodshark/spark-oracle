@@ -12,7 +12,7 @@ import java.util.Set;
  */
 public abstract class NonSeqStatement extends BaseStatement {
     protected String label = "";
-    protected LogicNode condition = null;
+    protected TreeNode condition = null;
     // is continue/break work
     protected boolean enable = true;
 
@@ -20,7 +20,7 @@ public abstract class NonSeqStatement extends BaseStatement {
         label = name;
     }
 
-    public void setCondition(LogicNode node) {
+    public void setCondition(TreeNode node) {
         condition = node;
     }
 

@@ -1,6 +1,7 @@
 package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.basesql.cfl.NonSeqStatement;
+import org.apache.hive.com.esotericsoftware.minlog.Log;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
@@ -35,8 +36,10 @@ public class ContinueStatement extends NonSeqStatement {
 
     public int execute() throws Exception {
         if (condition != null) {
+            condition.setExecSession(getExecSession());
             condition.execute();
-            enable = condition.getBool();
+            Var res = (Var) condition.getRs().getObject(0);
+            enable = (boolean) res.getVarValue();
         }
         return 0;
     }
@@ -79,7 +82,7 @@ public class ContinueStatement extends NonSeqStatement {
         StringBuffer sb = new StringBuffer();
         if(condition != null){
             sb.append("if(");
-            sb.append(condition.doCodegen(variables, childPlfuncs));
+            sb.append(((LogicNode)condition).doCodegen(variables, childPlfuncs));
             sb.append("){");
             sb.append(CODE_LINE_END);
             if(label != null){

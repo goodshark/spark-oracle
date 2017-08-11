@@ -21,7 +21,7 @@ public class OracleCursorAttribute extends ExpressionStatement {
     }
 
     private void generateResult(OracleCursor cursor) throws Exception {
-        switch (mark) {
+        switch (mark.toUpperCase()) {
             case "%ISOPEN":
                 result.setDataType(Var.DataType.BOOLEAN);
                 result.setVarValue(cursor.isOpen());
