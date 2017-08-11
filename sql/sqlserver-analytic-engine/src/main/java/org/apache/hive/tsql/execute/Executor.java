@@ -114,6 +114,9 @@ public class Executor {
                 case ORACLE_RAISE:
                     oracleRaiseExecute(node);
                     break;
+                case PL_FUNCTION:
+                    plFunctionExecute(node);
+                    break;
                 default:
                     node.execute();
                     pushChild(node);
@@ -552,5 +555,9 @@ public class Executor {
                 }
             }
         }
+    }
+
+    public void plFunctionExecute(TreeNode node) throws Exception {
+        node.execute();
     }
 }
