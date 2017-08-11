@@ -91,6 +91,7 @@ public class CreateFunctionStatement extends BaseStatement {
 
     public CreateFunctionStatement(CommonProcedureStatement function, Action create, Action replace, SupportDataTypes returnType, SparkSession sparkSession) {
         super(STATEMENT_NAME);
+        setNodeType(Type.PL_FUNCTION);
         this.function = function;
         this.create = create;
         this.replace = replace;

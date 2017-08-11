@@ -123,9 +123,17 @@ public class OracleMergeIntoStatment extends SqlStatement {
     @Override
     public int execute() throws Exception {
         getFinalSql();
-        commitStatement(delSql);
-        commitStatement(insertIntoSql);
-        commitStatement(updateSql);
+        if (StringUtils.isNotBlank(delSql)) {
+            commitStatement(delSql);
+        }
+        if (StringUtils.isNotBlank(insertIntoSql)) {
+            commitStatement(insertIntoSql);
+        }
+        if (StringUtils.isNotBlank(updateSql)) {
+            commitStatement(updateSql);
+        }
+
+
         return 0;
     }
 
