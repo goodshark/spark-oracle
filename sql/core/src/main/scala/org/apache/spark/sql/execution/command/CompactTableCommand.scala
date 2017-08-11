@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.command
 
 import java.io.{DataInput, DataOutput}
+import java.util.UUID
 import java.util.regex.Matcher
 
 import scala.collection.JavaConverters._
@@ -28,24 +29,101 @@ import org.apache.hadoop.hive.common.ValidReadTxnList
 import org.apache.hadoop.hive.common.ValidTxnList
 import org.apache.hadoop.hive.common.ValidTxnList.RangeResponse
 import org.apache.hadoop.hive.ql.io.{AcidInputFormat, AcidOutputFormat, AcidUtils, RecordIdentifier}
+import org.apache.hadoop.hive.shims.ShimLoader
 import org.apache.hadoop.io.{NullWritable, Writable, WritableComparable}
 import org.apache.hadoop.mapred._
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.HadoopRDD
+import org.apache.spark.scheduler._
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.EliminateSubqueryAliases
 import org.apache.spark.sql.catalyst.catalog.{CatalogRelation, CatalogTable, CatalogTablePartition}
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
+import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.execution.datasources.{LogicalRelation, PartitioningUtils}
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.util.SerializableConfiguration
 
 case class CompactTableCommand(isMajor: Boolean,
                                tableIdent: TableIdentifier,
                                partSpec: Option[TablePartitionSpec],
                                txns: ValidTxnList) extends RunnableCommand {
+
+  private val PREFIX = "hive.compactor."
+  private val BASE_DIR = PREFIX + "input.dir"
+  private val TMP_OUTPUT_DIR = PREFIX + "tmp.output.dir"
+  private val TXNS = PREFIX + "txns"
+  private val ISMAJOR = PREFIX + "major"
+  private val ISCOMPRESS = PREFIX + "is.compressed"
+  private val INPUT_FORMAT = PREFIX + "input.format.class.name"
+  private val OUTPUT_FORMAT = PREFIX + "output.format.class.name"
+  private val TBL_PROPS = PREFIX + "table.props"
+  private val NUMBUCKETS = PREFIX + "num.buckets"
+  private val VALIDTXN = "hive.txn.valid.txns"
+
+
+  override def output: Seq[Attribute] = StructType(
+    StructField("compact result", StringType, nullable = false) :: Nil).toAttributes
+
+  private def resolveProperties(sparkSession: SparkSession, table: CatalogTable,
+                                partion : Option[CatalogTablePartition] ) = {
+    val location = {
+      if ( partion.isDefined && partion.get.storage.locationUri.isDefined ) {
+        partion.get.storage.locationUri.get.toString
+      } else {
+        table.storage.locationUri.get.toString
+      }
+    }
+
+    val hadoopConf = sparkSession.sessionState.newHadoopConf()
+    var stagingDir = hadoopConf.get("hive.exec.stagingdir", ".hive-staging")
+    val tmplocation =
+      if ( stagingDir.startsWith(".hive-staging")) {
+        location + "/.hive-staging-" + UUID.randomUUID().toString
+      } else {
+        stagingDir + "/.hive-staging-" + UUID.randomUUID().toString
+      }
+
+
+    val ( cols, coltypes ) = table.schema.fields.map {
+      x => ( x.name, x.dataType.catalogString )
+    }.unzip
+
+    Map[String, String] (
+      BASE_DIR -> location,
+      TMP_OUTPUT_DIR -> tmplocation,
+      INPUT_FORMAT -> table.storage.inputFormat.getOrElse("").toString,
+      OUTPUT_FORMAT -> table.storage.outputFormat.getOrElse("").toString,
+      ISCOMPRESS -> table.storage.compressed.toString,
+      ISMAJOR -> isMajor.toString,
+      TXNS -> txns.writeToString(),
+      VALIDTXN -> txns.writeToString(),
+      TBL_PROPS -> CompactTableCommand.mapToString( table.storage.properties ),
+      "columns" -> cols.mkString(","),
+      "columns.types" -> coltypes.mkString(":")
+    )
+  }
+
+  private def assertCrudTable( table: CatalogTable ) = {
+    val hasBucket = table.bucketSpec.isDefined
+    val isOrcformat = table.storage.outputFormat.getOrElse("TextFile").equals(
+      "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")
+    val isTranscational = table.properties.getOrElse("transactional", "false")
+      .equalsIgnoreCase("true")
+    if ( !hasBucket || ! isOrcformat || ! isTranscational ) {
+      throw new AnalysisException(s"compact table ${table.identifier} not a crud table ," +
+        s"hasBucket:$hasBucket, isOrcformat:$isOrcformat,isTranscational: $isTranscational" )
+    }
+    val sortcolumns = table.bucketSpec.get.sortColumnNames
+    if ( sortcolumns.nonEmpty ) {
+      throw new AnalysisException(s"compact table ${table.identifier} " +
+        s"have sort columns $sortcolumns ," +
+        "is not yet supported!" )
+    }
+  }
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val sessionState = sparkSession.sessionState
@@ -65,7 +143,7 @@ case class CompactTableCommand(isMajor: Boolean,
         s"can't find partition $partSpec")
     }
 
-    val properties = resolveProperties( table, partition )
+    val properties = resolveProperties(sparkSession, table, partition )
 
     runInteralWithProperites(sparkSession, properties )
 
@@ -73,7 +151,7 @@ case class CompactTableCommand(isMajor: Boolean,
 
   private def runInteralWithProperites( sparkSession: SparkSession,
                                         props: Map[String, String]): Seq[Row] = {
-    logError("compact with properties:" + props)
+    logInfo("compact with properties:" + props)
 
     val _conf = sparkSession.sessionState.newHadoopConfWithOptions(props)
 
@@ -135,65 +213,67 @@ case class CompactTableCommand(isMajor: Boolean,
           }
           writer.close(false)
           reader.close()
-          Unit
+          split.getBucket
       }
     }
 
-    Seq( Row("total buckets:" + res.collect().length))
-  }
+    val tmpdir = _conf.get(TMP_OUTPUT_DIR)
+    val dest = _conf.get(BASE_DIR)
 
-  private val PREFIX = "hive.compactor."
-  private val BASE_DIR = PREFIX + "input.dir"
-  private val TMP_OUTPUT_DIR = PREFIX + "tmp.output.dir"
-  private val TXNS = PREFIX + "txns"
-  private val ISMAJOR = PREFIX + "major"
-  private val ISCOMPRESS = PREFIX + "is.compressed"
-  private val INPUT_FORMAT = PREFIX + "input.format.class.name"
-  private val OUTPUT_FORMAT = PREFIX + "output.format.class.name"
-  private val TBL_PROPS = PREFIX + "table.props"
-  private val NUMBUCKETS = PREFIX + "num.buckets"
-  private val VALIDTXN = "hive.txn.valid.txns"
+    val  sRddid = res.id.toString
+    sparkSession.sparkContext.setLocalProperty("compact-for-rdd-id", sRddid )
 
-  private def resolveProperties( table : CatalogTable, partion : Option[CatalogTablePartition] ) = {
-    val location = {
-      if ( partion.isDefined && partion.get.storage.locationUri.isDefined ) {
-        partion.get.storage.locationUri.toString
-      } else {
-        table.storage.locationUri.toString
+    val listener = new SparkListener {
+      var current_compactor_jobid = 0
+      override def onJobStart(jobStart: SparkListenerJobStart): Unit = {
+        val rddid = jobStart.properties.getProperty("compact-for-rdd-id")
+        logInfo(s"onJobStart:jobid = ${jobStart.jobId}," +
+          s" rdd in property = ${rddid} , compact rdd id = ${sRddid}" )
+
+        if ( sRddid == rddid ) {
+          current_compactor_jobid = jobStart.jobId
+        }
+      }
+      override def onJobEnd(jobEnd: SparkListenerJobEnd): Unit = {
+        logInfo(s"onJobEnd: jobid=${jobEnd.jobId}, saved jobid = ${current_compactor_jobid}" )
+        if ( current_compactor_jobid == jobEnd.jobId ) {
+            logInfo("compactor job ended with status " + jobEnd.jobResult )
+            jobEnd.jobResult match {
+              case JobSucceeded =>
+                logInfo(s"compact success , trying to move $tmpdir to dest $dest")
+                val destpath = new Path( dest )
+                val tmppath = new Path( tmpdir )
+                val fs = tmppath.getFileSystem( _conf )
+                fs.listStatus( tmppath ).foreach { fp =>
+                  val newpath = new Path( destpath, fp.getPath.getName )
+                  fs.rename( fp.getPath, newpath )
+                }
+                fs.delete( tmppath, true )
+
+              case JobFailed(e) =>
+                logInfo(s"compact failed with exception ${e} , trying to remove $tmpdir")
+                val tmppath = new Path( tmpdir )
+                val fs = tmppath.getFileSystem( _conf )
+                fs.delete( tmppath, true )
+            }
+        }
       }
     }
-    val ( cols, coltypes ) = table.schema.fields.map {  x => ( x.name, x.dataType.toString ) }.unzip
-    Map[String, String] (
-      BASE_DIR -> location,
-      INPUT_FORMAT -> table.storage.inputFormat.getOrElse("").toString,
-      OUTPUT_FORMAT -> table.storage.outputFormat.getOrElse("").toString,
-      ISCOMPRESS -> table.storage.compressed.toString,
-      ISMAJOR -> isMajor.toString,
-      TXNS -> txns.writeToString(),
-      VALIDTXN -> txns.writeToString(),
-      TBL_PROPS -> CompactTableCommand.mapToString( table.storage.properties ),
-      "columns" -> cols.mkString(","),
-      "columns.types" -> coltypes.mkString(",")
-    )
+
+    logInfo("before add listener , compact rdd id:" + sRddid )
+    sparkSession.sparkContext.listenerBus.addListener( listener )
+
+    // do the real job
+    val bucket_size = res.collect().length
+
+    sparkSession.sparkContext.listenerBus.removeListener( listener )
+    logInfo("after remove listener , compact rdd id:" + res.id.toString )
+    sparkSession.sparkContext.setLocalProperty("compact-for-rdd-id", null )
+
+    Seq( Row(bucket_size.toString))
+
   }
 
-  private def assertCrudTable( table: CatalogTable ) = {
-    val hasBucket = table.bucketSpec.isDefined
-    val isOrcformat = table.storage.outputFormat.getOrElse("TextFile").equals(
-      "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")
-    val isTranscational = table.properties.getOrElse("transactional", "false")
-      .equalsIgnoreCase("true")
-    if ( !hasBucket || ! isOrcformat || ! isTranscational ) {
-      throw new AnalysisException(s"compact table ${table.identifier} not a crud table ," +
-        s"hasBucket:$hasBucket, isOrcformat:$isOrcformat,isTranscational: $isTranscational" )
-    }
-    val sortcolumns = table.bucketSpec.get.sortColumnNames
-    if ( sortcolumns.nonEmpty ) {
-      throw new AnalysisException(s"compact table ${table.identifier} " +
-        s"have sort columns $sortcolumns ," +
-        "is not yet supported!" )
-    }
-  }
 }
 object CompactTableCommand extends Logging {
 
@@ -445,17 +525,22 @@ class CompactorInputFormat extends InputFormat[NullWritable, CompactorInputSplit
         }
     }
 
+    val deltas = acidDir.getCurrentDirectories.asScala
+    if ( deltas.isEmpty ) {
+      logInfo("No delta files found to compact in " + inputdir )
+      return Array.empty[InputSplit]
+    }
+
     // get txn ranges
     var minTxn = Long.MaxValue
     var maxTxn = Long.MinValue
-    acidDir.getCurrentDirectories.asScala.foreach { delta =>
+    deltas.foreach { delta =>
       dirsToSearch += delta.getPath
       dirsDelta += delta.getPath
       minTxn = Math.min(minTxn, delta.getMinTransaction)
       maxTxn = Math.max(maxTxn, delta.getMaxTransaction)
     }
-
-    // list files
+       // list files
     val buckets = new BucketTracker(basedir, dirsToSearch, jobConf).retrive
     val splits = buckets.map { item =>  // ( bucket number, basedir , files)
       new CompactorInputSplit(item._1, minTxn, maxTxn, -1, item._2,
