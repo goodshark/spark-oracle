@@ -100,6 +100,71 @@ case class CurrentBatchTimestamp(timestampMs: Long, dataType: DataType)
   }
 }
 
+
+case class DateExtract(dateExpr: Expression, unit: Expression)
+  extends BinaryExpression with ImplicitCastInputTypes {
+
+  override def left: Expression = dateExpr
+
+  override def right: Expression = unit
+
+  /**
+    * Expected input types from child expressions. The i-th position in the returned seq indicates
+    * the type requirement for the i-th child.
+    *
+    * The possible values at each position are:
+    * 1. a specific data type, e.g. LongType, StringType.
+    * 2. a non-leaf abstract data type, e.g. NumericType, IntegralType, FractionalType.
+    */
+  override def inputTypes: Seq[AbstractDataType] = Seq(DateType, StringType)
+
+
+  lazy val unitDate = right.eval().toString.toUpperCase
+
+  /**
+    * Default behavior of evaluation according to the default nullability of BinaryExpression.
+    * If subclass of BinaryExpression override nullable, probably should also override this.
+    */
+  override def eval(input: InternalRow): Any = {
+    val value = left.eval(input).asInstanceOf[Int]
+    unitDate match {
+      case "YEAR" => DateTimeUtils.getYear(value)
+      case "MONTH" => DateTimeUtils.getMonth(value)
+      case "DAY" => DateTimeUtils.getDayOfMonth(value)
+    }
+  }
+
+  /**
+    * Returns Java source code that can be compiled to evaluate this expression.
+    * The default behavior is to call the eval method of the expression. Concrete expression
+    * implementations should override this to do actual code generation.
+    *
+    * @param ctx a [[CodegenContext]]
+    * @param ev  an [[ExprCode]] with unique terms.
+    * @return an [[ExprCode]] containing the Java source code to generate the given expression
+    */
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val dtu = DateTimeUtils.getClass.getName.stripSuffix("$")
+
+    nullSafeCodeGen(ctx, ev, (exprValue, unitValue) => {
+      s"""
+        | ${ev.value} = $dtu.getExtract($exprValue, $unitValue);
+      """.stripMargin
+    })
+  }
+
+
+  /**
+    * Returns the [[DataType]] of the result of evaluating this expression.  It is
+    * invalid to query the dataType of an unresolved expression (i.e., when `resolved` == false).
+    */
+  override def dataType: DataType = IntegerType
+
+  override def prettyName: String = "extract"
+}
+
+
+
 /**
  * Adds a number of days to startdate.
  */
@@ -363,9 +428,10 @@ case class WeekOfYear(child: Expression) extends UnaryExpression with ImplicitCa
   override def dataType: DataType = IntegerType
 
   @transient private lazy val c = {
-    val c = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-    c.setFirstDayOfWeek(Calendar.MONDAY)
-    c.setMinimalDaysInFirstWeek(4)
+//    val c = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    val c = Calendar.getInstance()
+//    c.setFirstDayOfWeek(Calendar.MONDAY)
+//    c.setMinimalDaysInFirstWeek(4)
     c
   }
 
@@ -1045,6 +1111,78 @@ case class ToDate(child: Expression) extends UnaryExpression with ImplicitCastIn
 
   override def prettyName: String = "to_date"
 }
+
+@ExpressionDescription(
+  usage = "_FUNC_(expr, fmt) - Returns `expr` specified by the format model `fmt`.",
+  extended = """
+    Examples:
+      > SELECT _FUNC_('1234.56789', 3);
+       1234.567
+  """)
+case class Trunc(expr: Expression, format: Expression)
+  extends BinaryExpression with ImplicitCastInputTypes {
+
+  override def left: Expression = expr
+
+  override def right: Expression = format
+
+  override def dataType: DataType = StringType
+
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, IntegerType)
+
+  override def prettyName: String = "truncNum"
+
+  override def nullable: Boolean = true
+
+  private lazy val fmt = format.eval().asInstanceOf[Int]
+
+
+  /**
+    * Default behavior of evaluation according to the default nullability of BinaryExpression.
+    * If subclass of BinaryExpression override nullable, probably should also override this.
+    */
+  override def eval(input: InternalRow): Any = {
+    val v = left.eval(input)
+    if (null == v) null else {
+      val bigDecimal = BigDecimal(v.toString).setScale(fmt, BigDecimal.RoundingMode.DOWN)
+      if (fmt > 0) {
+        UTF8String.fromString(bigDecimal.doubleValue().toString)
+      } else {
+        UTF8String.fromString(bigDecimal.longValue().toString)
+      }
+    }
+  }
+
+  /**
+    * Returns Java source code that can be compiled to evaluate this expression.
+    * The default behavior is to call the eval method of the expression. Concrete expression
+    * implementations should override this to do actual code generation.
+    *
+    * @param ctx a [[CodegenContext]]
+    * @param ev  an [[ExprCode]] with unique terms.
+    * @return an [[ExprCode]] containing the Java source code to generate the given expression
+    */
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    nullSafeCodeGen(ctx, ev, (leftVal, fmt) => {
+
+      val bigDecimal = ctx.freshName("bigDecimal")
+      s"""
+        |if (null == $leftVal) {
+        | ${ev.value} = null;
+        |} else {
+        | java.math.BigDecimal $bigDecimal = new java.math.BigDecimal($leftVal.toString()).setScale($fmt, java.math.RoundingMode.DOWN);
+        | if ($fmt > 0) {
+        |   ${ev.value} = UTF8String.fromString(String.valueOf($bigDecimal.doubleValue()));
+        | } else {
+        |   ${ev.value} = UTF8String.fromString(String.valueOf($bigDecimal.longValue()));
+        | }
+        |}
+      """.stripMargin
+    })
+  }
+}
+
+
 
 /**
  * Returns date truncated to the unit specified by the format.
