@@ -2,10 +2,13 @@ package org.apache.hive.tsql.common;
 
 
 import org.apache.hive.tsql.arg.Var;
+import org.apache.hive.tsql.udf.ObjectIdCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,6 +35,17 @@ public class SqlStatement extends BaseStatement implements Serializable {
     @Override
     public BaseStatement createStatement() {
         return null;
+    }
+
+
+    /**
+     * 保存sql中的变量名字
+     * 如 insert into test_person values(@a,20+9,55.5,'1945-3-5','');
+     */
+    public Set<String> localIdVariableName = new HashSet<String>();
+
+    public void addVariables(Set<String> variables) {
+        localIdVariableName.addAll(variables);
     }
 
     /**
@@ -66,4 +80,24 @@ public class SqlStatement extends BaseStatement implements Serializable {
     public String getFinalSql() throws Exception {
         return getOriginalSql();
     }
+    public String getSchemaTableName(String tableName){
+        if(tableName.contains(".")){
+            String[] tbs = tableName.split("\\.");
+            return tbs[0]+"."+"dbo."+tbs[1];
+        }
+        return  tableName;
+    }
+
+    public void checkTableIsExist(List<String> tableNames,String type) throws Exception{
+        ObjectIdCalculator objectIdCalculator = new ObjectIdCalculator();
+        objectIdCalculator.setExecSession(getExecSession());
+        for (String tableName : tableNames) {
+            String t = getSchemaTableName(tableName);
+            boolean b1=objectIdCalculator.databaseFind(t, type);
+            if(!b1){
+                throw new Exception("Table or view :"+tableName +" is not exist.");
+            }
+        }
+    }
+
 }

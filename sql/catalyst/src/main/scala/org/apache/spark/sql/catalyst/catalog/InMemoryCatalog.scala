@@ -18,12 +18,11 @@
 package org.apache.spark.sql.catalyst.catalog
 
 import java.io.IOException
+import java.util
 
 import scala.collection.mutable
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-
 import org.apache.spark.{SparkConf, SparkException}
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
@@ -574,6 +573,24 @@ class InMemoryCatalog(
   override def listFunctions(db: String, pattern: String): Seq[String] = synchronized {
     requireDbExists(db)
     StringUtils.filterPattern(catalog(db).functions.keysIterator.toSeq, pattern)
+  }
+
+/*  override def createIndex(tableName: String, indexName: String,
+                           indexHandlerClass: String, indexedCols: util.List[String],
+                           indexTblName: String, deferredRebuild: Boolean, inputFormat: String,
+                           outputFormat: String, serde: String, storageHandler: String,
+                           location: String, idxProps: util.Map[String, String],
+                           tblProps: util.Map[String, String],
+                           serdeProps: util.Map[String, String],
+                           collItemDelim: String, fieldDelim: String,
+                           fieldEscape: String, lineDelim: String, mapKeyDelim:
+                           String, indexComment: String): Unit = synchronized {
+
+  } */
+
+
+  override def runSqlHive(sql: String): Seq[String] = synchronized {
+    null
   }
 
 }

@@ -500,7 +500,7 @@ private[ui] class JobPagedTable(
   override def tableId: String = jobTag + "-table"
 
   override def tableCssClass: String =
-    "table table-bordered table-condensed table-striped table-head-clickable"
+    "table table-bordered table-condensed table-striped table-head-clickable sortable"
 
   override def pageSizeFormField: String = jobTag + ".pageSize"
 

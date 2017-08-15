@@ -20,12 +20,12 @@ package org.apache.spark.sql.catalyst.parser
 import java.sql.{Date, Timestamp}
 import javax.xml.bind.DatatypeConverter
 
+import org.antlr.v4.runtime.misc.Interval
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 import org.antlr.v4.runtime.tree.{ParseTree, RuleNode, TerminalNode}
-
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
@@ -163,12 +163,29 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       optionalMap(ctx.insertInto())(withInsertInto)
   }
 
+
+  /**
+    * {@inheritDoc }
+    *
+    * <p>The default implementation returns the result of calling
+    * {@link #visitChildren} on {@code ctx}.</p>
+    */
+  override def visitInsertColumns(ctx: InsertColumnsContext): Seq[String] = {
+
+    if (null == ctx || ctx.identifierSeq() == null) {
+      return Seq.empty[String]
+    }
+    visitIdentifierSeq(ctx.identifierSeq()).map(_ trim).map(_ toLowerCase)
+  }
+
+
   /**
    * Add an INSERT INTO [TABLE]/INSERT OVERWRITE TABLE operation to the logical plan.
    */
   private def withInsertInto(
       ctx: InsertIntoContext,
       query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
+
     val tableIdent = visitTableIdentifier(ctx.tableIdentifier)
     val partitionKeys = Option(ctx.partitionSpec).map(visitPartitionSpec).getOrElse(Map.empty)
 
@@ -181,6 +198,12 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     val staticPartitionKeys: Map[String, String] =
       partitionKeys.filter(_._2.nonEmpty).map(t => (t._1, t._2.get))
 
+    var insertColumns : Seq[String] = null;
+    if (null != ctx.insertColumns()) {
+      insertColumns = visitInsertColumns(ctx.insertColumns())
+    }
+
+
     InsertIntoTable(
       UnresolvedRelation(tableIdent, None),
       partitionKeys,
@@ -188,7 +211,8 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       OverwriteOptions(overwrite, if (overwrite) staticPartitionKeys else Map.empty),
       ctx.EXISTS != null,
       ctx.tableIdentifier().table.getText,
-      Option(ctx.tableIdentifier().db).map(_.getText))
+      Option(ctx.tableIdentifier().db).map(_.getText),
+      Option(insertColumns))
   }
 
   /**
@@ -228,6 +252,8 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
     }
   }
 
+  private def expressionForPivot(ctx: ParserRuleContext): Expression = typedVisit(ctx)
+
   /**
    * Add ORDER BY/SORT BY/CLUSTER BY/DISTRIBUTE BY/LIMIT/WINDOWS clauses to the logical plan. These
    * clauses determine the shape (ordering/partitioning/rows) of the query result.
@@ -237,8 +263,47 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
     import ctx._
 
+    // pivot
+    val withPivot = if (null!=ctx.pivoted_table()) {
+      pivoted(ctx.pivoted_table(), query)
+    } else {
+      query
+    }
+    // unpivot
+    val withUnPivot = withPivot.optionalMap(unpivoted_table())(unpivoted)
+
+
     // Handle ORDER BY, SORT BY, DISTRIBUTE BY, and CLUSTER BY clause.
-    val withOrder = if (
+    val withOrder = withUnPivot.optionalMap(ctx)(getOrderLogicalPlan)
+    // val withOrderAndPivot = withOrder.withNewChildren(Seq(withUnPivotOp))
+
+
+    // WINDOWS
+    val withWindow = withOrder.optionalMap(windows)(withWindows)
+
+    // limit
+    val withLimit = withWindow.optional(limit) {
+      Limit(typedVisit(limit), withWindow)
+    }
+
+
+    // For Xml
+    val withFor = withLimit.optional(for_clause) {
+
+      ForClause(visitFor_clause(for_clause()), withLimit,
+        Seq(UnresolvedAttribute(Seq("xml_path_result_column")).toAttribute), Seq.empty[String])
+    }
+
+    withFor
+  }
+
+  private def getOrderLogicalPlan(ctx: QueryOrganizationContext,
+                                  query: LogicalPlan) : LogicalPlan = withOrigin(ctx) {
+    val order = ctx.order
+    val sort = ctx.sort
+    val distributeBy = ctx.distributeBy
+    val clusterBy = ctx.clusterBy
+    if (
       !order.isEmpty && sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
       // ORDER BY ...
       Sort(order.asScala.map(visitSortItem), global = true, query)
@@ -268,15 +333,89 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
       throw new ParseException(
         "Combination of ORDER BY/SORT BY/DISTRIBUTE BY/CLUSTER BY is not supported", ctx)
     }
+  }
 
-    // WINDOWS
-    val withWindow = withOrder.optionalMap(windows)(withWindows)
+  private def unpivoted(ctx: Unpivoted_tableContext,
+                        query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
 
-    // LIMIT
-    withWindow.optional(limit) {
-      Limit(typedVisit(limit), withWindow)
+    val valueColumn = expressionForPivot(ctx.unpivot_clause().value_column)
+    val unpivotColumn = expressionForPivot(ctx.unpivot_clause().pivot_column)
+    val namedExpressionSeq = ctx.unpivot_clause().namedExpressionSeq()
+    val columns = Option(namedExpressionSeq).toSeq
+      .flatMap(_.namedExpression.asScala)
+      .map(typedVisit[Expression])
+    val unpivot = UnPivotedTableScan(valueColumn, unpivotColumn, columns, query )
+      .withNewChildren(query.children)
+    query.withNewChildren(Seq(unpivot))
+    // unpivot
+  }
+
+
+
+
+  private def pivoted(ctx: Pivoted_tableContext,
+                           query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
+    val pivotColumn = expressionForPivot(ctx.pivot_clause().pivot_column)
+    var pivotValues = Seq[Literal]()
+    val value_column = ctx.pivot_clause().namedExpressionSeq(1)
+    value_column.namedExpression().asScala.foreach(c => {
+      val expressionContext = c.expression()
+      val sql = expressionContext.start.getInputStream().getText(
+        new Interval(expressionContext.start.getStartIndex(),
+          expressionContext.stop.getStopIndex())).replaceAll("`", "")
+      pivotValues = pivotValues :+ Literal(sql)
+    })
+    val namedExpressionSeq = ctx.pivot_clause().namedExpressionSeq(0)
+    val aggregates = Option(namedExpressionSeq).toSeq
+      .flatMap(_.namedExpression.asScala)
+      .map(typedVisit[Expression])
+    val groupByExprs = Seq[NamedExpression]()
+    /* Pivot(groupByExprs, pivotColumn,
+      pivotValues,
+      aggregates, query) */
+
+    val piv = Pivot(groupByExprs, pivotColumn,
+      pivotValues,
+      aggregates, query).withNewChildren(query.children)
+    query.withNewChildren(Seq(piv))
+  }
+
+
+  override def visitFor_clause(ctx: For_clauseContext): ForClauseDetail = {
+    val forType = if (null != ctx.XML()) {
+      "XML"
+    } else {
+      "BROWSE"
+    }
+
+    def xmlType: String = {
+      if (null != ctx.PATH()) {
+        "PATH"
+      } else {
+        "AUTO"
+      }
+    }
+
+    def rowLabel: String = {
+      if (null != ctx.STRING()) {
+        val withQuota = ctx.STRING().getText
+        withQuota.substring(1, withQuota.length - 1).trim
+      } else {
+        "row"
+      }
+    }
+
+    def hasRoot: Boolean = {
+      null != ctx.xml_common_directives() && null != ctx.xml_common_directives().ROOT()
+    }
+
+    forType match {
+      case "BROWSE" => ForClauseDetail(forType)
+      case "XML" => ForClauseDetail(forType, ForXmlClause(xmlType, rowLabel, hasRoot))
     }
   }
+
+
 
   /**
    * Create a logical plan using a query specification.
@@ -361,6 +500,17 @@ class AstBuilder extends SqlBaseBaseVisitor[AnyRef] with Logging {
         val withProject = if (aggregation != null) {
           withAggregation(aggregation, namedExpressions, withFilter)
         } else if (namedExpressions.nonEmpty) {
+          /* val a = ctx.parent.parent.parent.getChild(1).
+            asInstanceOf[QueryOrganizationContext].pivoted_table()
+          val constantList = a.pivot_clause().value_column
+
+          val expression2 = Option(constantList).toSeq
+            .flatMap(_.namedExpression.asScala)
+            .map(typedVisit[Expression])
+          namedExpressions = namedExpressions ++ expression2.map{
+            case e: NamedExpression => e
+            case e: Expression => UnresolvedAlias(e)
+          } */
           Project(namedExpressions, withFilter)
         } else {
           withFilter

@@ -24,8 +24,6 @@ import org.apache.spark.sql.catalyst.util.{BinToNumUtil, TypeUtils}
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
 
-import scala.tools.scalap.scalax.rules.scalasig.Children
-
 @ExpressionDescription(
   usage = "_FUNC_(expr) - Returns the negated value of `expr`.",
   extended =
@@ -154,8 +152,8 @@ object BinaryArithmetic {
   """)
 case class Add(left: Expression, right: Expression) extends BinaryArithmetic with NullIntolerant {
 
-   override def inputType: AbstractDataType = TypeCollection.NumericAndInterval
-//  override def inputType: AbstractDataType = TypeCollection.NumericAndIntervalAddString
+  // override def inputType: AbstractDataType = TypeCollection.NumericAndInterval
+  override def inputType: AbstractDataType = TypeCollection.NumericAndIntervalAddString
 
   override def symbol: String = "+"
 

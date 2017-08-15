@@ -297,7 +297,25 @@ class SessionCatalog(
     */
   def checkAcidTable(tableMetadata: CatalogTable): Boolean = {
     var flag = true
-    if ( tableMetadata.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.isEmpty ||
+    // for test create crud table in hive, the table is not crud table in spark;
+    /* logInfo(s"bucket num is ${tableMetadata.bucketSpec.
+      getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames}")
+    logInfo(s" transctional is : ${tableMetadata.properties.get("transactional")}")
+    logInfo(s" inputFormat is : ${tableMetadata.storage.inputFormat.get}")
+    logInfo(s" outputFormat is : ${tableMetadata.storage.outputFormat.get}")
+
+
+    logInfo(s"one :${tableMetadata.bucketSpec.
+      getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.isEmpty}")
+    logInfo(s"two :${!tableMetadata.properties.get("transactional")
+      .getOrElse("false").equalsIgnoreCase("true")}")
+    logInfo(s" three :${!tableMetadata.storage.outputFormat.
+      get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")}")
+    logInfo(s"four :${!tableMetadata.storage.inputFormat.
+      get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcInputFormat")}")
+   */
+    if ( tableMetadata.bucketSpec.
+      getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.isEmpty ||
       !tableMetadata.properties.get("transactional").getOrElse("false").equalsIgnoreCase("true") ||
       !tableMetadata.storage.outputFormat.
         get.equalsIgnoreCase("org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat")
@@ -598,17 +616,25 @@ class SessionCatalog(
       val db = formatDatabaseName(name.database.getOrElse(currentDb))
       val table = formatTableName(name.table)
       val relationAlias = alias.getOrElse(table)
+      /* logInfo(s"viewTest==> db is =>${db}, table is =>${table}," +
+        s" relationAlias is =>{$relationAlias}")
+      logInfo(s"viewTest==> globalTempViewManager.database is ${globalTempViewManager.database}")
+      logInfo(s"viewTest==> globalTmp is =>${globalTempViewManager.listViewNames("*")}") */
       if (db == globalTempViewManager.database) {
+
+        // logInfo(s"viewTest==> globalTempViewManager")
         globalTempViewManager.get(table).map { viewDef =>
           SubqueryAlias(relationAlias, viewDef, Some(name))
         }.getOrElse(throw new NoSuchTableException(db, table))
       } else if (name.database.isDefined || !tempTables.contains(table)) {
+        // logInfo(s"viewTest==> name.database.isDefined")
         val metadata = externalCatalog.getTable(db, table)
         val view = Option(metadata.tableType).collect {
           case CatalogTableType.VIEW => name
         }
         SubqueryAlias(relationAlias, SimpleCatalogRelation(db, metadata), view)
       } else {
+        //  logInfo(s"viewTest==> last else")
         SubqueryAlias(relationAlias, tempTables(table), Option(name))
       }
     }

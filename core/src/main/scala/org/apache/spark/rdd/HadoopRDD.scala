@@ -288,7 +288,7 @@ class HadoopRDD[K, V](
           val numberFields = value.asInstanceOf[OrcStruct].getNumFields
           value.asInstanceOf[OrcStruct].setNumFields(numberFields + 1 )
           SparkOrcStruct.setOrcStructValue(recordId, numberFields, value.asInstanceOf[OrcStruct])
-          logDebug(s" numberFields is ${value.asInstanceOf[OrcStruct].getNumFields}")
+          // logInfo(s" numberFields is ${value.asInstanceOf[OrcStruct].getNumFields}")
         }
         (key, value)
       }

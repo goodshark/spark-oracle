@@ -21,13 +21,10 @@ import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTree
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.catalog.{BucketSpec, CatalogTable, CatalogUtils}
+import org.apache.spark.sql.catalyst.parser.SqlBaseParser._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan}
-import org.apache.spark.sql.catalyst.parser.SqlBaseParser.{DeleteContext, DeleteStatementContext, UpdateContext, UpdateStatementContext}
-import org.apache.spark.sql.catalyst.plans.logical
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.internal.SessionState
 import org.apache.spark.sql.types._
@@ -106,44 +103,14 @@ case class RefreshTable(tableIdent: TableIdentifier)
 }
 
 
-case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
+case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier,
+                             tableNameAlias: String,
+                             tableNames: mutable.HashMap[String, TableIdentifier])
   extends RunnableCommand {
 
   val OPTION_TYPE: String = "OPTION_TYPE"
   val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
   val vid: String = "vid_crud__column_name"
-
-
-  def extractWhereStr(node: ParseTree, sb: StringBuilder): Unit = {
-    /* if (node.getChildCount == 3) {
-      extractWhereStr(node.getChild(0), sb)
-      sb.append(" ")
-      sb.append(node.getChild(1).getText)
-      sb.append(" ")
-      extractWhereStr(node.getChild(2), sb)
-    } else if (node.getChildCount == 1 && node.getChild(0).getChildCount == 0) {
-      sb.append(" ")
-      sb.append(node.getChild(0).getText)
-      sb.append(" ")
-    } else {
-      extractWhereStr(node.getChild(0), sb);
-    } */
-    if (node.getChildCount == 3) {
-      extractWhereStr(node.getChild(0), sb)
-      sb.append(" ")
-      extractWhereStr(node.getChild(1), sb)
-      sb.append(" ")
-      extractWhereStr(node.getChild(2), sb)
-    } else if (node.getChildCount == 1 && node.getChild(0).getChildCount == 0) {
-      sb.append(" ")
-      sb.append(node.getChild(0).getText)
-      sb.append(" ")
-    } else if (node.getChildCount == 0) {
-      sb.append(node.getText)
-    } else {
-      extractWhereStr(node.getChild(0), sb)
-    }
-  }
 
   def extractWhereMap(node: ParseTree, pmap: mutable.HashMap[String, String]): Unit = {
     // var node = statement.where
@@ -163,9 +130,8 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
   def parseAcidSql(sessionState: SessionState): String = {
     val statement: UpdateStatementContext = ctx.updateStatement()
     // extract where
-    val tableIdentifier = statement.tableIdentifier()
-    val tableName: String = tableIdentifier.table.getText
-    val dbName: Option[String] = Option(tableIdentifier.db).map(_.getText)
+    val tableName: String = tableIdent.table
+    val dbName: Option[String] = tableIdent.database
     val identifier: TableIdentifier = TableIdentifier(tableName,
       dbName)
     val tableMetadata =
@@ -179,11 +145,55 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
     val sb: StringBuilder = new StringBuilder()
     val colString: StringBuilder = new StringBuilder()
     var partitionSet: Set[String] = Set()
+
+    var columnMap: Map[String, String] = Map()
+    for (i <- 0 until statement.assignlist.size()) {
+      val array = statement.assignExpression(i).getText.split("=")
+      val ex = statement.assignExpression(i).expression()
+      val values = ex.start.getInputStream().getText(
+        new Interval(ex.start.getStartIndex(), ex.stop.getStopIndex()))
+      if (array(0).contains(".")) {
+        columnMap += (array(0).split("\\.")(1).toLowerCase -> values)
+      } else {
+        columnMap += (array(0).toLowerCase -> values)
+      }
+    }
+
+    /**
+      * bucket number =1 时可以更新桶字段
+      */
+    if (tableMetadata.bucketSpec
+      .getOrElse(new BucketSpec(-1, Seq(), Seq())).numBuckets > 1) {
+      tableMetadata.bucketSpec
+        .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.foreach(bucketColumnName => {
+        if (columnMap.contains(bucketColumnName.toLowerCase())) {
+          throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
+        }
+      })
+    }
+
+
+    tableMetadata.partitionColumnNames.foreach(p => {
+      if (columnMap.contains(p)) {
+        throw new Exception(s" Cannot update partitionColumnName: ${p}")
+      }
+    })
+
+
     sb.append(" insert into ")
     sb.append(db)
     sb.append(".")
     sb.append(tb)
-
+    sb.append("(")
+    columnMap.keySet.foreach(k => {
+      sb.append("`")
+      sb.append(k)
+      sb.append("`")
+      sb.append(",")
+    }
+    )
+    sb.append(vid)
+    sb.append(")")
     if (tableMetadata.partitionColumnNames.nonEmpty) {
       if (null == statement.where || statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
@@ -209,50 +219,48 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
     }
 
     sb.append(" select ")
-    var columnMap: Map[String, String] = Map()
-    for (i <- 0 until statement.assignlist.size()) {
-      val array = statement.assignExpression(i).getText.split("=")
-      if (array(0).contains(".")) {
-        columnMap += (array(0).split("\\.")(1).toLowerCase -> array(1))
-      } else {
-        columnMap += (array(0).toLowerCase -> array(1))
+
+
+    columnMap.keySet.foreach(k => {
+      sb.append(columnMap.get(k).get)
+      sb.append(",")
+    }
+    )
+
+    /* tableMetadata.schema.foreach(column => {
+       if (columnMap.contains(column.name.toLowerCase)) {
+         sb.append(columnMap.get(column.name.toLowerCase).get)
+         sb.append(",")
+       } */
+    /* else {
+      if (!partitionSet.contains(column.name)) {
+        if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
+          colString.append(tb)
+        } else {
+          colString.append(tableNameAlias)
+        }
+        colString.append(".")
+        colString.append(column.name.toLowerCase)
+        colString.append(",")
       }
     }
-    tableMetadata.bucketSpec
-      .getOrElse(new BucketSpec(-1, Seq(), Seq())).bucketColumnNames.foreach(bucketColumnName => {
-      if (columnMap.contains(bucketColumnName)) {
-        throw new Exception(s" Cannot update bucketColumnName: ${bucketColumnName}")
-      }
-    })
-
-    tableMetadata.partitionColumnNames.foreach(p => {
-      if (columnMap.contains(p)) {
-        throw new Exception(s" Cannot update partitionColumnName: ${p}")
-      }
-    })
-
-    tableMetadata.schema.foreach(column => {
-      if (columnMap.contains(column.name)) {
-        colString.append(columnMap.get(column.name).get)
-        colString.append(",")
-      } else {
-        if (!partitionSet.contains(column.name)) {
-          colString.append(tb)
-          colString.append(".")
-          colString.append(column.name)
-          colString.append(",")
-        }
-      }
-    })
-    sb.append(colString.substring(0, colString.length - 1))
-    sb.append(" ," + tb + "." + vid + " ")
-
-    if (null != statement.fromClause()) {
-      val fromClause = statement.fromClause()
+     }) */
+    if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
+      sb.append(tb + "." + vid + " ")
+    } else {
+      sb.append(tableNameAlias + "." + vid + " ")
+    }
+    sb.append(" from ")
+    if (null != statement.fromClauseForUpdate()) {
+      val fromClause = statement.fromClauseForUpdate()
       sb.append(fromClause.start.getInputStream().getText(
         new Interval(fromClause.start.getStartIndex(), fromClause.stop.getStopIndex())))
+      // delete from t11 from t12 where t11.id = t12.id
+      // 这样的情况需要在from 后面再追加t11表
+      appendUpdateTable(fromClause, sb, db + "." + tb, sessionState.catalog.getCurrentDatabase)
+
+
     } else {
-      sb.append(" from ")
       sb.append(db)
       sb.append(".")
       sb.append(tb)
@@ -278,21 +286,52 @@ case class AcidUpdateCommand(ctx: UpdateContext, tableIdent: TableIdentifier)
     sb.toString()
   }
 
+  def appendUpdateTable(fromClause: FromClauseForUpdateContext,
+                        sb: StringBuilder, updateTable: String, currentDb: String): Unit = {
+    val relations = fromClause.relationUpate()
+    var tableSet: Set[String] = Set()
+    for (i <- 0 until (relations.size())) {
+      val table = relations.get(i).tableNameUpdate().tableIdentifier()
+      if (table.identifier().size() == 2) {
+        tableSet += (table.identifier(0).getText.toLowerCase
+          + "." + table.identifier(1).getText.toLowerCase)
+      } else {
+        tableSet += (currentDb + "." + table.identifier(0).getText.toLowerCase)
+      }
+    }
+    logWarning(s"fromClusss table set is => ${tableSet}")
+    if (!tableSet.contains(updateTable)) {
+      sb.append(" ,")
+      sb.append(updateTable)
+      sb.append(" ")
+    }
+
+  }
+
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     Seq.empty[Row]
   }
 }
 
-case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
+case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier,
+                          tableNameAlias: String)
   extends RunnableCommand {
 
+  def getInsertColumnName(tableMetadata: CatalogTable, partitionSet: Set[String]): String = {
+    tableMetadata.schema.foreach(c => {
+      if (!partitionSet.contains(c.name)) {
+        return c.name
+      }
+    })
+    return ""
+  }
 
   def parseAcidSql(sessionState: SessionState): String = {
     val statement: DeleteStatementContext = ctx.deleteStatement()
-    val tableIdentifier = statement.tableIdentifier()
-    val tableName: String = tableIdentifier.table.getText
-    val dbName: Option[String] = Option(tableIdentifier.db).map(_.getText)
+
+    val tableName: String = tableIdentifier.table
+    val dbName: Option[String] = tableIdentifier.database
     val identifier: TableIdentifier = TableIdentifier(tableName,
       dbName)
     val tableMetadata =
@@ -309,15 +348,28 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
     sb.append(".")
     sb.append(tb)
 
+
+
     var partitionSet: Set[String] = Set()
+    if (tableMetadata.partitionColumnNames.nonEmpty) {
+      partitionSet = tableMetadata.partitionColumnNames.map(cata => cata.toLowerCase).toSet
+    }
+    sb.append("(")
+    sb.append("`")
+    val insertColName = getInsertColumnName(tableMetadata, partitionSet)
+    sb.append(insertColName)
+    sb.append("`")
+    sb.append("," + AcidUpdateCommand(null, identifier, null, null).vid)
+    sb.append(")")
+
     if (tableMetadata.partitionColumnNames.nonEmpty) {
       if (null == statement.where || statement.where.getChildCount <= 0) {
         throw new Exception(s" transaction table:${tableName} does not support Dynamic partition ")
       }
       // extract where leaf node
       val partitionColumnMap: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
-      AcidUpdateCommand(null, identifier).extractWhereMap(statement.where, partitionColumnMap)
-      partitionSet = tableMetadata.partitionColumnNames.map(cata => cata.toLowerCase).toSet
+      AcidUpdateCommand(null, identifier, null, null)
+        .extractWhereMap(statement.where, partitionColumnMap)
       val verifyPartition = partitionSet.subsetOf(
         partitionColumnMap.map(ele => ele._1).toSet
       )
@@ -334,28 +386,34 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       sb.append(" )")
     }
 
-    sb.append(" select ")
-    tableMetadata.schema.foreach(c => {
+    sb.append(" select NULL , ")
+   /* tableMetadata.schema.foreach(c => {
       if (!partitionSet.contains(c.name)) {
-        colString.append("1")
+        colString.append("NULL")
         colString.append(",")
       }
     })
     sb.append(colString.toString())
-    sb.append(" ")
-    sb.append(tb + "." + AcidUpdateCommand(null, identifier).vid).append(" ")
+    sb.append(" ") */
+    if (null == tableNameAlias || tableNameAlias.equalsIgnoreCase(db + "." + tb)) {
+      sb.append(tb + "." + AcidUpdateCommand(null, identifier, null, null).vid).append(" ")
+    } else {
+      sb.append(tableNameAlias + "."
+        + AcidUpdateCommand(null, identifier, null, null).vid).append(" ")
+    }
 
-
-    if (null == statement.joinRelation()) {
+    if (statement.joinRelationUpate().isEmpty) {
       if (null != statement.fromTable()) {
         val fromTable = statement.fromTable
         sb.append(fromTable.start.getInputStream().getText(
           new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex()))
-        .replaceAll("\\(", "")  )
+          .replaceAll("\\(", ""))
         sb.append(", ")
         sb.append(db)
         sb.append(".")
         sb.append(tb)
+        sb.append(" ")
+        sb.append(tableNameAlias)
         sb.append(" ")
       } else {
         sb.append("  from ")
@@ -371,11 +429,16 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
         sb.append(fromTable.start.getInputStream().getText(
           new Interval(fromTable.start.getStartIndex(), fromTable.stop.getStopIndex()))
           .replaceAll("\\(", ""))
-        .append(" ")
+          .append(" ")
       }
-      val joinRelation = statement.joinRelation()
-      sb.append(joinRelation.start.getInputStream().getText(
-        new Interval(joinRelation.start.getStartIndex(), joinRelation.stop.getStopIndex())))
+
+      val joinRelation = statement.joinRelationUpate()
+      val iterator = joinRelation.iterator()
+      while (iterator.hasNext) {
+        val j = iterator.next()
+        sb.append(j.start.getInputStream().getText(
+          new Interval(j.start.getStartIndex(), j.stop.getStopIndex()))).append(" ")
+      }
 
     }
     if (null != statement.where && statement.where.getChildCount > 0) {
@@ -390,12 +453,13 @@ case class AcidDelCommand(ctx: DeleteContext, tableIdentifier: TableIdentifier)
       sb.append(" limit ")
       sb.append(ctx.deleteStatement().expression().getText)
     }
-    sessionState.conf.setConfString(AcidUpdateCommand(null, identifier).OPTION_TYPE, "2")
-    sessionState.conf.setConfString(AcidUpdateCommand(null, identifier).SPARK_TRANSACTION_ACID,
+    sessionState.conf.setConfString(AcidUpdateCommand(null,
+      identifier, null, null).OPTION_TYPE, "2")
+    sessionState.conf.setConfString(
+      AcidUpdateCommand(null, identifier, null, null).SPARK_TRANSACTION_ACID,
       "true")
     logInfo(s" parse del sql ====> " + sb.toString())
     sb.toString()
-
   }
 
   override def run(sparkSession: SparkSession): Seq[Row] = {

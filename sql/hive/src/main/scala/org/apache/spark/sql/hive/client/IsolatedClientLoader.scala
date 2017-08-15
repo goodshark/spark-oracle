@@ -35,6 +35,9 @@ import org.apache.spark.sql.catalyst.util.quietly
 import org.apache.spark.sql.hive.HiveUtils
 import org.apache.spark.sql.internal.NonClosableMutableURLClassLoader
 import org.apache.spark.util.{MutableURLClassLoader, Utils}
+import org.apache.hadoop.hive.conf.HiveConf
+import org.apache.hadoop.hive.ql.metadata.Hive
+
 
 /** Factory for `IsolatedClientLoader` with specific versions of hive. */
 private[hive] object IsolatedClientLoader extends Logging {
@@ -204,8 +207,9 @@ private[hive] class IsolatedClientLoader(
   private[hive] val classLoader: MutableURLClassLoader = {
     val isolatedClassLoader =
       if (isolationOn) {
-        new URLClassLoader(allJars, rootClassLoader) {
-          override def loadClass(name: String, resolve: Boolean): Class[_] = {
+       // new URLClassLoader(allJars, rootClassLoader) {
+        new URLClassLoader(allJars, baseClassLoader) {
+            override def loadClass(name: String, resolve: Boolean): Class[_] = {
             val loaded = findLoadedClass(name)
             if (loaded == null) doLoadClass(name, resolve) else loaded
           }
@@ -250,7 +254,10 @@ private[hive] class IsolatedClientLoader(
   /** The isolated client interface to Hive. */
   private[hive] def createClient(): HiveClient = {
     if (!isolationOn) {
-      return new HiveClientImpl(version, sparkConf, hadoopConf, config, baseClassLoader, this)
+      // return new HiveClientImpl(version, sparkConf, hadoopConf, config, baseClassLoader, this)
+      val client = new HiveClientImpl(version, sparkConf, hadoopConf, config, baseClassLoader, this)
+      client.setDb(Hive.get(new HiveConf(), false))
+      return client
     }
     // Pre-reflective instantiation setup.
     logDebug("Initializing the logger to avoid disaster...")
@@ -258,11 +265,13 @@ private[hive] class IsolatedClientLoader(
     Thread.currentThread.setContextClassLoader(classLoader)
 
     try {
-      classLoader
+      val client = classLoader
         .loadClass(classOf[HiveClientImpl].getName)
         .getConstructors.head
         .newInstance(version, sparkConf, hadoopConf, config, classLoader, this)
         .asInstanceOf[HiveClient]
+      client.setDb(Hive.get(new HiveConf(), false))
+      client
     } catch {
       case e: InvocationTargetException =>
         if (e.getCause().isInstanceOf[NoClassDefFoundError]) {

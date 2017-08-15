@@ -203,7 +203,7 @@ case class InsertIntoHiveTable(
 
     val partitionPathStr: StringBuilder = new StringBuilder
     partition.keys.foreach(key => {
-      partitionPathStr.append("/")
+      // partitionPathStr.append("/")
       partitionPathStr.append(key)
       partitionPathStr.append("=")
       if (!partition.get(key).isEmpty && (!partition.get(key).get.isEmpty)) {
@@ -211,8 +211,11 @@ case class InsertIntoHiveTable(
       }
       partitionPathStr.append("/")
     })
+
+
     if (null != partitionPathStr && partitionPathStr.length > 0) {
-      hadoopConf.setStrings("spark.partition.value", partitionPathStr.toString())
+      hadoopConf.setStrings("spark.partition.value", partitionPathStr.
+        toString().substring(0, partitionPathStr.length-1))
     }
     // logInfo(s" partitionPathStr is ==>${partitionPathStr.toString()}")
     // All partition column names in the format of "<column name 1>/<column name 2>/..."
@@ -364,13 +367,7 @@ case class InsertIntoHiveTable(
           // inheritTableSpecs is set to true. It should be set to false for an IMPORT query
           // which is currently considered as a Hive native command.
           val inheritTableSpecs = true
-          if (sessionState.catalog.checkAcidTable(table.catalogTable)) {
-            val src = new Path(outputPath.toString + partitionPathStr)
-            val detPath = new Path(table.tableDesc.getProperties.get("location").toString
-              + partitionPathStr)
-            loadTableForCrud(src, detPath)
-          } else {
-            externalCatalog.loadPartition(
+                externalCatalog.loadPartition(
               table.catalogTable.database,
               table.catalogTable.identifier.table,
               outputPath.toString,
@@ -378,7 +375,7 @@ case class InsertIntoHiveTable(
               isOverwrite = doHiveOverwrite,
               holdDDLTime = holdDDLTime,
               inheritTableSpecs = inheritTableSpecs)
-          }
+//          }
         }
       }
     } else {

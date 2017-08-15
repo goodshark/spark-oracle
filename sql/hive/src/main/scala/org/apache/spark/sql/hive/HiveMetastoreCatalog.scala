@@ -114,9 +114,11 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
       alias.map(a => SubqueryAlias(a, qualifiedTable, None)).getOrElse(qualifiedTable)
     } else if (table.tableType == CatalogTableType.VIEW) {
       val viewText = table.viewText.getOrElse(sys.error("Invalid view without text."))
+      val plan = sparkSession.sessionState.sqlParser.parsePlan(viewText)
+      val applySubPlan = sparkSession.sessionState.analyzer.execute(plan)
       SubqueryAlias(
         alias.getOrElse(table.identifier.table),
-        sparkSession.sessionState.sqlParser.parsePlan(viewText),
+        applySubPlan,
         Option(table.identifier))
     } else {
       val qualifiedTable =
@@ -306,7 +308,8 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
 
       plan transformUp {
         // Write path
-        case InsertIntoTable(r: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _)
+        case InsertIntoTable(r: MetastoreRelation, partition, child,
+              overwrite, ifNotExists, _, _, _)
           // Inserting into partitioned table is not supported in Parquet data source (yet).
           if !r.hiveQlTable.isPartitioned && shouldConvertMetastoreParquet(r) =>
           InsertIntoTable(convertToParquetRelation(r), partition, child, overwrite, ifNotExists)
@@ -344,7 +347,8 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
 
       plan transformUp {
         // Write path
-        case InsertIntoTable(r: MetastoreRelation, partition, child, overwrite, ifNotExists, _, _)
+        case InsertIntoTable(r: MetastoreRelation, partition, child,
+              overwrite, ifNotExists, _, _, _)
           // Inserting into partitioned table is not supported in Orc data source (yet).
           if !r.hiveQlTable.isPartitioned && shouldConvertMetastoreOrc(r) =>
           InsertIntoTable(convertToOrcRelation(r), partition, child, overwrite, ifNotExists)

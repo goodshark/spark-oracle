@@ -1,6 +1,7 @@
 package org.apache.hive.tsql.ddl;
 
 import org.apache.hive.basesql.func.CommonProcedureStatement;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.dbservice.ProcService;
 import org.apache.hive.tsql.func.Procedure;
@@ -11,6 +12,7 @@ import org.apache.hive.tsql.func.Procedure;
 public class CreateProcedureStatement extends BaseStatement {
     private static final String STATEMENT_NAME = "_CSP_";
     private CommonProcedureStatement function;
+    private int type = 1;
 
     public enum Action {
         CREATE,ALTER
@@ -18,7 +20,7 @@ public class CreateProcedureStatement extends BaseStatement {
 
     private Action action;
 
-    public CreateProcedureStatement(CommonProcedureStatement function, Action action) {
+    public CreateProcedureStatement(CommonProcedureStatement function, Action action, int type) {
         super(STATEMENT_NAME);
         this.function = function;
         this.action=action;
@@ -31,29 +33,34 @@ public class CreateProcedureStatement extends BaseStatement {
             addFunc(function);
             return 0;
         }
-        /*switch (action){
+        switch (action){
             case CREATE:
-                *//**
+                /**
                  * 运行时才将PROC加入到变量容器的VariableContainer.functions map
-                 *//*
+                 */
                 //在内存中的proc需要保存在数据库中
                 if(function.getProcSource()==0){
                     ProcService procService = new ProcService(getExecSession().getSparkSession());
-                    procService.createProc(function);
+                    if(StringUtils.isBlank(function.getName().getDatabase())){
+                        function.getName().setDatabase(getExecSession().getDatabase());
+                    }
+                    procService.createProc(function, type);
                 }
                 break;
             case ALTER:
                 ProcService procService = new ProcService(getExecSession().getSparkSession());
-                String procName=function.getName().getFullFuncName();
-                int count= procService.getCountByName(procName);
+                if(StringUtils.isBlank(function.getName().getDatabase())){
+                    function.getName().setDatabase(getExecSession().getDatabase());
+                }
+                String procName=function.getName().getRealFullFuncName();
+                int count= procService.getCountByName(procName, type);
                 if(count==0){
                     throw  new Exception(procName + " is exist;");
                 }else{
-                    procService.delProc(procName);
+                    procService.updateProc(function, type);
                 }
-                procService.createProc(function);
                 break;
-        }*/
+        }
         super.addFunc(function);
         return 0;
     }

@@ -13,9 +13,9 @@ public class DropViewStatement extends SqlStatement {
     protected List<String> tableNames;
 
     @Override
-    public int execute() throws Exception{
+    public int execute() throws Exception {
         String sql = getSql().toString();
-        checkTableIsExist();
+        checkTableIsExist(tableNames, "V");
         for (String tableName : tableNames) {
             String execSql = sql + Common.SPACE + tableName;
             execSql = replaceTableName(tableName, execSql);
@@ -25,16 +25,6 @@ public class DropViewStatement extends SqlStatement {
         return 1;
     }
 
-    public void checkTableIsExist() throws Exception{
-        ObjectIdCalculator objectIdCalculator = new ObjectIdCalculator();
-        objectIdCalculator.setExecSession(getExecSession());
-        for (String tableName : tableNames) {
-            boolean b1=objectIdCalculator.databaseFind(getExecSession().getRealTableName(tableName),"V");
-            if(!b1){
-                throw new Exception("Table or view :"+tableName +" is not exist.");
-            }
-        }
-    }
 
     public DropViewStatement(String name) {
         super(name);

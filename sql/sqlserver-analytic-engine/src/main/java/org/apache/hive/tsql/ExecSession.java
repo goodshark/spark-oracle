@@ -9,7 +9,8 @@ import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
-import org.apache.spark.sql.execution.SparkPlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.util.*;
@@ -19,7 +20,7 @@ import java.util.*;
  */
 public class ExecSession {
 
-
+    private static final Logger LOG = LoggerFactory.getLogger(ExecSession.class);
     private List<LogicalPlan> logicalPlans = new ArrayList<>();
     private TreeNode rootNode;
     private VariableContainer variableContainer;
@@ -30,6 +31,7 @@ public class ExecSession {
     private AbstractParseTreeVisitor visitor;
     private boolean isReset = true;
     private String errorStr = "";
+    private String database = "default";
 
 
     // mark break/continue/goto/return/raise/throw cmd
@@ -53,17 +55,31 @@ public class ExecSession {
 //        private final static ExecSession session = new ExecSession();
 //    }
 
-    public ExecSession() {
+    public ExecSession(SparkSession sparkSession) {
         rootNode = new RootNode();
 //        exceptions = new ArrayList<Exception>();
         this.variableContainer = new VariableContainer(this);
         resultSets = new ArrayList<>();
+        this.sparkSession = sparkSession;
+        String sparkDb = sparkSession.catalog().currentDatabase();
+        if (StringUtils.isNotBlank(sparkDb)) {
+            this.database = sparkDb;
+        }
     }
 
 //    public static ExecSession getSession() {
 //        return SessionHolder.session;
 
 //    }
+
+
+    public String getDatabase() {
+        return database;
+    }
+
+    public void setDatabase(String database) {
+        this.database = database;
+    }
 
     public void addLogicalPlans(LogicalPlan plan) {
         logicalPlans.add(plan);
@@ -132,8 +148,18 @@ public class ExecSession {
         if (tableName.indexOf("@") != -1) {
             realTableName = getVariableContainer().findTableVarAlias(tableName);
         } else if (tmpTableNameUtils.checkIsTmpTable(tableName)) {
+            if(tableName.contains(".")){
+                tableName = tableName.split("\\.")[1];
+            }
             realTableName = sparkSession.getRealTable(tableName);
+            if (StringUtils.equals(tableName, realTableName)) {
+                realTableName = tmpTableNameUtils.createTableName(tableName);
+                sparkSession.addTableToSparkSeesion(tableName, realTableName, 2);
+            }
         } else if (tmpTableNameUtils.checkIsGlobalTmpTable(tableName)) {
+            if(tableName.contains(".")){
+                tableName = tableName.split("\\.")[1];
+            }
             realTableName = tmpTableNameUtils.getGlobalTbName(tableName);
         } else {
             realTableName = tableName;
@@ -168,4 +194,6 @@ public class ExecSession {
         tmpList.toArray(scopesArray);
         return scopesArray;
     }
+
+
 }

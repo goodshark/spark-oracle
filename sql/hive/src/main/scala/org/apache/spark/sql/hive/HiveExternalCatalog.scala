@@ -210,7 +210,9 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
         tableDefinition.storage.locationUri.isEmpty
 
       val tableLocation = if (needDefaultTableLocation) {
-        Some(defaultTablePath(tableDefinition.identifier))
+        // 修复在sentry权限控制下, location必须为null
+        // Some(defaultTablePath(tableDefinition.identifier))
+        tableDefinition.storage.locationUri
       } else {
         tableDefinition.storage.locationUri
       }
@@ -1050,6 +1052,26 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
   override def listFunctions(db: String, pattern: String): Seq[String] = withClient {
     requireDbExists(db)
     client.listFunctions(db, pattern)
+  }
+
+/*  override def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
+                           indexedCols: util.List[String], indexTblName: String,
+                           deferredRebuild: Boolean, inputFormat: String,
+                           outputFormat: String, serde: String,
+                           storageHandler: String, location: String,
+                           idxProps: util.Map[String, String],
+                           tblProps: util.Map[String, String],
+                           serdeProps: util.Map[String, String],
+                           collItemDelim: String, fieldDelim: String,
+                           fieldEscape: String, lineDelim: String,
+                           mapKeyDelim: String, indexComment: String): Unit = withClient{
+    logInfo(s"indexTbname:$indexTblName")
+    client.createIndex(tableName, indexName, 	indexHandlerClass ,  indexedCols ,indexTblName ,deferredRebuild, inputFormat ,outputFormat,  serde,storageHandler,location,
+      idxProps, tblProps,serdeProps,collItemDelim,fieldDelim,fieldEscape,lineDelim,mapKeyDelim,indexComment)
+  } */
+
+  override def runSqlHive(sql: String): Seq[String] = withClient {
+        client.runSqlHive(sql)
   }
 
 }

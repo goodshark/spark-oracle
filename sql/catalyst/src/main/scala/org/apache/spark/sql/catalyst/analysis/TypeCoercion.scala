@@ -303,10 +303,28 @@ object TypeCoercion {
       // Skip nodes who's children have not been resolved yet.
       case e if !e.childrenResolved => e
 
-      case a @ BinaryArithmetic(left @ StringType(), right) =>
-        a.makeCopy(Array(Cast(left, DoubleType), right))
-      case a @ BinaryArithmetic(left, right @ StringType()) =>
+      case a @ BinaryArithmetic(left @ StringType(), right) if right.dataType != StringType =>
+          a.makeCopy(Array(Cast(left, DoubleType), right))
+      case a @ BinaryArithmetic(left, right @ StringType()) if left.dataType != StringType =>
         a.makeCopy(Array(left, Cast(right, DoubleType)))
+      case a @ BinaryArithmetic(left @ StringType(), right @ StringType()) =>
+        if (a.symbol.equalsIgnoreCase("+")) {
+          if (!a.applyRule) {
+            // val rs = a.makeCopy(Array(Cast(left, StringType), Cast(right, StringType)))
+            var e = Seq[Expression]()
+            e = e :+ left
+            e = e :+ right
+            val rs = Concat(e)
+            rs.applyRule = true
+            rs
+          } else {
+            a
+          }
+
+        } else {
+          a.makeCopy(Array(Cast(left, DoubleType), Cast(right, DoubleType)))
+        }
+
 
       // For equality between string and timestamp we cast the string to a timestamp
       // so that things like rounding of subsecond precision does not affect the comparison.

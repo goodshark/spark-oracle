@@ -71,16 +71,24 @@ public class RightFunction extends BaseFunction {
 
     @Override
     public String getSql() {
-        StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
-                .getFunctionAliasName(getName().getFullFuncName()));
+//        StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
+//                .getFunctionAliasName(getName().getFullFuncName()));
+//        sb.append("(");
+//        try {
+//            makeArgList();
+//        } catch (Exception e) {
+//            // just log, do nothing
+//            System.out.print(e.getStackTrace());
+//        }
+//        sb.append(argSB.toString());
+//        sb.append(")");
+//        return sb.toString();
+
+        StringBuffer sb = new StringBuffer("right");
+
         sb.append("(");
-        try {
-            makeArgList();
-        } catch (Exception e) {
-            // just log, do nothing
-            System.out.print(e.getStackTrace());
-        }
-        sb.append(argSB.toString());
+        sb.append(exprList.get(0).getSql()).append(",");
+        sb.append(exprList.get(1).getSql());
         sb.append(")");
         return sb.toString();
     }

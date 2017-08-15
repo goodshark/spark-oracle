@@ -55,7 +55,43 @@ dml_clause
     | insert_statement
     | select_statement
     | update_statement
+    | merge_statement
     ;
+
+ /**
+
+MERGE [INTO [schema .] table [t_alias]
+USING [schema .] { table | view | subquery } [t_alias]
+ON ( condition )
+WHEN MATCHED THEN merge_update_clause
+WHEN NOT MATCHED THEN merge_insert_clause;
+ **/
+merge_statement:
+    with_expression?
+    MERGE (TOP '(' expression ')' PERCENT?)? INTO? target_table=table_name  target_table_alias=as_table_alias?
+    USING src_table=table_name src_table_alias=as_table_alias?
+    ON search_condition
+    matched_statment*
+    target_not_matched*
+    source_not_matched*
+;
+matched_statment:
+    WHEN MATCHED  (AND search_condition)? THEN merge_matched
+;
+
+target_not_matched:
+    WHEN NOT MATCHED  (BY TARGET)? (AND search_condition)?  THEN  merge_not_matched
+;
+source_not_matched:
+    WHEN NOT MATCHED  BY SOURCE (AND search_condition)?  THEN  merge_matched
+;
+merge_matched:
+    (UPDATE SET update_elem (',' update_elem)* ) | DELETE
+;
+merge_not_matched:
+    INSERT  ('(' column_name_list ')')?  VALUES '(' expression_list ')' (',' '(' expression_list ')')*
+;
+
 
 // Data Definition Language: https://msdn.microsoft.com/zh-cn/library/ff848799.aspx)
 ddl_clause
@@ -182,12 +218,12 @@ insert_statement_value
 
 // https://msdn.microsoft.com/zh-cn/library/ms189499.aspx
 select_statement
-    : with_expression? query_expression order_by_clause? for_clause? option_clause? limit? ';'?
+    : with_expression? query_expression order_by_clause? for_clause? option_clause?  ';'?
     ;
 
- limit
+/* limit
     :LIMIT DECIMAL
-    ;
+    ;*/
 
 // https://msdn.microsoft.com/zh-cn/library/ms177523.aspx
 update_statement
@@ -238,7 +274,7 @@ create_index
     ';'?
     ;
 
-// https://msdn.microsoft.com/zh-cn/library/ms187926(v=sql.120).aspx
+// https://msdn.microsoft.com/zh-cn/library/ms187926(v=sqlF.120).aspx
 create_procedure
     : action=(CREATE | ALTER) proc=(PROC | PROCEDURE) func_proc_name (';' DECIMAL)?
       ('('? procedure_param (',' procedure_param)* ')'?)?
@@ -821,10 +857,26 @@ query_specification
       // https://msdn.microsoft.com/zh-cn/library/ms188029.aspx
       (INTO table_name)?
       (FROM table_sources)?
+      pivoted_table?
+      unpivoted_table?
       (WHERE where=search_condition)?
       // https://msdn.microsoft.com/zh-cn/library/ms177673.aspx
       (GROUP BY group_by_item (',' group_by_item)*)?
       (HAVING having=search_condition)?
+    ;
+
+//ADD FOR PIVOTED_TABLE , unpivoted_table
+pivoted_table
+    : PIVOT  pivot_clause as_table_alias?
+    ;
+pivot_clause
+    :'(' aggregate_windowed_function FOR pivot_column=id  IN '(' value_column=column_name_list ')' ')'
+    ;
+unpivoted_table
+    :UNPIVOT unpivot_clause as_table_alias?
+    ;
+unpivot_clause
+    : '(' value_column=id FOR pivot_column=id  IN '('column_name_list ')' ')'
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms188385.aspx
@@ -936,7 +988,7 @@ join_part
     ;
 
 table_name_with_hint
-    : table_name with_table_hints?
+    : table_name AS? id? with_table_hints_lock_table?
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms190312.aspx
@@ -1005,6 +1057,7 @@ function_call
     | TSUBSTRING '(' expression ',' expression ',' expression ')'      #tsubstring_function
     | TRIM '(' (expression FROM)? expression ')'    #trim_function
     | LEN '(' expression ')'                       #len_function
+    | IIF '('search_condition',' expression ',' expression ')'       #iif_function
     ;
 
 
@@ -1027,6 +1080,11 @@ table_alias
 
 // https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
 with_table_hints
+    : WITH '(' table_hint (',' table_hint)* ')'
+    ;
+
+// https://msdn.microsoft.com/zh-cn/library/ms187373.aspx
+with_table_hints_lock_table
     : WITH? '(' table_hint (',' table_hint)* ')'
     ;
 
@@ -1710,6 +1768,7 @@ HASH:                                  H A S H;
 HONOR_BROKER_PRIORITY:                 H O N O R '_' B R O K E R '_' P R I O R I T Y;
 HOURS:                                 H O U R S; 
 IGNORE_NONCLUSTERED_COLUMNSTORE_INDEX: I G N O R E '_' N O N C L U S T E R E D '_' C O L U M N S T O R E '_' I N D E X;
+IIF:                                   I I F;
 IMMEDIATE:                             I M M E D I A T E;
 IMPERSONATE:                           I M P E R S O N A T E;
 INCREMENTAL:                           I N C R E M E N T A L; 
@@ -1850,6 +1909,11 @@ TRUE:                                  '"' T R U E '"';
 SHOW:                                   S H O W;
 TABLES:                                 T A B L E S;
 DATABASES:                              D A T A B A S E S;
+
+//add for merge into
+MATCHED:                                M A T C H E D;
+SOURCE:                                 S O U R C E;
+TARGET:                                 T A R G E T;
 
 SPACE:              [ \t\r\n]+    -> skip;
 COMMENT:            '/*' .*? '*/' -> channel(HIDDEN);

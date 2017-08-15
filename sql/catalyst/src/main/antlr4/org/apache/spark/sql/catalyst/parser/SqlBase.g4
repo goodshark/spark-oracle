@@ -151,8 +151,59 @@ statement
     | SET ROLE .*?                                                     #failNativeCommand
     | SET .*?                                                          #setConfiguration
     | RESET                                                            #resetConfiguration
+    | CREATE INDEX indexName=identifier ON TABLE tab=tableIdentifier  '(' indexedCols=columnNameList ')'
+    	AS typeName=STRING
+    	autoRebuild?
+        indexPropertiesPrefixed?
+        indexTblName?
+        rowFormat?
+        fileFormat?
+        locationSpec?
+        tablePropertiesPrefixed?
+        indexComment?                                                  #createIndex
     | unsupportedHiveNativeCommands .*?                                #failNativeCommand
     ;
+indexComment:
+    |COMMENT comment=STRING
+    ;
+tablePropertiesPrefixed:
+    | TBLPROPERTIES tableProperties
+    ;
+tableProperties:
+    |'(' tablePropertiesList ')'
+    ;
+tablePropertiesList:
+    | keyValueProperty (',' keyValueProperty)*
+    | keyProperty (',' keyProperty)*
+    ;
+indexTblName:
+    |IN TABLE indexTbl=STRING
+    ;
+columnNameList:
+    | columnName ( ',' columnName)*
+    ;
+columnName:
+    | identifier
+    ;
+autoRebuild:
+    |WITH DEFERRED REBUILD
+    ;
+indexPropertiesPrefixed:
+    |IDXPROPERTIES indexProperties
+    ;
+indexProperties:
+    |'(' indexPropertiesList ')'
+    ;
+indexPropertiesList:
+    |keyValueProperty (',' keyValueProperty)*
+    ;
+keyValueProperty:
+    |key=STRING EQ value=STRING
+    ;
+keyProperty:
+    |key=STRING
+    ;
+
 
 unsupportedHiveNativeCommands
     : kw1=CREATE kw2=ROLE
@@ -171,7 +222,7 @@ unsupportedHiveNativeCommands
     | kw1=SHOW kw2=TRANSACTIONS
     | kw1=SHOW kw2=INDEXES
     | kw1=SHOW kw2=LOCKS
-    | kw1=CREATE kw2=INDEX
+    /*| kw1=CREATE kw2=INDEX*/
     | kw1=DROP kw2=INDEX
     | kw1=ALTER kw2=INDEX
     | kw1=LOCK kw2=TABLE
@@ -228,9 +279,14 @@ query
     : ctes? queryNoWith
     ;
 
+
+insertColumns
+     :'('identifierSeq')'
+     ;
+
 insertInto
-    : INSERT OVERWRITE TABLE tableIdentifier (partitionSpec (IF NOT EXISTS)?)?
-    | INSERT INTO TABLE? tableIdentifier partitionSpec?
+    : INSERT OVERWRITE TABLE tableIdentifier insertColumns? (partitionSpec (IF NOT EXISTS)?)?
+    | INSERT INTO TABLE? tableIdentifier insertColumns? partitionSpec?
     ;
 
 partitionSpecLocation
@@ -323,27 +379,71 @@ queryNoWith
     ;
 
 deleteStatement
-    : DELETE FROM? tableIdentifier  fromTable?  joinRelation? (')')? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : DELETE FROM? tableIdentifier  fromTable?  (joinRelationUpate*)?  (')')? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
     ;
  fromTable
-    :FROM ('(')? tableIdentifier
+    :FROM ('(')? tableIdentifier strictIdentifier?
     ;
 
 updateStatement
-    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)* fromClause? (WHERE where=booleanExpression)? (LIMIT limit=expression)?
+    : UPDATE tableIdentifier SET assignlist+=assignExpression (',' assignlist+=assignExpression)*  FROM? ('(')? fromClauseForUpdate? (WHERE where=booleanExpression)? (LIMIT limit=expression)? (')')?
     ;
+fromClauseForUpdate
+	:  relationUpate (',' relationUpate)*
+	;
+
+relationUpate
+	: tableNameUpdate joinRelationUpate*
+	;
+
+sub_query
+    :'(' queryNoWith ')'  query_table=strictIdentifier (AS? table_alias=strictIdentifier)?
+    ;
+
+tableNameUpdate
+	: tableIdentifier sample? (AS? strictIdentifier)?
+	;
+joinRelationUpate
+	:(joinType) JOIN (right=tableNameUpdate | query_join=sub_query) joinCriteria?
+	;
 
 assignExpression
     : (qualifiedName) EQ expression
     ;
 
+for_clause
+    : FOR BROWSE
+    | FOR XML AUTO xml_common_directives?
+    | FOR XML PATH ('(' STRING ')')? xml_common_directives?
+    ;
+
+xml_common_directives
+    : ',' (TYPE | ROOT)
+    ;
+
 queryOrganization
-    : (ORDER BY order+=sortItem (',' order+=sortItem)*)?
+    : pivoted_table?
+      unpivoted_table?
+      (ORDER BY order+=sortItem (',' order+=sortItem)*)?
       (CLUSTER BY clusterBy+=expression (',' clusterBy+=expression)*)?
       (DISTRIBUTE BY distributeBy+=expression (',' distributeBy+=expression)*)?
       (SORT BY sort+=sortItem (',' sort+=sortItem)*)?
       windows?
       (LIMIT limit=expression)?
+      for_clause?
+    ;
+//ADD FOR PIVOTED_TABLE , unpivoted_table
+pivoted_table
+    : PIVOT  pivot_clause (AS? strictIdentifier)?
+    ;
+pivot_clause
+    :'(' namedExpressionSeq FOR '('pivot_column=expression ')' IN '(' value_column=namedExpressionSeq ')' ')'
+    ;
+unpivoted_table
+    :UNPIVOT unpivot_clause (AS? strictIdentifier)?
+    ;
+unpivot_clause
+    : '(' value_column=expression FOR '('pivot_column=expression ')' IN '('namedExpressionSeq ')' ')'
     ;
 
 multiInsertQueryBody
@@ -544,7 +644,7 @@ valueExpression
     ;
 
 primaryExpression
-    : name=(CURRENT_DATE | CURRENT_TIMESTAMP)                                                  #timeFunctionCall
+    : name=(CURRENT_DATE | CURRENT_TIMESTAMP)('(' ')')?                                        #timeFunctionCall
     | CASE value=expression whenClause+ (ELSE elseExpression=expression)? END                  #simpleCase
     | CASE whenClause+ (ELSE elseExpression=expression)? END                                   #searchedCase
     | CAST '(' expression AS dataType ')'                                                      #cast
@@ -717,7 +817,8 @@ nonReserved
     | UNBOUNDED | WHEN
     | DATABASE | SELECT | FROM | WHERE | HAVING | TO | TABLE | WITH | NOT | CURRENT_DATE | CURRENT_TIMESTAMP | UPDATE
     ;
-
+UNPIVOT:'UNPIVOT';
+PIVOT:   'PIVOT';
 UPDATE: 'UPDATE';
 SELECT: 'SELECT';
 FROM: 'FROM';
@@ -753,6 +854,12 @@ NULLS: 'NULLS';
 ASC: 'ASC';
 DESC: 'DESC';
 FOR: 'FOR';
+BROWSE: 'BROWSE';
+XML: 'XML';
+AUTO: 'AUTO';
+TYPE: 'TYPE';
+ROOT: 'ROOT';
+PATH: 'PATH';
 INTERVAL: 'INTERVAL';
 CASE: 'CASE';
 WHEN: 'WHEN';
@@ -943,10 +1050,14 @@ LOCAL: 'LOCAL';
 INPATH: 'INPATH';
 CURRENT_DATE: 'CURRENT_DATE';
 CURRENT_TIMESTAMP: 'CURRENT_TIMESTAMP';
+DEFERRED: 'DEFERRED ';
+REBUILD:'REBUILD';
+IDXPROPERTIES:'IDXPROPERTIES';
 
 STRING
     : '\'' ( ~('\''|'\\') | ('\\' .) )* '\''
     | '\"' ( ~('\"'|'\\') | ('\\' .) )* '\"'
+   /* | '`' ( ~('\''|'\\') | ('\\' .) )* '`'*/
     ;
 
 BIGINT_LITERAL

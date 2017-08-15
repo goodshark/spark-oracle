@@ -214,7 +214,7 @@ case class AttributeReference(
     dataType: DataType,
     nullable: Boolean = true,
     override val metadata: Metadata = Metadata.empty)(
-    val exprId: ExprId = NamedExpression.newExprId,
+    var exprId: ExprId = NamedExpression.newExprId,
     val qualifier: Option[String] = None,
     override val isGenerated: java.lang.Boolean = false)
   extends Attribute with Unevaluable {

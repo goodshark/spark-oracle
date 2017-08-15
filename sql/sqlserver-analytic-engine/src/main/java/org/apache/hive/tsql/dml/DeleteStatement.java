@@ -51,6 +51,8 @@ public class DeleteStatement extends SqlStatement {
             //TODO 替换表变量
             execSql=replaceTableName(tableName,execSql);
         }
+        // 替换sql中的变量
+        execSql = replaceVariable(execSql, localIdVariableName);
         setRs(commitStatement(execSql));
         return 1;
     }

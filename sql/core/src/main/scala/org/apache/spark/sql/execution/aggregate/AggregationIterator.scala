@@ -270,7 +270,8 @@ abstract class AggregationIterator(
     expressionAggInitialProjection.target(buffer)(EmptyRow)
     var i = 0
     while (i < allImperativeAggregateFunctions.length) {
-      allImperativeAggregateFunctions(i).initialize(buffer)
+      val func = allImperativeAggregateFunctions(i)
+      func.initialize(buffer)
       i += 1
     }
   }

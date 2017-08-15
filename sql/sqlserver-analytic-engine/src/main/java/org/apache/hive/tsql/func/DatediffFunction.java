@@ -10,12 +10,11 @@ import java.util.List;
  * Created by zhongdg1 on 2017/1/12.
  */
 public class DatediffFunction extends BaseFunction {
-
-    private String datePart;
+    private DateUnit datePart;
     private TreeNode leftExpr;
     private TreeNode rightExpr;
 
-    public void setDatePart(String datePart) {
+    public void setDatePart(DateUnit datePart) {
         this.datePart = datePart;
     }
 
@@ -41,8 +40,9 @@ public class DatediffFunction extends BaseFunction {
         rightExpr.execute();
         Var right = (Var) rightExpr.getRs().getObject(0);
         results.add(new Var(datePart, Var.DataType.STRING));
-        results.add(left.clone());
         results.add(right.clone());
+        results.add(left.clone());
+
         System.out.println("Excuting function # " + this.getSql());
         doCall(results);
         return 0;
@@ -53,10 +53,10 @@ public class DatediffFunction extends BaseFunction {
 
         StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
-        if(rightExpr == null || leftExpr == null) {
+        if (rightExpr == null || leftExpr == null) {
             return sb.toString();
         }
-        sb.append("(").append(rightExpr.getSql()).append(", ").append(leftExpr.getSql()).append(")");
+        sb.append("(").append("'").append(datePart).append("'").append(",").append(leftExpr.getSql()).append(", ").append(rightExpr.getSql()).append(")");
         return sb.toString();
     }
 }

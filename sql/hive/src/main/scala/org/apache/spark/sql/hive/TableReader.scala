@@ -105,7 +105,7 @@ class HadoopTableReader(
     } else if (dataType.equalsIgnoreCase("short")) {
       rs = "tinyint"
     }
-    logInfo("dataType src is " + dataType + "is + " + rs)
+   // logInfo("dataType src is " + dataType + "is + " + rs)
     rs
   }
   override def makeRDDForTable(hiveTable: HiveTable): RDD[InternalRow] =
@@ -302,9 +302,12 @@ class HadoopTableReader(
         if ( checkAcidTableFlag) {
           props.setProperty("columns",
             props.get("columns")
-              .toString + "," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+              .toString + "," + props.get("partition_columns")
+              .toString.replaceAll("/", ",") +"," + HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
           props.setProperty("columns.types",
-            props.get("columns.types").toString + ":string")
+            props.get("columns.types").toString + ":"
+              + props.get("partition_columns.types")
+              .toString + ":string")
         }
         deserializer.initialize(hconf, props)
         // get the table deserializer
@@ -323,7 +326,7 @@ class HadoopTableReader(
 
         // fill the non partition key attributes
         HadoopTableReader.fillObject(iter, deserializer, nonPartitionKeyAttrs,
-          mutableRow, tableSerDe)
+          mutableRow, tableSerDe, hconf)
       }
     }.toSeq
 
@@ -443,20 +446,21 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         tableDeser.getObjectInspector).asInstanceOf[StructObjectInspector]
     }
 
-    logDebug(soi.toString)
+    // logWarning("soi===>" + soi.toString)
     var vidIndex = -1
     val vidKeyAttrs = nonPartitionKeyAttrs.filter(_._1.name == HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
     if(!vidKeyAttrs.isEmpty) {
       vidIndex = vidKeyAttrs(0)._2
     }
-    logDebug(s" vid index : is ${vidIndex}")
+    // logWarning(s" vid index : is ${vidIndex}")
 
-    val (fieldRefs, fieldOrdinals) = nonPartitionKeyAttrs.filter(_._1.name !=
+    val (fieldRefs1, fieldOrdinals1) = nonPartitionKeyAttrs.filter(_._1.name !=
       HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
       .map { case (attr, ordinal) =>
         soi.getStructFieldRef(attr.name) -> ordinal
       }.unzip
-
+    val fieldRefs = fieldRefs1.toVector
+    val fieldOrdinals = fieldOrdinals1.toVector
     /**
      * Builds specific unwrappers ahead of time according to object inspector
      * types to avoid pattern matching and branching costs per row.
@@ -503,7 +507,13 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
 
     val converter = ObjectInspectorConverters.getConverter(rawDeser.getObjectInspector, soi)
 
-    // Map each tuple to a row object
+    val acidOptionFlag: Boolean = {
+      null != conf && conf.getBoolean(SPARK_TRANSACTION_ACID, false) && (
+        conf.get(OPTION_TYPE).equalsIgnoreCase("1") ||
+          conf.get(OPTION_TYPE).equalsIgnoreCase("2")
+        )
+    }
+
     iterator.map { value =>
       val raw = converter.convert(rawDeser.deserialize(value))
       var i = 0
@@ -517,17 +527,13 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         }
         i += 1
       }
-
-      if( null!=conf && conf.getBoolean(SPARK_TRANSACTION_ACID, false)) {
-        if (conf.get(OPTION_TYPE).equalsIgnoreCase("1")
-          || conf.get(OPTION_TYPE).equalsIgnoreCase("2") ) {
-          val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
-          val vid = soi.getStructFieldData(raw, vidField).toString
-          if ( vidIndex != -1) {
-            mutableRow.update(vidIndex, UTF8String.fromString(vid))
-          } else {
-            logError(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME + " not find in table ")
-          }
+      if (acidOptionFlag) {
+        val vidField = soi.getStructFieldRef(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME)
+        val vid = soi.getStructFieldData(raw, vidField).toString
+        if (vidIndex != -1) {
+          mutableRow.update(vidIndex, UTF8String.fromString(vid))
+        } else {
+          logError(HiveUtils.CRUD_VIRTUAL_COLUMN_NAME + " not find in table ")
         }
       }
       mutableRow: InternalRow

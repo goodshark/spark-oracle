@@ -1,8 +1,10 @@
 package org.apache.hive.tsql.common;
 
 import org.apache.hive.tsql.arg.Var;
+import org.apache.hive.tsql.util.StrUtils;
 
 import java.text.ParseException;
+import java.util.Calendar;
 import java.util.Set;
 
 /**
@@ -165,10 +167,28 @@ public class ExpressionComputer {
             Number number = new Number();
             number = number.operator(paserVarToNuber(v1), paserVarToNuber(v2), Number.Operator.SUB);
             return paserNumberToVar(number);
+        } else if (isDateAndNumber(v1, v2)) {
+            return subDate(v1, v2);
         }
         return Var.Null;
     }
 
+
+    private Var subDate(Var v1, Var v2) throws ParseException {
+        Calendar cal = Calendar.getInstance();
+        int days = 0;
+        if (v1.isDate()) {
+            cal.setTime(v1.getDate());
+            days = v2.getInt();
+        } else {
+            cal.setTime(v2.getDate());
+            days = v1.getInt();
+        }
+
+//        cal.add(Calendar.DATE, days);
+        cal.set(Calendar.DATE, cal.get(Calendar.DATE) - 1);
+        return new Var(cal.getTime(), Var.DataType.DATETIME);
+    }
 
     /**
      * Addition operator
@@ -177,14 +197,38 @@ public class ExpressionComputer {
         if (v1.getVarValue() == null || v2.getVarValue() == null) {
             return Var.Null;
         } else if (v1.getDataType() == Var.DataType.STRING && v2.getDataType() == Var.DataType.STRING) {
-            String values = v1.getVarValue().toString() + v2.getVarValue().toString();
+            String values = StrUtils.trimQuot(v1.getVarValue().toString()) + StrUtils.trimQuot(v2.getVarValue().toString());
             return new Var(values, Var.DataType.STRING);
         } else if (checkVarIsNumber(v1, v2)) {
             Number number = new Number();
             number = number.operator(paserVarToNuber(v1), paserVarToNuber(v2), Number.Operator.ADD);
             return paserNumberToVar(number);
+        } else if (isDateAndNumber(v1, v2)) {
+            return addDate(v1, v2);
         }
         return Var.Null;
+    }
+
+    private Var addDate(Var v1, Var v2) throws ParseException {
+        Calendar cal = Calendar.getInstance();
+        int days = 0;
+        if (v1.isDate()) {
+            cal.setTime(v1.getDate());
+            days = v2.getInt();
+        } else {
+            cal.setTime(v2.getDate());
+            days = v1.getInt();
+        }
+
+        cal.add(Calendar.DATE, days);
+        return new Var(cal.getTime(), Var.DataType.DATETIME);
+    }
+
+    private boolean isDateAndNumber(Var v1, Var v2) {
+        if ((v1.isDate() && v2.isNumber()) || (v2.isDate() && v1.isNumber())) {
+            return true;
+        }
+        return false;
     }
 
 
@@ -196,7 +240,7 @@ public class ExpressionComputer {
             return 0;
         } else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
             return var1.getVarValue().toString().compareTo(var2.getVarValue().toString());
-        } else if (var1.getDataType().equals(Var.DataType.DATE) || var2.getDataType().equals(Var.DataType.DATE)) {
+        } else if (var1.isDate() || var2.isDate()) {
 //            return Long.compare(getDateTime(var1), getDateTime(var2));
             return Long.compare(var1.getTime(), var2.getTime());
         } else if (checkVarIsNumber(var1, var2)) {
@@ -242,6 +286,10 @@ public class ExpressionComputer {
         if (var1 == null && var2 == null) {
             return true;
         } else if (var1.getDataType().equals(Var.DataType.STRING) && var2.getDataType().equals(Var.DataType.STRING)) {
+            if (var1.getVarValue().toString().equalsIgnoreCase("null")&&
+                    var2.getVarValue().toString().equalsIgnoreCase("null")){
+                return true;
+            }
             if (var1.getVarValue().toString().equals(var2.getVarValue().toString())) {
                 return true;
             }

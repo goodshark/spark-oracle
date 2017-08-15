@@ -89,6 +89,9 @@ class SparkSession private(
     this(sc, None)
   }
 
+
+  var sparkSessionUserName: String = ""
+
   /**
     * 用于保存sqlserver模式下的表名称
     * key=1 表示存储的表变量 DECLARE @t_a as TABLE(name VARCHAR(50))
@@ -105,6 +108,19 @@ class SparkSession private(
   def getSqlServerTable: HashMap[Integer, HashMap[String, String]] = {
     sqlServerTable
   }
+
+
+  def addTableToSparkSeesion (tableAliasName: String,
+                              tableName: String, key: Integer) : Unit = {
+    if (sqlServerTable.containsKey(key)) {
+      sqlServerTable.get(key).put(tableAliasName, tableName)
+    } else {
+      val map = new  HashMap[String, String]()
+      map.put(tableAliasName, tableName)
+      sqlServerTable.put(key, map)
+    }
+  }
+
 
   def getRealTable(tableAliaName: String): String = {
     var tbName: String = tableAliaName
@@ -662,17 +678,20 @@ class SparkSession private(
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
     sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "false")
+    // for testing
+    // sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
+    // sessionState.conf.setConfString(OPTION_TYPE, "1")
     if (plan.isInstanceOf[AcidDelCommand]) {
       val tableIdent = plan.asInstanceOf[AcidDelCommand].tableIdentifier
       val tb: String = sessionState.catalog.getTableName(tableIdent)
       val db: String = sessionState.catalog.getDbName(tableIdent)
-       checkConcurrentOperation(db, tb, "deleting")
+      checkConcurrentOperation(db, tb, "deleting")
       sql = plan.asInstanceOf[AcidDelCommand].parseAcidSql(sessionState)
     } else if (plan.isInstanceOf[AcidUpdateCommand]) {
       val tableIdent = plan.asInstanceOf[AcidUpdateCommand].tableIdent
       val tb: String = sessionState.catalog.getTableName(tableIdent)
       val db: String = sessionState.catalog.getDbName(tableIdent)
-       checkConcurrentOperation(db, tb, "updating")
+      checkConcurrentOperation(db, tb, "updating")
       sql = plan.asInstanceOf[AcidUpdateCommand].parseAcidSql(sessionState)
     } else if (plan.isInstanceOf[InsertIntoTable]) {
       val tableName = plan.asInstanceOf[InsertIntoTable].tableName
@@ -683,7 +702,7 @@ class SparkSession private(
       val db: String = sessionState.catalog.getDbName(tableIdent)
       val tableMetadata = sessionState.catalog.getTableMetadata(tableIdent)
       if (sessionState.catalog.checkAcidTable(tableMetadata)) {
-         checkConcurrentOperation(db, tb, "insert")
+        checkConcurrentOperation(db, tb, "insert")
         sessionState.conf.setConfString(OPTION_TYPE, "0")
         sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
       }
@@ -766,79 +785,10 @@ class SparkSession private(
   }
 
 
-  def getTableMeta(options: scala.collection.mutable.HashMap[String, String]): CatalogTable = {
-    if (!options.contains(TABLE_NAME)) {
-      return null
-    }
-    val table: TableIdentifier = new TableIdentifier(options.get(TABLE_NAME).get)
-    val tableMetadata = sessionState.catalog.getTableMetadata(table)
-    tableMetadata
-  }
-
-  def paserACIDSql(tree: ASTNode, token: mutable.HashMap[String, String]): Boolean = {
-    if (tree != null) {
-      val value = tree.toString
-      value match {
-        case TOK_UPDATE_TABLE =>
-          if (null != tree.getChildren) {
-            token(OPTION_TYPE) = "1"
-            for (node <- tree.getChildren.toArray) {
-              val astNode: ASTNode = paserTableName(token, node)
-              // SET
-              if (astNode.toString.equalsIgnoreCase(TOK_SET_COLUMNS_CLAUSE)) {
-                for (node <- astNode.getChildren.toArray()) {
-                  var colName = ""
-                  var colValue = ""
-                  val colNode: ASTNode = node.asInstanceOf[ASTNode]
-                  if (colNode.getChildren.size() > 2) {
-                    return false
-                  } else {
-                    logDebug("s  ==>" + colNode.getChild(0).toString)
-                    val r = colNode.getChild(0).toString.equalsIgnoreCase(TOK_TABLE_OR_COL) == 0
-                    logDebug("s  ==" +
-                      ">" + colNode.getChild(0).toString.equalsIgnoreCase(TOK_TABLE_OR_COL))
-                    if (colNode.getChild(0).toString.equalsIgnoreCase(TOK_TABLE_OR_COL)) {
-                      logDebug("colNode.getChild(0).getChild(0)" +
-                        "  ==>" + colNode.getChild(0).getChild(0).toString)
-                      logDebug("colNode.getChild(1)  ==>" + colNode.getChild(1).toString)
-                      colName = colNode.getChild(0).getChild(0).toString
-                      colValue = colNode.getChild(1).toString
-                    } else {
-                      colName = colNode.getChild(1).getChild(0).toString
-                      colValue = colNode.getChild(0).toString
-                    }
-                  }
-                  token(colName) = colValue
-                }
-              }
-            }
-          }
-          return true
-        case TOK_DELETE_FROM =>
-          token(OPTION_TYPE) = "2"
-          if (null != tree.getChildren) {
-            for (node <- tree.getChildren.toArray) {
-              val astNode: ASTNode = paserTableName(token, node)
-            }
-          }
-          return true
-        case _ =>
-          token(OPTION_TYPE) = "0"
-          return false
-      }
-    }
-    false
-  }
 
 
-  def paserTableName(token: mutable.HashMap[String, String], node: AnyRef): ASTNode = {
-    // tableName
-    val astNode: ASTNode = node.asInstanceOf[ASTNode]
-    if (astNode.toString.equalsIgnoreCase(TOK_TABNAME)) {
-      token(TABLE_NAME) = astNode.getChild(0).toString
-    }
-    astNode
-  }
+
+
 
   /**
     * Returns a [[DataFrameReader]] that can be used to read non-streaming data in as a

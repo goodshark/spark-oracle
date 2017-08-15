@@ -18,7 +18,6 @@
 package org.apache.spark.sql.execution.command
 
 import scala.util.control.NonFatal
-
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.{SQLBuilder, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
@@ -27,6 +26,8 @@ import org.apache.spark.sql.catalyst.expressions.Alias
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.types.MetadataBuilder
+
+import scala.collection.mutable
 
 
 /**
@@ -189,6 +190,8 @@ case class CreateViewCommand(
       // added/generated from a temporary view.
       // 2) The temp functions are represented by multiple classes. Most are inaccessible from this
       // package (e.g., HiveGenericUDF).
+      val isSqlServer = "true".equalsIgnoreCase(sparkSession.sessionState.conf.getConfString("spark.sql.analytical.engine.sqlserver", "false"))
+
       child.collect {
         // Disallow creating permanent views based on temporary views.
         case s: UnresolvedRelation
@@ -198,12 +201,82 @@ case class CreateViewCommand(
         case other if !other.resolved => other.expressions.flatMap(_.collect {
           // Disallow creating permanent views based on temporary UDFs.
           case e: UnresolvedFunction
-            if sparkSession.sessionState.catalog.isTemporaryFunction(e.name) =>
+          if (!isSqlServer &&
+              sparkSession.sessionState.catalog.isTemporaryFunction(e.name)) =>
             throw new AnalysisException(s"Not allowed to create a permanent view $name by " +
               s"referencing a temporary function `${e.name}`")
         })
       }
     }
+  }
+  /**
+    * If `userSpecifiedColumns` is defined, alias the analyzed plan to the user specified columns,
+    * else return the analyzed plan directly.
+    */
+  private def aliasPlan(session: SparkSession, analyzedPlan: LogicalPlan): LogicalPlan = {
+    if (userSpecifiedColumns.isEmpty) {
+      analyzedPlan
+    } else {
+      val projectList = analyzedPlan.output.zip(userSpecifiedColumns).map {
+        case (attr, (colName, None)) => Alias(attr, colName)()
+        case (attr, (colName, Some(colComment))) =>
+          val meta = new MetadataBuilder().putString("comment", colComment).build()
+          Alias(attr, colName)(explicitMetadata = Some(meta))
+      }
+      session.sessionState.executePlan(Project(projectList, analyzedPlan)).analyzed
+    }
+  }
+
+  val VIEW_DEFAULT_DATABASE = "view.default.database"
+  val VIEW_QUERY_OUTPUT_PREFIX = "view.query.out."
+  val VIEW_QUERY_OUTPUT_NUM_COLUMNS = VIEW_QUERY_OUTPUT_PREFIX + "numCols"
+  val VIEW_QUERY_OUTPUT_COLUMN_NAME_PREFIX = VIEW_QUERY_OUTPUT_PREFIX + "col."
+  /**
+    * Generate the view default database in `properties`.
+    */
+  private def generateViewDefaultDatabase(databaseName: String): Map[String, String] = {
+    Map(VIEW_DEFAULT_DATABASE -> databaseName)
+  }
+
+  /**
+    * Generate the view query output column names in `properties`.
+    */
+  private def generateQueryColumnNames(columns: Seq[String]): Map[String, String] = {
+    val props = new mutable.HashMap[String, String]
+    if (columns.nonEmpty) {
+      props.put(VIEW_QUERY_OUTPUT_NUM_COLUMNS, columns.length.toString)
+      columns.zipWithIndex.foreach { case (colName, index) =>
+        props.put(s"$VIEW_QUERY_OUTPUT_COLUMN_NAME_PREFIX$index", colName)
+      }
+    }
+    props.toMap
+  }
+  /**
+    * Remove the view query output column names in `properties`.
+    */
+  private def removeQueryColumnNames(properties: Map[String, String]): Map[String, String] = {
+    // We can't use `filterKeys` here, as the map returned by `filterKeys` is not serializable,
+    // while `CatalogTable` should be serializable.
+    properties.filterNot { case (key, _) =>
+      key.startsWith(VIEW_QUERY_OUTPUT_PREFIX)
+    }
+  }
+  def generateViewProperties(
+                              properties: Map[String, String],
+                              session: SparkSession,
+                              analyzedPlan: LogicalPlan): Map[String, String] = {
+    // Generate the query column names, throw an AnalysisException if there exists duplicate column
+    // names.
+    val queryOutput = analyzedPlan.schema.fieldNames
+    assert(queryOutput.distinct.size == queryOutput.size,
+      s"The view output ${queryOutput.mkString("(", ",", ")")} contains duplicate column name.")
+
+    // Generate the view default database name.
+    val viewDefaultDatabase = session.sessionState.catalog.getCurrentDatabase
+
+    removeQueryColumnNames(properties) ++
+      generateViewDefaultDatabase(viewDefaultDatabase) ++
+      generateQueryColumnNames(queryOutput)
   }
 
   /**
@@ -211,7 +284,7 @@ case class CreateViewCommand(
    * SQL based on the analyzed plan, and also creates the proper schema for the view.
    */
   private def prepareTable(sparkSession: SparkSession, aliasedPlan: LogicalPlan): CatalogTable = {
-    val viewSQL: String = new SQLBuilder(aliasedPlan).toSQL
+    /* val viewSQL: String = new SQLBuilder(aliasedPlan).toSQL
 
     // Validate the view SQL - make sure we can parse it and analyze it.
     // If we cannot analyze the generated query, there is probably a bug in SQL generation.
@@ -220,9 +293,21 @@ case class CreateViewCommand(
     } catch {
       case NonFatal(e) =>
         throw new RuntimeException(s"Failed to analyze the canonicalized SQL: $viewSQL", e)
-    }
+    } */
+
+    val newProperties = generateViewProperties(properties, sparkSession, aliasedPlan)
 
     CatalogTable(
+      identifier = name,
+      tableType = CatalogTableType.VIEW,
+      storage = CatalogStorageFormat.empty,
+      schema = aliasPlan(sparkSession, aliasedPlan).schema,
+      properties = newProperties,
+      viewText = originalText,
+      comment = comment
+    )
+
+   /* CatalogTable(
       identifier = name,
       tableType = CatalogTableType.VIEW,
       storage = CatalogStorageFormat.empty,
@@ -231,7 +316,7 @@ case class CreateViewCommand(
       viewOriginalText = originalText,
       viewText = Some(viewSQL),
       comment = comment
-    )
+    ) */
   }
 }
 

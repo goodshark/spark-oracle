@@ -237,16 +237,16 @@ private[hive] class SparkExecuteStatementOperation(
           import sqlContext.implicits._
           result = sqlContext.sparkSession.createDataset(Seq[String]()).toDF()
         } else {
-          result = sqlServerRs.get(sqlServerRs.size()-1).asInstanceOf[SparkResultSet].getDataset
+          result = sqlServerRs.get(sqlServerRs.size() - 1).asInstanceOf[SparkResultSet].getDataset
           // logInfo("sqlServer result is ==>" + result.queryExecution.toString())
         }
         val allTable = new util.HashSet[String]()
         val tmpTable = sqlContext.sparkSession.getTables(2)
         val globalTable = sqlContext.sparkSession.getTables(3)
-        if (null != tmpTable ) {
+        if (null != tmpTable) {
           allTable.addAll(tmpTable)
         }
-        if(null!=globalTable) {
+        if (null != globalTable) {
           allTable.addAll(globalTable)
         }
         HiveThriftServer2.sqlSessionListenr.addTable(
@@ -313,7 +313,7 @@ private[hive] class SparkExecuteStatementOperation(
 
   private def dropSqlserverTables(): Unit = {
     val tableVar = sqlContext.sparkSession.getSqlServerTable.get(1)
-    if (null!=tableVar) {
+    if (null != tableVar) {
       val iterator = tableVar.keySet().iterator()
       while (iterator.hasNext) {
         sqlContext.sparkSession.sql(" DROP TABLE  IF EXISTS " + tableVar.get(iterator.next()))

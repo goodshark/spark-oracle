@@ -2,6 +2,7 @@ package org.apache.hive.tsql.another;
 
 import org.apache.hive.basesql.func.CallStatement;
 import org.apache.hive.basesql.func.CommonProcedureStatement;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.dbservice.ProcService;
@@ -37,8 +38,9 @@ public class ExecuteStatement extends CallStatement {
     public ExecuteStatement(FuncName funcName) {
         super(STATEMENT_NAME);
         this.funcName = funcName;
-        realFuncName = funcName.getFullFuncName();
+        type = 1;
     }
+
 
     public void setReturnVarName(String returnVarName) {
         this.returnVarName = returnVarName;
@@ -120,8 +122,16 @@ public class ExecuteStatement extends CallStatement {
 
     /*@Override
     public int execute() throws Exception {
+<<<<<<< HEAD
 
         *//*if (funcName.isVariable()) {
+=======
+        if(StringUtils.isBlank(funcName.getDatabase())){
+            funcName.setDatabase(getExecSession().getDatabase());
+        }
+        realFuncName = funcName.getRealFullFuncName();
+        if (funcName.isVariable()) {
+>>>>>>> ups/master
             Var v = findVar(funcName.getFuncName());
             if (null == v) {
                 throw new NotDeclaredException(funcName.getFuncName());
@@ -285,7 +295,13 @@ public class ExecuteStatement extends CallStatement {
             funcVar.setVarValue(realVal.getVarValue());
         } else {
             if (argument.getValueType() != Var.ValueType.DEFAULT) {
-                funcVar.setVarValue(argument.getVarValue());
+                //如果参数为string类型，需要去掉左右两边的引号
+                Object v = argument.getVarValue();
+                if(argument.getDataType().equals(Var.DataType.COMMON)){
+                    v = StrUtils.trimQuot(argument.getVarValue().toString());
+                }
+                System.out.println(v.toString());
+                funcVar.setVarValue(v);
             }
         }
     }

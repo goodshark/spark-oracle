@@ -133,6 +133,8 @@ object AggUtils {
     // For example, it would be valid for functionsWithDistinct to be
     // [COUNT(DISTINCT foo), MAX(DISTINCT foo)], but [COUNT(DISTINCT bar), COUNT(DISTINCT foo)] is
     // disallowed because those two distinct aggregates have different column expressions.
+
+
     val distinctExpressions = functionsWithDistinct.head.aggregateFunction.children
     val namedDistinctExpressions = distinctExpressions.map {
       case ne: NamedExpression => ne
