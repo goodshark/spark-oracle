@@ -294,7 +294,8 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
             String varSql = es.getSql();
             if (sign == OperatorSign.BRACKET)
                 sql = " ( " + varSql + " ) ";
-            sql = sign.getOperator() + varSql;
+            else
+                sql = sign.getOperator() + varSql;
         } else if (childs.size() == 2) {
             ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
             ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
@@ -317,7 +318,8 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
             String varSql = es.getOriginalSql();
             if (sign == OperatorSign.BRACKET)
                 sql = " ( " + varSql + " ) ";
-            sql = sign.getOperator() + varSql;
+            else
+                sql = sign.getOperator() + varSql;
         } else if (childs.size() == 2) {
             ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
             ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
@@ -349,7 +351,8 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
             String varSql = es.getFinalSql();
             if (sign == OperatorSign.BRACKET)
                 sql = " ( " + varSql + " ) ";
-            sql = sign.getOperator() + varSql;
+            else
+                sql = sign.getOperator() + varSql;
         } else if (childs.size() == 2) {
             ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
             ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);

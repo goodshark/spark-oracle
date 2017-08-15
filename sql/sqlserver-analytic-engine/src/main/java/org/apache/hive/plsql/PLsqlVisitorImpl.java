@@ -633,7 +633,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
-        if (ctx.compound_expression().size() == 0) {
+        if (ctx.sub_expression() != null) {
             // in || between || like
             if (ctx.NOT() != null)
                 predicateNode.setNotComp();
@@ -645,6 +645,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 predicateLike(ctx, predicateNode);
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
+        }
+        if (ctx.expression() != null) {
+            // bracket
+            visit(ctx.expression());
+            LogicNode innerNode = (LogicNode) treeBuilder.popStatement();
+            innerNode.setPriority();
+            treeBuilder.pushStatement(innerNode);
+            return innerNode;
         }
         // expression compare expression
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
@@ -704,6 +712,28 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             visit(relaCtx.like_escape_part().expression());
             treeBuilder.addNode(node);
         }
+    }
+
+    @Override
+    public Object visitExpression_nested_alias(PlsqlParser.Expression_nested_aliasContext ctx) {
+        ExpressionBean expressionBean = new ExpressionBean();
+        expressionBean.setOperatorSign(OperatorSign.BRACKET);
+        ExpressionStatement es = new ExpressionStatement(expressionBean);
+        visit(ctx.expression());
+        treeBuilder.addNode(es);
+        treeBuilder.pushStatement(es);
+        return es;
+    }
+
+    @Override
+    public Object visitSub_expression_nestedalias(PlsqlParser.Sub_expression_nestedaliasContext ctx) {
+        ExpressionBean expressionBean = new ExpressionBean();
+        expressionBean.setOperatorSign(OperatorSign.BRACKET);
+        ExpressionStatement es = new ExpressionStatement(expressionBean);
+        visit(ctx.sub_expression());
+        treeBuilder.addNode(es);
+        treeBuilder.pushStatement(es);
+        return es;
     }
 
     @Override

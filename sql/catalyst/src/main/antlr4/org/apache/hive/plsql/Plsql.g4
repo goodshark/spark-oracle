@@ -1446,6 +1446,7 @@ sub_expression
     | constant                                              #constant_subalias
     | function_call                                         #function_call_subalias
     | case_statement                                        #case_statement_subalias
+    | '(' sub_expression ')'                                #sub_expression_nestedalias
     | sub_expression op=('*' | '/' | '%') sub_expression    #binary_expression_subalias
     | unary_expression                                      #unary_expression_subalias
 //    | op=('+' | '-') new_expression
@@ -1490,6 +1491,8 @@ relational_expression
 //    : relational_expression relational_operator relational_expression
     : compound_expression relational_operator compound_expression
     | sub_expression NOT? (IN in_elements | BETWEEN between_elements | like_type expression like_escape_part?)
+    // only for ( bool_compare )
+    | '(' expression ')'
 //    | compound_expression
     ;
 
@@ -1639,7 +1642,7 @@ vector_expr
     ;
 
 quantified_expression
-    : (SOME | EXISTS | ALL | ANY) ('(' subquery ')' | '(' expression ')')
+    : (SOME | EXISTS | ALL | ANY) ('(' subquery ')' | '(' expression (',' expression)* ')')
     ;
 
 standard_function
@@ -2573,7 +2576,7 @@ regular_id
     | SKIP_
     | SMALLINT
     | SNAPSHOT
-    | SOME
+//    | SOME
     | SPECIFICATION
     | SQLDATA
     | SQLERROR
