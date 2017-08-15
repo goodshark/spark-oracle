@@ -446,7 +446,29 @@ object FunctionRegistry {
   expression[Atan2]("ata2"),
   expression[RegExpReplace]("replace"),
   expression[FormatString]("format_string"),
-  expression[StringRepeat]("replicate")
+  expression[StringRepeat]("replicate"),
+
+    // For oracle function
+
+    expression[Mod]("mod"),
+    expression[Mod]("remainder"),
+    expression[Trunc]("truncNum"),
+    expression[WidthBucket]("WIDTH_BUCKET"),
+    expression[Chr]("chr"),
+    expression[InitCap]("NLS_INITCAP"),
+    expression[Lower]("NLS_LOWER"),
+    expression[Upper]("NLS_UPPER"),
+    expression[RegExpExtract]("REGEXP_SUBSTR"),
+    expression[DateExtract]("EXTRACT"),
+    expression[CurrentTimestamp]("sysdate"),
+    expression[CurrentTimestamp]("SYSTIMESTAMP"),
+    expression[BinToNum]("BIN_TO_NUM"),
+    expression[Length]("vsize"),
+    expression[Median]("median"),
+    expression[XmlElement]("xmlelement"),
+    expression[XmlAgg]("xmlagg"),
+    expression[XmlColattval]("xmlcolattval"),
+    expression[XmlForest]("xmlforest")
   )
 
   val builtin: SimpleFunctionRegistry = {

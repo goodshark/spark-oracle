@@ -1026,7 +1026,7 @@ subquery_basic_elements
 
 query_block
     : SELECT (DISTINCT | UNIQUE | ALL)? ('*' | selected_element (',' selected_element)*)
-      into_clause? from_clause where_clause? hierarchical_query_clause? group_by_clause? model_clause?
+      into_clause? from_clause? where_clause? hierarchical_query_clause? group_by_clause? model_clause?
     ;
 
 selected_element

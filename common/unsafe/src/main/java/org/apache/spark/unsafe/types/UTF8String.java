@@ -17,24 +17,27 @@
 
 package org.apache.spark.unsafe.types;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.KryoSerializable;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import org.apache.spark.unsafe.Platform;
+import org.apache.spark.unsafe.array.ByteArrayMethods;
+import org.apache.spark.unsafe.hash.Murmur3_x86_32;
+
 import javax.annotation.Nonnull;
-import java.io.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.KryoSerializable;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
-
-import org.apache.spark.unsafe.Platform;
-import org.apache.spark.unsafe.array.ByteArrayMethods;
-import org.apache.spark.unsafe.hash.Murmur3_x86_32;
-
-import static org.apache.spark.unsafe.Platform.*;
+import static org.apache.spark.unsafe.Platform.BYTE_ARRAY_OFFSET;
+import static org.apache.spark.unsafe.Platform.copyMemory;
 
 
 /**
@@ -46,7 +49,7 @@ import static org.apache.spark.unsafe.Platform.*;
  * Note: This is not designed for general use cases, should not be used outside SQL.
  */
 public final class UTF8String implements Comparable<UTF8String>, Externalizable, KryoSerializable,
-  Cloneable {
+        Cloneable {
 
   // These are only updated by readExternal() or read()
   @Nonnull
@@ -58,11 +61,11 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
   public long getBaseOffset() { return offset; }
 
   private static int[] bytesOfCodePointInUTF8 = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-    4, 4, 4, 4, 4, 4, 4, 4,
-    5, 5, 5, 5,
-    6, 6};
+          2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+          3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+          4, 4, 4, 4, 4, 4, 4, 4,
+          5, 5, 5, 5,
+          6, 6};
 
   private static boolean isLittleEndian = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
 
@@ -223,7 +226,7 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
   public byte[] getBytes() {
     // avoid copy if `base` is `byte[]`
     if (offset == BYTE_ARRAY_OFFSET && base instanceof byte[]
-      && ((byte[]) base).length == numBytes) {
+            && ((byte[]) base).length == numBytes) {
       return (byte[]) base;
     } else {
       byte[] bytes = new byte[numBytes];
@@ -432,8 +435,8 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
     for (int i = 0; i < numBytes; i++) {
       if (getByte(i) == (byte) ',') {
         if (i - (lastComma + 1) == match.numBytes &&
-          ByteArrayMethods.arrayEquals(base, offset + (lastComma + 1), match.base, match.offset,
-            match.numBytes)) {
+                ByteArrayMethods.arrayEquals(base, offset + (lastComma + 1), match.base, match.offset,
+                        match.numBytes)) {
           return n;
         }
         lastComma = i;
@@ -441,8 +444,8 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
       }
     }
     if (numBytes - (lastComma + 1) == match.numBytes &&
-      ByteArrayMethods.arrayEquals(base, offset + (lastComma + 1), match.base, match.offset,
-        match.numBytes)) {
+            ByteArrayMethods.arrayEquals(base, offset + (lastComma + 1), match.base, match.offset,
+                    match.numBytes)) {
       return n;
     }
     return 0;
@@ -508,7 +511,7 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
     while (i < numBytes) {
       int len = numBytesForFirstByte(getByte(i));
       copyMemory(this.base, this.offset + i, result,
-        BYTE_ARRAY_OFFSET + result.length - i - len, len);
+              BYTE_ARRAY_OFFSET + result.length - i - len, len);
 
       i += len;
     }
@@ -713,6 +716,37 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
     }
   }
 
+  public static UTF8String widthBucket(double expr, double min, double max, int num) {
+    if (expr < min) {
+      return UTF8String.fromString(String.valueOf(-1));
+    } else if (expr >= max) {
+      return UTF8String.fromString(String.valueOf(num + 1));
+    } else {
+      return UTF8String.fromString(String.valueOf(Double.valueOf(expr / ((max - min) / num)).intValue() + 1));
+    }
+  }
+
+  public static UTF8String xmlForest(String colStrs, UTF8String... inputs) {
+    //<id>1</id><name>n1</name>
+    String[] cols = colStrs.split("#");
+    StringBuilder sb = new StringBuilder();
+    for(int i = 0; i < cols.length; i++) {
+      sb.append("<").append(cols[i]).append(">").append(inputs[i]).append("</").append(cols[i]).append(">");
+    }
+    return UTF8String.fromString(sb.toString());
+  }
+
+
+  public static UTF8String xmlColattval(String colStrs, UTF8String... inputs) {
+    //<column name="n1"/><column id="1"/>
+    String[] cols = colStrs.split("#");
+    StringBuilder sb = new StringBuilder();
+    for(int i = 0; i < cols.length; i++) {
+      sb.append("<column ").append(cols[i]).append("=\"").append(inputs[i]).append("\"/>");
+    }
+    return UTF8String.fromString(sb.toString());
+  }
+
   /**
    * Concatenates input strings together into a single string. Returns null if any input is null.
    */
@@ -733,9 +767,9 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
     for (int i = 0; i < inputs.length; i++) {
       int len = inputs[i].numBytes;
       copyMemory(
-        inputs[i].base, inputs[i].offset,
-        result, BYTE_ARRAY_OFFSET + offset,
-        len);
+              inputs[i].base, inputs[i].offset,
+              result, BYTE_ARRAY_OFFSET + offset,
+              len);
       offset += len;
     }
     return fromBytes(result);
@@ -773,18 +807,18 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
       if (inputs[i] != null) {
         int len = inputs[i].numBytes;
         copyMemory(
-          inputs[i].base, inputs[i].offset,
-          result, BYTE_ARRAY_OFFSET + offset,
-          len);
+                inputs[i].base, inputs[i].offset,
+                result, BYTE_ARRAY_OFFSET + offset,
+                len);
         offset += len;
 
         j++;
         // Add separator if this is not the last input.
         if (j < numInputs) {
           copyMemory(
-            separator.base, separator.offset,
-            result, BYTE_ARRAY_OFFSET + offset,
-            separator.numBytes);
+                  separator.base, separator.offset,
+                  result, BYTE_ARRAY_OFFSET + offset,
+                  separator.numBytes);
           offset += separator.numBytes;
         }
       }
@@ -904,11 +938,11 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
 
       for (i = 0, i_bytes = 0; i < n; i_bytes += numBytesForFirstByte(s.getByte(i_bytes)), i++) {
         if (s.getByte(i_bytes) != t.getByte(j_bytes) ||
-              num_bytes_j != numBytesForFirstByte(s.getByte(i_bytes))) {
+                num_bytes_j != numBytesForFirstByte(s.getByte(i_bytes))) {
           cost = 1;
         } else {
           cost = (ByteArrayMethods.arrayEquals(t.base, t.offset + j_bytes, s.base,
-              s.offset + i_bytes, num_bytes_j)) ? 0 : 1;
+                  s.offset + i_bytes, num_bytes_j)) ? 0 : 1;
         }
         d[i + 1] = Math.min(Math.min(d[i] + 1, p[i + 1] + 1), p[i] + cost);
       }
@@ -930,7 +964,7 @@ public final class UTF8String implements Comparable<UTF8String>, Externalizable,
    * Soundex mapping table
    */
   private static final byte[] US_ENGLISH_MAPPING = {'0', '1', '2', '3', '0', '1', '2', '7',
-    '0', '2', '2', '4', '5', '5', '0', '1', '2', '6', '2', '3', '0', '1', '7', '2', '0', '2'};
+          '0', '2', '2', '4', '5', '5', '0', '1', '2', '6', '2', '3', '0', '1', '7', '2', '0', '2'};
 
   /**
    * Encodes a string into a Soundex value. Soundex is an encoding used to relate similar names,

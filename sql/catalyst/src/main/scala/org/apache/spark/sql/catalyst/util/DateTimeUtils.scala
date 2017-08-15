@@ -535,6 +535,15 @@ object DateTimeUtils {
     getYearAndDayInYear(date)._1
   }
 
+  def getExtract(date: SQLDate, u: UTF8String): Int = {
+    u.toString.toUpperCase match {
+      case "YEAR" => getYear(date)
+      case "MONTH" => getMonth(date)
+      case "DAY" => getDayOfMonth(date)
+      case _ => -1
+    }
+  }
+
   /**
    * Returns the quarter for the given date. The date is expressed in days
    * since 1.1.1970.

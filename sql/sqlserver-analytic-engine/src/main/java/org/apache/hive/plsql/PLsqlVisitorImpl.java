@@ -72,6 +72,7 @@ import org.apache.hive.tsql.node.PredicateNode;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.FunctionIdentifier;
 import org.apache.spark.sql.catalyst.expressions.Expression;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -1052,7 +1053,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 Var arg = (Var) visit(argCtx);
                 statement.addArgument(arg);
             }
-            statement.setFuncclass(sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName())));
+            statement.setSparkSession(sparkSession);
             treeBuilder.pushStatement(statement);
             return statement;
         }

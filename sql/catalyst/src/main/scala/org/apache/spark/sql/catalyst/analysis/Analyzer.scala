@@ -26,6 +26,7 @@ import org.apache.spark.sql.catalyst.encoders.OuterScopes
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.expressions.objects.NewInstance
+import org.apache.spark.sql.catalyst.expressions.xml.{XmlColattval, XmlForest}
 import org.apache.spark.sql.catalyst.optimizer.BooleanSimplification
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, _}
@@ -933,6 +934,18 @@ class Analyzer(
                 // We get an aggregate function, we need to wrap it in an AggregateExpression.
                 case agg: AggregateFunction => AggregateExpression(agg, Complete, isDistinct)
                 // This function is not an aggregate function, just return the resolved one.
+
+                case xml: XmlColattval =>
+                  val cols = xml.children.map(_.asInstanceOf[AttributeReference].name)
+                    .map(Literal(_, StringType))
+
+                  XmlColattval(children ++ cols)
+
+                case xml: XmlForest =>
+                  val cols = xml.children.map(_.asInstanceOf[AttributeReference].name)
+                    .map(Literal(_, StringType))
+
+                  XmlForest(children ++ cols)
                 case other => other
               }
             }

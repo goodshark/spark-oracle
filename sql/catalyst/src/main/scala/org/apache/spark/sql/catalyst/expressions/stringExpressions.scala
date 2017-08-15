@@ -36,6 +36,83 @@ import org.apache.spark.unsafe.types.{ByteArray, UTF8String}
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+
+case class WidthBucket(children: Seq[Expression])
+  extends Expression with ImplicitCastInputTypes {
+
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  /**
+    * Returns true when an expression is a candidate for static evaluation before the query is
+    * executed.
+    *
+    * The following conditions are used to determine suitability for constant folding:
+    *  - A [[Coalesce]] is foldable if all of its children are foldable
+    *  - A [[BinaryExpression]] is foldable if its both left and right child are foldable
+    *  - A [[Not]], [[IsNull]], or [[IsNotNull]] is foldable if its child is foldable
+    *  - A [[Literal]] is foldable
+    *  - A [[Cast]] or [[UnaryMinus]] is foldable if its child is foldable
+    */
+  override def foldable: Boolean = children.forall(_.foldable)
+
+  /** Returns the result of evaluating this expression on a given input Row */
+  override def eval(input: InternalRow): Any = {
+//    val inputs = children.map(_.eval(input))
+    val expr = children(0).eval(input).asInstanceOf[Double]
+    val start = children(1).eval(input).asInstanceOf[Double]
+    val end = children(2).eval(input).asInstanceOf[Double]
+    val num = children(3).eval(input).asInstanceOf[Int]
+    val ret = if (expr < start) {
+      -1
+    } else if (expr >= end) {
+      num + 1
+    } else {
+      (expr / ((end - start) / num)).toInt + 1
+    }
+    UTF8String.fromString(ret.toString)
+  }
+
+  /**
+    * Returns Java source code that can be compiled to evaluate this expression.
+    * The default behavior is to call the eval method of the expression. Concrete expression
+    * implementations should override this to do actual code generation.
+    *
+    * @param ctx a [[CodegenContext]]
+    * @param ev  an [[ExprCode]] with unique terms.
+    * @return an [[ExprCode]] containing the Java source code to generate the given expression
+    */
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val evals = children.map(_.genCode(ctx))
+    val inputs = evals.map(_.value).mkString(",")
+    ev.copy(evals.map(_.code).mkString("\n") + s"""
+      boolean ${ev.isNull} = false;
+      UTF8String ${ev.value} = UTF8String.widthBucket($inputs);
+      if (${ev.value} == null) {
+        ${ev.isNull} = true;
+      }
+    """)
+  }
+
+  /**
+    * Returns the [[DataType]] of the result of evaluating this expression.  It is
+    * invalid to query the dataType of an unresolved expression (i.e., when `resolved` == false).
+    */
+  override def dataType: DataType = StringType
+
+  /**
+    * Expected input types from child expressions. The i-th position in the returned seq indicates
+    * the type requirement for the i-th child.
+    *
+    * The possible values at each position are:
+    * 1. a specific data type, e.g. LongType, StringType.
+    * 2. a non-leaf abstract data type, e.g. NumericType, IntegralType, FractionalType.
+    */
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(DoubleType, DoubleType, DoubleType, IntegerType)
+
+}
+
+
 /**
  * An expression that concatenates multiple input strings into a single string.
  * If any input is null, concat returns null.
@@ -1229,6 +1306,76 @@ case class SoundEx(child: Expression) extends UnaryExpression with ExpectsInputT
     defineCodeGen(ctx, ev, c => s"$c.soundex()")
   }
 }
+
+
+@ExpressionDescription(
+  usage = "_FUNC_(num) - Returns the letter of the acssi code.",
+  extended = """
+    Examples:
+      > SELECT _FUNC_(97);
+       a
+  """)
+case class Chr(child: Expression) extends UnaryExpression with ImplicitCastInputTypes {
+  /**
+    * Expected input types from child expressions. The i-th position in the returned seq indicates
+    * the type requirement for the i-th child.
+    *
+    * The possible values at each position are:
+    * 1. a specific data type, e.g. LongType, StringType.
+    * 2. a non-leaf abstract data type, e.g. NumericType, IntegralType, FractionalType.
+    */
+  override def inputTypes: Seq[AbstractDataType] = Seq(IntegerType)
+
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+    val mismatches = {
+      children.zip(inputTypes).zipWithIndex.collect {
+        case ((child, expected), idx) if (child.dataType != expected) =>
+          s"argument ${idx + 1} requires ${expected.simpleString} type, " +
+            s"however, '${child.sql}' is of ${child.dataType.simpleString} type."
+      }
+    }
+    if (mismatches.isEmpty) {
+      TypeCheckResult.TypeCheckSuccess
+    } else {
+      TypeCheckResult.TypeCheckFailure(mismatches.mkString(" "))
+    }
+  }
+
+  /**
+    * Called by default [[eval]] implementation.  If subclass of UnaryExpression keep the default
+    * nullability, they can override this method to save null-check code.  If we need full control
+    * of evaluation process, we should override [[eval]].
+    */
+  override protected def nullSafeEval(input: Any): Any = {
+    UTF8String.fromString(input.asInstanceOf[Integer].toChar.toString)
+  }
+
+  /**
+    * Returns Java source code that can be compiled to evaluate this expression.
+    * The default behavior is to call the eval method of the expression. Concrete expression
+    * implementations should override this to do actual code generation.
+    *
+    * @param ctx a [[CodegenContext]]
+    * @param ev  an [[ExprCode]] with unique terms.
+    * @return an [[ExprCode]] containing the Java source code to generate the given expression
+    */
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    nullSafeCodeGen(ctx, ev, (expr) => {
+      s"""
+        |${ev.value} = UTF8String.fromString(String.valueOf((char)$expr));
+      """.stripMargin
+    })
+  }
+
+  /**
+    * Returns the [[DataType]] of the result of evaluating this expression.  It is
+    * invalid to query the dataType of an unresolved expression (i.e., when `resolved` == false).
+    */
+  override def dataType: DataType = StringType
+}
+
+
 
 /**
  * Returns the numeric value of the first character of str.
