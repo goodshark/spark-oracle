@@ -203,6 +203,14 @@ private[hive] class SparkExecuteStatementOperation(
     }
   }
 
+  private def checkSparkEngin(engineName: String): Boolean = {
+    if (engineName.equalsIgnoreCase("spark")) {
+      true
+    } else {
+      false
+    }
+  }
+
   private def execute(): Unit = {
     statementId = UUID.randomUUID().toString
     logInfo(s"Running query '$statement' with $statementId")
@@ -227,9 +235,8 @@ private[hive] class SparkExecuteStatementOperation(
     val SQL_ENGINE = "spark.sql.analytical.engine"
     val engineName = sqlContext.sessionState.
       conf.getConfString(SQL_ENGINE, "spark")
-    val checkSparkEngineName = engineName.equalsIgnoreCase("spark")
     try {
-      if (!checkSparkEngineName) {
+      if (!checkSparkEngin(engineName)) {
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement, engineName)
         val sqlServerRs = procCli.getExecSession().getResultSets()
@@ -265,8 +272,8 @@ private[hive] class SparkExecuteStatementOperation(
         }
       }
 
-      logInfo("logical is " + result.queryExecution.logical)
-      result.queryExecution.logical match {
+      logInfo("logical is " + sqlServerPlans.get(0))
+      sqlServerPlans.get(0) match {
         case SetCommand(Some((SQL_ENGINE, Some(value)))) =>
           sessionToActivePool.put(parentSession.getSessionHandle, value)
           sqlContext.sessionState.conf.setConfString(SQL_ENGINE, value)
@@ -309,7 +316,7 @@ private[hive] class SparkExecuteStatementOperation(
         throw new HiveSQLException(e.toString)
     } finally {
       clearCrudTableMap(plan)
-      if (!checkSparkEngineName) {
+      if (!checkSparkEngin(engineName)) {
         clearCrudTableMapForSqlServer(sqlServerPlans)
         dropSqlserverTables
       } else {

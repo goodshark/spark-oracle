@@ -36,7 +36,7 @@ public class ProcedureCall extends CallStatement {
     public ProcedureCall(FuncName name) {
         super(STATEMENT_NAME);
         setFuncName(name);
-        setRealFuncName(name.getFullFuncName());
+        setRealFuncName(name.getRealFullFuncName());
         type = 2;
     }
 

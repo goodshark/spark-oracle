@@ -422,6 +422,9 @@ public class VariableContainer {
         // global procedure
         TreeNode rootScope = session.getRootNode();
         if (rootScope != null) {
+            ConcurrentHashMap<String, List<CommonProcedureStatement>> procMap = newFunctions.get(rootScope);
+            if (procMap == null)
+                return null;
             List<CommonProcedureStatement> procs = newFunctions.get(rootScope).get(funcName);
             return (procs.size() >= 1) ? procs.get(0) : null;
         }
