@@ -69,6 +69,7 @@ unit_statement
     | use_statement
     | show_tables
     | show_databases
+    | set_oracle_engine
     ;
 show_databases:
     SHOW DATABASES ';'?
@@ -2144,6 +2145,9 @@ general_element_part
 table_element
     : (INTRODUCER char_set_name)? id_expression ('.' id_expression)*
     ;
+set_oracle_engine
+    :SET SPARK_SQL_ANALYTICAL_ENGINE '=' id_expression
+    ;
 
 // $>
 
@@ -3046,6 +3050,7 @@ SERIALLY_REUSABLE:            S E R I A L L Y '_' R E U S A B L E;
 SERVERERROR:                  S E R V E R E R R O R;
 SESSIONTIMEZONE:              S E S S I O N T I M E Z O N E;
 SET:                          S E T;
+SPARK_SQL_ANALYTICAL_ENGINE:  S P A R K '.'S Q L '.' A N A L Y T I C A L '.' E N G I N E;
 SETS:                         S E T S;
 SETTINGS:                     S E T T I N G S;
 SHARE:                        S H A R E;

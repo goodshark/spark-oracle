@@ -224,11 +224,12 @@ private[hive] class SparkExecuteStatementOperation(
     }
     var plan: LogicalPlan = null
     var sqlServerPlans: java.util.List[LogicalPlan] = new util.ArrayList[LogicalPlan]()
+    val SQL_ENGINE = "spark.sql.analytical.engine"
     val engineName = sqlContext.sessionState.
-      conf.getConfString("spark.sql.analytical.engine", "")
+      conf.getConfString(SQL_ENGINE, "spark")
+    val checkSparkEngineName = engineName.equalsIgnoreCase("spark")
     try {
-      // 执行sqlserver
-      if (StringUtils.isNotBlank(engineName)) {
+      if (!checkSparkEngineName) {
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement, engineName)
         val sqlServerRs = procCli.getExecSession().getResultSets()
@@ -263,9 +264,18 @@ private[hive] class SparkExecuteStatementOperation(
           case _ =>
         }
       }
-      logInfo(s"HiveThriftServer: ${HiveThriftServer2}, result: ${result}")
-      logInfo(s"lister: ${HiveThriftServer2.listener}")
-      logInfo(s"queryExecution: ${result.queryExecution}")
+
+      logInfo("logical is " + result.queryExecution.logical)
+      result.queryExecution.logical match {
+        case SetCommand(Some((SQL_ENGINE, Some(value)))) =>
+          sessionToActivePool.put(parentSession.getSessionHandle, value)
+          sqlContext.sessionState.conf.setConfString(SQL_ENGINE, value)
+          logInfo(s"Setting spark.sql.analytical.engine=$value " +
+            s"for future statements in this session.")
+        case _ =>
+      }
+
+
       HiveThriftServer2.listener.onStatementParsed(statementId, result.queryExecution.toString())
       iter = {
         val useIncrementalCollect =
@@ -298,8 +308,8 @@ private[hive] class SparkExecuteStatementOperation(
           statementId, e.getMessage, SparkUtils.exceptionString(e))
         throw new HiveSQLException(e.toString)
     } finally {
-       clearCrudTableMap(plan)
-      if (StringUtils.isNotBlank(engineName)) {
+      clearCrudTableMap(plan)
+      if (!checkSparkEngineName) {
         clearCrudTableMapForSqlServer(sqlServerPlans)
         dropSqlserverTables
       } else {

@@ -621,6 +621,7 @@ set_statement
       CURSOR declare_set_cursor_common (FOR (READ ONLY | UPDATE (OF column_name_list)?))? ';'?  #set_cursor
     // https://msdn.microsoft.com/zh-cn/library/ms189837.aspx
     | set_special_statement             #set_special
+    | SET SPARK_SQL_ANALYTICAL_ENGINE '=' id #set_sqlserver_engine
     ;
 
 // https://msdn.microsoft.com/zh-cn/library/ms174377.aspx
@@ -1648,6 +1649,7 @@ SEMANTICSIMILARITYDETAILSTABLE:        S E M A N T I C S I M I L A R I T Y D E T
 SEMANTICSIMILARITYTABLE:               S E M A N T I C S I M I L A R I T Y T A B L E;
 SESSION_USER:                          S E S S I O N '_' U S E R;
 SET:                                   S E T;
+SPARK_SQL_ANALYTICAL_ENGINE:           S P A R K '.'S Q L '.' A N A L Y T I C A L '.' E N G I N E;
 SETUSER:                               S E T U S E R;
 SHUTDOWN:                              S H U T D O W N;
 SOME:                                  S O M E;
