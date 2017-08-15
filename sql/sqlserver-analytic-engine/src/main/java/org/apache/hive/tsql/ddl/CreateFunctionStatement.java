@@ -114,6 +114,8 @@ public class CreateFunctionStatement extends BaseStatement {
         String db = null;
         if(function.getName().getDatabase() == null) {
             db = sparkSession.getSessionState().catalog().getCurrentDatabase();
+        } else {
+            db = function.getName().getDatabase();
         }
         PlFunctionRegistry.PlFunctionIdentify id = new PlFunctionRegistry.PlFunctionIdentify(function.getName().getFuncName(), db);
         PlFunctionRegistry.PlFunctionDescription old = PlFunctionRegistry.getInstance().getPlFunc(id);
@@ -131,8 +133,14 @@ public class CreateFunctionStatement extends BaseStatement {
                     if(ns.length != 2){
                         throw new Exception("Function call invalid. [db].[name] or [name].");
                     }
+                    if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]))){
+                        throw new Exception("Can not call self function.");
+                    }
                     children.add(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]));
                 } else {
+                    if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str))){
+                        throw new Exception("Can not call self function.");
+                    }
                     children.add(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str));
                 }
             }
@@ -184,6 +192,7 @@ public class CreateFunctionStatement extends BaseStatement {
         for(String str : variables){
             sb.append(str);
             sb.append(CODE_END);
+            sb.append(CODE_LINE_END);
         }
         sb.append(sb2.toString());
         return sb.toString();

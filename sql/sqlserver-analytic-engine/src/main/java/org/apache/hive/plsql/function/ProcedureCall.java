@@ -186,8 +186,11 @@ public class ProcedureCall extends CallStatement {
         PlFunctionRegistry.PlFunctionDescription f = PlFunctionRegistry.getInstance().getPlFunc(new PlFunctionRegistry.
                 PlFunctionIdentify(functionName, functionDb));
         if(f != null){
+            sb.append("(");
+            sb.append(f.getReturnType());
+            sb.append(")");
             StringBuilder declare = new StringBuilder();
-            String cname = functionName + "_" + functionDb;
+            String cname = functionDb + "_" + functionName;
             String funcVar = "v" + cname + arguments.size();
             declare.append(cname);
             declare.append(CODE_SEP);
@@ -241,14 +244,14 @@ public class ProcedureCall extends CallStatement {
                 }
             }
             sb.append(funcVar + ".eval(new Object[]{" + args.toString() + "})");
-
+            childPlfuncs.add(functionDb + "." + functionName);
         } else {
             ExpressionInfo expressionInfo = sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName()));
             String classname = expressionInfo.getClassName();
             if(classname == null || "".equals(classname)){
                 throw new Exception("Can not obtain Function class for [" + funcName.getFuncName() + "]");
             } else {
-                String[] sim = classname.split(".");
+                String[] sim = classname.split("\\.");
                 String simpleName = sim[sim.length-1];
                 String funcVar = "v" + simpleName.toLowerCase() + arguments.size();
                 StringBuilder declare = new StringBuilder();
@@ -321,7 +324,9 @@ public class ProcedureCall extends CallStatement {
                         variables.add(rowDeclare.toString());
                     }
                     sb.append(funcVar);
-                    sb.append(".eval(row.update(new org.apache.spark.sql.catalyst.expressions.UpdateValue[]{");
+                    sb.append(".eval(");
+                    sb.append(rowVarName);
+                    sb.append(".update(new org.apache.spark.sql.catalyst.expressions.UpdateValue[]{");
                     int j = 0;
                     for(Var arg : arguments){
                         if (arg.getDataType() == Var.DataType.VAR) {

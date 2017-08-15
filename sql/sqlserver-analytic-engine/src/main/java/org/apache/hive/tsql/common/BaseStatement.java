@@ -244,5 +244,5 @@ public abstract class BaseStatement extends TreeNode {
             var.addArrayVar(typeVar.typeClone());
         }
     }
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{return  null;};
+    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{throw new Exception("Base not support codegen");};
 }
