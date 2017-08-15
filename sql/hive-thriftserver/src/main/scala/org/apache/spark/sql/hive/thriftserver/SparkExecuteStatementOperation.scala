@@ -260,6 +260,16 @@ private[hive] class SparkExecuteStatementOperation(
         HiveThriftServer2.sqlSessionListenr.addTable(
           parentSession.getSessionHandle.getSessionId.toString,
           allTable)
+
+        logInfo("logical is " + sqlServerPlans.get(0))
+        sqlServerPlans.get(0) match {
+          case SetCommand(Some((SQL_ENGINE, Some(value)))) =>
+            sessionToActivePool.put(parentSession.getSessionHandle, value)
+            sqlContext.sessionState.conf.setConfString(SQL_ENGINE, value)
+            logInfo(s"Setting spark.sql.analytical.engine=$value " +
+              s"for future statements in this session.")
+          case _ =>
+        }
       } else {
         plan = sqlContext.sessionState.sqlParser.parsePlan(statement)
         result = sqlContext.sql(statement)
@@ -272,15 +282,7 @@ private[hive] class SparkExecuteStatementOperation(
         }
       }
 
-      logInfo("logical is " + sqlServerPlans.get(0))
-      sqlServerPlans.get(0) match {
-        case SetCommand(Some((SQL_ENGINE, Some(value)))) =>
-          sessionToActivePool.put(parentSession.getSessionHandle, value)
-          sqlContext.sessionState.conf.setConfString(SQL_ENGINE, value)
-          logInfo(s"Setting spark.sql.analytical.engine=$value " +
-            s"for future statements in this session.")
-        case _ =>
-      }
+
 
 
       HiveThriftServer2.listener.onStatementParsed(statementId, result.queryExecution.toString())
