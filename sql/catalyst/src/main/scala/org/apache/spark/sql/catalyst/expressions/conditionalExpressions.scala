@@ -302,6 +302,7 @@ case class CaseWhenCodegen(
       ${ctx.javaType(dataType)} ${ev.value} = ${ctx.defaultValue(dataType)};
       $generatedCode""")
   }
+
 }
 
 /** Factory methods for CaseWhen. */

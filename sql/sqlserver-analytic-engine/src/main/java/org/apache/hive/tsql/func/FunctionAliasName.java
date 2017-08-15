@@ -12,6 +12,7 @@ public class FunctionAliasName {
     private FunctionAliasName() {
         functionAliasNames.put("getdate".toUpperCase(), "now".toUpperCase());
         functionAliasNames.put("DATEADD".toUpperCase(), "date_add".toUpperCase());
+        functionAliasNames.put("DATEDIFF".toUpperCase(), "t_datediff".toUpperCase());
         functionAliasNames.put("CastAndAdd".toUpperCase(), "date_add".toUpperCase());
         functionAliasNames.put("SYSDATETIMEOFFSET".toUpperCase(), "now".toUpperCase());
         functionAliasNames.put("CHARINDEX".toUpperCase(), "locate".toUpperCase());
@@ -21,7 +22,8 @@ public class FunctionAliasName {
         functionAliasNames.put("atn2".toUpperCase(), "atan2".toUpperCase());
         functionAliasNames.put("tsubstring".toUpperCase(), "substring".toUpperCase());
         functionAliasNames.put("left".toUpperCase(), "substring".toUpperCase());
-        functionAliasNames.put("right".toUpperCase(), "substring".toUpperCase());
+//        functionAliasNames.put("right".toUpperCase(), "substring".toUpperCase());
+
     }
 
     private static class FunctionAliasNameHolder {

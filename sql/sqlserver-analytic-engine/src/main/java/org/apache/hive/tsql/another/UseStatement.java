@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.another;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.LeafStatement;
 
@@ -9,8 +10,7 @@ import java.sql.ResultSet;
  * Created by zhongdg1 on 2016/11/29.
  */
 public class UseStatement extends LeafStatement {
-    private final static String DEFAULT_DB_NAME = "default";
-    private String dbName = DEFAULT_DB_NAME; //TODO: will store in arguments later
+    private String dbName;
 
     private static final String STATEMENT_NAME = "_USE_";
 
@@ -27,6 +27,9 @@ public class UseStatement extends LeafStatement {
     @Override
     public int execute() throws RuntimeException {
         ResultSet rs = commitStatement(super.getSql());
+        if (StringUtils.isNotBlank(dbName)) {
+            getExecSession().setDatabase(dbName);
+        }
         return 0;
     }
 

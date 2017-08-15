@@ -21,6 +21,7 @@ public abstract class CallStatement extends BaseStatement {
     protected FuncName funcName;
     protected String realFuncName;
     protected CommonProcedureStatement func;
+    protected int type = 1;
 
     public CallStatement() {
         super();
@@ -83,9 +84,9 @@ public abstract class CallStatement extends BaseStatement {
         if (null == function) {
             // 待测试
             ProcService procService = new ProcService(getExecSession().getSparkSession());
-            int count = procService.getCountByName(realFuncName);
+            int count = procService.getCountByName(realFuncName, type);
             if (count == 1) {
-                function = procService.getProcContent(realFuncName);
+                function = procService.getProcContent(realFuncName, type);
                 //1表示从数据库读取
                 function.setProcSource(1);
                 addFunc(function);

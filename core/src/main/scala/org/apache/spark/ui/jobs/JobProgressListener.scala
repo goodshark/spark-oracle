@@ -306,7 +306,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
     val submitDate = new Date(jobData.submissionTime.get)
     val curDate = new Date()
     val cLog = s"${curDate} JobId ${jobData.jobId} start, Stage: [${jobData.stageIds.mkString(",")}], allTask: ${jobData.numTasks}, submissionTime: ${submitDate}\n"
-    logInfo(idLog)
+    logDebug(idLog)
     redisLogSadd(jobData)
     redisLogSet(jobData, cLog)
   }
@@ -349,7 +349,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
       }
       val startDate = new Date(jobData.submissionTime.get)
       val endDate = new Date(jobData.completionTime.get)
-      logInfo(s"spark-client-log<onJobEnd> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}, start: ${startDate}, end: ${endDate}, status: ${jobData.status}")
+      logDebug(s"spark-client-log<onJobEnd> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}, start: ${startDate}, end: ${endDate}, status: ${jobData.status}")
       val curDate = new Date()
       var elapseTime: Long = 0
       try {
@@ -414,7 +414,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
       } else {
         jobData.numFailedStages += 1
       }
-      logInfo(s"spark-client-log<onStageCompleted> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}, stageCostTime: ${stageCostTime}, exetor-time: ${exectorTime}, input: [${inputB}, ${inputR}], output: [${outputB}, ${outputR}], shuffle: [${shuffleR}, ${shuffleW}, ${shuffleRR}, ${shuffleWR}]")
+      logDebug(s"spark-client-log<onStageCompleted> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}, stageCostTime: ${stageCostTime}, exetor-time: ${exectorTime}, input: [${inputB}, ${inputR}], output: [${outputB}, ${outputR}], shuffle: [${shuffleR}, ${shuffleW}, ${shuffleRR}, ${shuffleWR}]")
       val curDate = new Date()
       val cLog = s"${curDate} jobid ${jobData.jobId} [stage ${stage.stageId} completed - total time ${exectorTime}ms], alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, input: ${inputB}, output: ${outputB}, shuffleRead: ${shuffleR}, shuffleWrite: ${shuffleW}\n"
       redisLogSet(jobData, cLog)
@@ -450,7 +450,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
 
       // If a stage retries again, it should be removed from completedStageIndices set
       jobData.completedStageIndices.remove(stage.stageId)
-      logInfo(s"spark-client-log<onStageSubmitted> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
+      logDebug(s"spark-client-log<onStageSubmitted> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
     }
   }
 
@@ -471,7 +471,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
       jobData <- jobIdToData.get(jobId)
     ) {
       jobData.numActiveTasks += 1
-      logInfo(s"spark-client-log<onTaskStart> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
+      logDebug(s"spark-client-log<onTaskStart> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
     }
   }
 
@@ -559,7 +559,7 @@ class JobProgressListener(conf: SparkConf) extends SparkListener with Logging {
             jobData.numFailedTasks += 1
             taskStatus = "failed"
         }
-        logInfo(s"spark-client-log<onTaskEnd> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
+        logDebug(s"spark-client-log<onTaskEnd> jobgroup: ${jobData.jobGroup}, jobid: ${jobData.jobId}, alltask: ${jobData.numTasks}, fintask: ${jobData.numCompletedTasks}, runtask: ${jobData.numActiveTasks}")
         val curDate = new Date()
         //val clog = s"${curDate} ${jobData.numCompletedTasks}/${jobData.numTasks}\n"
         val clog = s"${curDate} Task ${info.id} in Stage ${taskEnd.stageId} Finished[${taskStatus}]"

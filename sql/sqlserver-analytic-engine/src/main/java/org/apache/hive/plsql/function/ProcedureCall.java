@@ -37,6 +37,7 @@ public class ProcedureCall extends CallStatement {
         super(STATEMENT_NAME);
         setFuncName(name);
         setRealFuncName(name.getFullFuncName());
+        type = 2;
     }
 
     public void setSparkSession(SparkSession sparkSession){

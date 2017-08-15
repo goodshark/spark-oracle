@@ -10,4 +10,5 @@ public final class SystemVName {
 
     public static final String CURSOR_STATUS = "@@CURSOR_STATUS";
 
+    public static final String ROWCOUNT = "@@ROWCOUNT";
 }

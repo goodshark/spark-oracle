@@ -25,9 +25,7 @@ import java.util.Date
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 import scala.util.Try
-
 import org.apache.hadoop.fs.Path
-
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.NoSuchPartitionException
@@ -92,6 +90,9 @@ case class AlterTableAddColumnsCommand(tableName: TableIdentifier, newColumns: S
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
     val table = catalog.getTableMetadata(tableName)
+    if ( catalog.checkAcidTable(table)) {
+      throw new Exception("disallows add  columns in  crud table!")
+    }
     DDLUtils.verifyAlterTableType(catalog, table, isView = false)
     val newSchema = StructType(table.schema.fields ++ newColumns)
     val newTable = table.copy(schema = newSchema)
@@ -105,6 +106,9 @@ case class AlterTableDropColumnsCommand(tableName: TableIdentifier, dropColName:
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
     val table = catalog.getTableMetadata(tableName)
+    if ( catalog.checkAcidTable(table)) {
+      throw new Exception("disallows drop  columns in  crud table!")
+    }
     DDLUtils.verifyAlterTableType(catalog, table, isView = false)
     val newSchema = StructType(table.schema.fields.filter(
       p => !p.name.equalsIgnoreCase(dropColName)))
@@ -124,6 +128,9 @@ case class AlterTableChangeColumnsCommand(tableName: TableIdentifier,
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
     val table = catalog.getTableMetadata(tableName)
+    if ( catalog.checkAcidTable(table)) {
+      throw new Exception("disallows change  columns in  crud table!")
+    }
     DDLUtils.verifyAlterTableType(catalog, table, isView = false)
     val new_fields: ArrayBuffer[StructField] = new ArrayBuffer[StructField]()
     table.schema.fields.foreach( f => {
@@ -142,6 +149,17 @@ case class AlterTableChangeColumnsCommand(tableName: TableIdentifier,
     catalog.alterTable(newTable)
     Seq.empty[Row]
   }
+}
+
+case class CreateIndexCommand(sql: String) extends RunnableCommand{
+
+  override def run(sparkSession: SparkSession): Seq[Row] = {
+    val catalog = sparkSession.sqlContext.sharedState.externalCatalog
+    catalog.runSqlHive(sql)
+    Seq.empty[Row]
+  }
+
+
 }
 
 

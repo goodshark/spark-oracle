@@ -1,10 +1,7 @@
 package org.apache.hive.tsql.func;
 
-/**
- * Created by zhongdg1 on 2017/2/14.
- */
 public enum DateUnit {
-    YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, QUARTER, DAYOFYEAR, WEEK, WEEKDAY;
+    YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLISECOND, QUARTER, DAYOFYEAR, WEEK, WEEKDAY;
 
     public static DateUnit parse(String value) {
         value = value.trim().toLowerCase();
@@ -47,6 +44,10 @@ public enum DateUnit {
 
         if ("second".equals(value) || "ss".equals(value) || "s".equals(value)) {
             return SECOND;
+        }
+
+        if ("millisecond".equals(value) || "ms".equals(value)) {
+            return MILLISECOND;
         }
         return null;
     }

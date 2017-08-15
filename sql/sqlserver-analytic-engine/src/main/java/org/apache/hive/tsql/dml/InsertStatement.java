@@ -26,6 +26,8 @@ public class InsertStatement extends SqlStatement {
         super(name);
     }
 
+    public boolean isHasRsToInsert = true;
+
     @Override
     public int execute() throws Exception {
         if (null == insertValuesNodes || insertValuesNodes.size() < 1) {
@@ -39,6 +41,9 @@ public class InsertStatement extends SqlStatement {
             resultSql = getSqlFromChidrenNode(insertValuesNodes.get(1));
         } else {
             resultSql = getSqlFromChidrenNode(insertValuesNodes.get(0));
+        }
+        if(!isHasRsToInsert){
+            return  0;
         }
         String execSql = new StringBuffer().append(getSql()).
                 append(Common.SPACE).append(resultSql)
@@ -82,8 +87,9 @@ public class InsertStatement extends SqlStatement {
                 }
                 treeNode.execute();
                 SparkResultSet sparkResultSet = (SparkResultSet) treeNode.getRs();
-                if (null == sparkResultSet) {
-                    throw new Exception("it has not resultSet to insert ");
+                if (null == sparkResultSet  || sparkResultSet.getRsCount() == 0L) {
+                    isHasRsToInsert = false;
+                    LOG.warn("it has not resultSet to insert ");
                 }
                 StringBuffer sql = new StringBuffer();
                 sql.append(" values");
@@ -91,6 +97,9 @@ public class InsertStatement extends SqlStatement {
                 while (sparkResultSet.next()) {
                     sql.append("(");
                     Row row = sparkResultSet.fetchRow();
+                    if(null== row){
+                        continue;
+                    }
                     for (int i = 0; i < columnSize; i++) {
                         if (i != 0 && i != columnSize) {
                             sql.append(",");
@@ -113,15 +122,6 @@ public class InsertStatement extends SqlStatement {
     }
 
 
-    /**
-     * 保存sql中的变量名字
-     * 如 insert into test_person values(@a,20+9,55.5,'1945-3-5','');
-     */
-    private Set<String> localIdVariableName = new HashSet<String>();
-
-    public void addVariables(Set<String> variables) {
-        localIdVariableName.addAll(variables);
-    }
 
 
     public void addInsertValuesNode(TreeNode node) {

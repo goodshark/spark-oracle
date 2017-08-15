@@ -49,6 +49,7 @@ public class UdfFactory {
             registFunction("DATEADD".toUpperCase(), "org.apache.hive.tsql.udf.date.DateAddCalculator");
             registFunction("DATEDIFF".toUpperCase(), "org.apache.hive.tsql.udf.date.DateDiffCalculator");
             registFunction("DATENAME".toUpperCase(), "org.apache.hive.tsql.udf.date.DateNameCalculator");
+            registFunction("DATEPART".toUpperCase(), "org.apache.hive.tsql.udf.date.DateNameCalculator");
             registFunction("year".toUpperCase(), "org.apache.hive.tsql.udf.date.YearCalculator");
             registFunction("month".toUpperCase(), "org.apache.hive.tsql.udf.date.MonthCalculator");
             registFunction("day".toUpperCase(), "org.apache.hive.tsql.udf.date.DayCalculator");
@@ -58,6 +59,8 @@ public class UdfFactory {
             registFunction("quarter".toUpperCase(), "org.apache.hive.tsql.udf.date.QuarterCalculator");
             registFunction("dayofyear".toUpperCase(), "org.apache.hive.tsql.udf.date.DayOfYearCalculator");
             registFunction("isdate".toUpperCase(), "org.apache.hive.tsql.udf.date.IsDateCalculator");
+            registFunction("DATEFROMPARTS".toUpperCase(), "org.apache.hive.tsql.udf.date.DateFromPartsCalculator");
+
 
             //math functions
             registFunction("ABS".toUpperCase(), "org.apache.hive.tsql.udf.math.AbsCalculator");
@@ -86,6 +89,10 @@ public class UdfFactory {
             registFunction("isnull".toUpperCase(), "org.apache.hive.tsql.udf.IsNullCalculator");
             registFunction("OBJECT_ID".toUpperCase(), "org.apache.hive.tsql.udf.ObjectIdCalculator");
             registFunction("Coalesce".toUpperCase(), "org.apache.hive.tsql.udf.CoalesceCalculator");
+            registFunction("error_message".toUpperCase(), "org.apache.hive.tsql.udf.ErrorMessageCalculator");
+            registFunction("iif".toUpperCase(), "org.apache.hive.tsql.udf.IifCalculator");
+            registFunction("ERROR_NUMBER".toUpperCase(), "org.apache.hive.tsql.udf.ErrorNumberCalculator");
+            registFunction("USER_NAME".toUpperCase(), "org.apache.hive.tsql.udf.UserNameCalculator");
         } catch (Exception e) {
             e.printStackTrace();
         }

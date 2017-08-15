@@ -25,6 +25,7 @@ import org.apache.spark.sql.catalyst.plans.UsingJoin
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.types._
 
+
 /**
  * Throws user facing errors when passed invalid queries that fail to analyze.
  */
@@ -248,6 +249,8 @@ trait CheckAnalysis extends PredicateHelper {
                     "Add to group by or wrap in first() (or first_value) if you don't care " +
                     "which value you get.")
               case e if groupingExprs.exists(_.semanticEquals(e)) => // OK
+              // OK , we do not check ScalaSubquery, as we consider it as Constant.
+              case e: ScalarSubquery => //ok
               case e => e.children.foreach(checkValidAggregateExpression)
             }
 
@@ -330,13 +333,35 @@ trait CheckAnalysis extends PredicateHelper {
         }
 
         operator match {
+          case agg @ Aggregate(grouping, aggExpr, _) if agg.missingInput.nonEmpty =>
+            val subqueriesAlias: Seq[Attribute] = aggExpr.flatMap { expr =>
+              expr.flatMap {
+                case a @ ScalarSubquery(splan, children, _) if children.nonEmpty =>
+                  val childAttr: Seq[Expression] = children.flatMap { ex =>
+                    ex.collect[Attribute] {
+                      case t : AttributeReference => t
+                    }
+                  }
+                  splan.output
+                case _ => Nil
+              }
+            }
+            val withoutXml = agg.missingInput.filterNot( expr =>
+              subqueriesAlias.exists(_.semanticEquals(expr)))
+            if (withoutXml.size > 0) {
+              val missingAttributes = agg.missingInput.mkString(",")
+              val input = agg.inputSet.mkString(",")
+              failAnalysis(
+                s"resolved attribute(s) $missingAttributes missing from $input " +
+                  s"in operator ${operator.simpleString}, withoutXml $withoutXml")
+            }
           case o if o.children.nonEmpty && o.missingInput.nonEmpty =>
             val missingAttributes = o.missingInput.mkString(",")
             val input = o.inputSet.mkString(",")
+              failAnalysis(
+                s"resolved attribute(s) $missingAttributes missing from $input " +
+                  s"in operator ${operator.simpleString}")
 
-            failAnalysis(
-              s"resolved attribute(s) $missingAttributes missing from $input " +
-                s"in operator ${operator.simpleString}")
 
           case p @ Project(exprs, _) if containsMultipleGenerators(exprs) =>
             failAnalysis(
@@ -379,26 +404,33 @@ trait CheckAnalysis extends PredicateHelper {
 
           // TODO: We need to consolidate this kind of checks for InsertIntoTable
           // with the rule of PreWriteCheck defined in extendedCheckRules.
-          case InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _) =>
+          case InsertIntoTable(s: SimpleCatalogRelation, _, _, _, _, _, _,_) =>
             failAnalysis(
               s"""
                  |Hive support is required to insert into the following tables:
                  |${s.catalogTable.identifier}
                """.stripMargin)
 
-          case InsertIntoTable(t, _, _, _, _, _, _)
+          case InsertIntoTable(t, _, _, _, _, _, _, _)
             if !t.isInstanceOf[LeafNode] ||
               t.isInstanceOf[Range] ||
               t == OneRowRelation ||
               t.isInstanceOf[LocalRelation] =>
             failAnalysis(s"Inserting into an RDD-based table is not allowed.")
 
-          case i @ InsertIntoTable(table, partitions, query, _, _, _, _) =>
+          case i @ InsertIntoTable(table, partitions, query, _, _, _, _, _) =>
             val numStaticPartitions = partitions.values.count(_.isDefined)
-            if (table.output.size != (query.output.size + numStaticPartitions)) {
+            var insertColumnCount = i.insertColumnLength()
+
+            if (0 == insertColumnCount) {
+              insertColumnCount = table.output.size
+            } else {
+              insertColumnCount += numStaticPartitions
+            }
+            if (insertColumnCount != (query.output.size + numStaticPartitions)) {
               failAnalysis(
                 s"$table requires that the data to be inserted have the same number of " +
-                  s"columns as the target table: target table has ${table.output.size} " +
+                  s"columns as the target table: target table has ${insertColumnCount} " +
                   s"column(s) but the inserted data has " +
                   s"${query.output.size + numStaticPartitions} column(s), including " +
                   s"$numStaticPartitions partition column(s) having constant value(s).")

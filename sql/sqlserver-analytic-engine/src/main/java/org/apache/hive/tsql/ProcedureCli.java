@@ -31,11 +31,10 @@ public class ProcedureCli {
         }
     }
 
-    public ProcedureCli(SparkSession ss) {
+    public ProcedureCli(SparkSession sparkSession) {
         listener = new ParserErrorListener();
-        session = new ExecSession();
-        session.setSparkSession(ss);
-        sparkSession = ss;
+        session = new ExecSession(sparkSession);
+        this.sparkSession = sparkSession;
     }
 
     public ExecSession getExecSession() {
@@ -73,20 +72,6 @@ public class ProcedureCli {
 
     }
 
-
-    /*public Set<String> getTempTables() {
-//        return session.getVariableContainer().getAllTmpTableNames();
-        Set<String> tables = new HashSet<>();
-        for (String name : session.getVariableContainer().getAllTmpTableNames()) {
-            String alias = session.getVariableContainer().findTmpTaleAlias(name);
-            if (StringUtils.isBlank(alias)) {
-                continue;
-            }
-            tables.add(alias);
-        }
-        return tables;
-    }*/
-
     private void clean() {
         GoStatement.clearGoSeq();
         //清理表变量
@@ -105,38 +90,6 @@ public class ProcedureCli {
             } else {
                 sparkSession.getSqlServerTable().put(1, allAlias);
             }
-
-            /* for (String name : session.getVariableContainer().getAllTmpTableNames()) {
-                String alias = session.getVariableContainer().findTmpTaleAlias(name);
-                if (StringUtils.isBlank(alias)) {
-                    continue;
-                }
-                allAlias.add(alias);
-            } */
-
-            /*for (String tableName : allAlias) {
-                final StringBuffer sb = new StringBuffer();
-                sb.append("DROP TABLE ").append(tableName);
-                BaseStatement statement = new BaseStatement() {
-                    @Override
-                    public BaseStatement createStatement() {
-                        return null;
-                    }
-
-                    @Override
-                    public int execute() {
-                        commitStatement(sb.toString());
-                        return 0;
-                    }
-                };
-                statement.setExecSession(session);
-                try {
-                    statement.execute();
-                } catch (Throwable e) {
-                    LOG.error("clean error", e);
-                }
-
-            }*/
         }
     }
 

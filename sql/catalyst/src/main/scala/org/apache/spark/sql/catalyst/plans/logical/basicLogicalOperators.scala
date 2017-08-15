@@ -17,12 +17,12 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
-import scala.collection.mutable.ArrayBuffer
-
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.MultiInstanceRelation
+
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, UnresolvedAttribute}
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes
-import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.{Attribute, _}
 import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.types._
@@ -386,7 +386,8 @@ case class InsertIntoTable(
     overwrite: OverwriteOptions,
     ifNotExists: Boolean,
     tableName: String = null,
-    dbName: Option[String] = null)
+    dbName: Option[String] = null,
+    insertColumns: Option[Seq[String]] = null)
   extends LogicalPlan {
 
   override def children: Seq[LogicalPlan] = child :: Nil
@@ -396,6 +397,21 @@ case class InsertIntoTable(
   assert(partition.values.forall(_.nonEmpty) || !ifNotExists)
 
   override lazy val resolved: Boolean = childrenResolved && table.resolved
+
+
+
+  def insertColumnLength(): Int = {
+    if (null == insertColumns) {
+      0
+    } else {
+      insertColumns match {
+        case Some(columns) => columns.length
+        case None => 0
+      }
+    }
+  }
+
+
 }
 
 /**
@@ -435,6 +451,18 @@ case class Sort(
     child: LogicalPlan) extends UnaryNode {
   override def output: Seq[Attribute] = child.output
   override def maxRows: Option[Long] = child.maxRows
+}
+
+case class ForClause(forClauseDetail: ForClauseDetail, child: LogicalPlan,
+                     output: Seq[Attribute] = Seq.empty, xmlElems: Seq[String] = Seq.empty) extends UnaryNode {
+  override def simpleString: String = {
+    s"($forClauseDetail, projects=$output, xmlElemNames=$xmlElems)"
+  }
+}
+
+
+case class Unpivot(child: LogicalPlan, output: Seq[Attribute]) extends UnaryNode {
+
 }
 
 /** Factory for constructing new `Range` nodes. */
@@ -660,6 +688,73 @@ case class Pivot(
     case _ => pivotValues.flatMap{ value =>
       aggregates.map(agg => AttributeReference(value + "_" + agg.sql, agg.dataType)())
     }
+  }
+}
+
+case class  Unpivoted(valueColumn: Expression,
+                       unpivotColumn: Expression,
+                       columns: Seq[Expression],
+                       child: LogicalPlan ) extends UnaryNode {
+  override def output: Seq[Attribute] = child.output
+}
+
+
+case class UnPivotedTableScan(valueColumn: Expression,
+                              unpivotColumn: Expression,
+                              columns: Seq[Expression],
+                              child: LogicalPlan) extends UnaryNode  {
+  def getName(e: Expression): String = {
+    if (e.sql.contains(".")) {
+      e.sql.split("\\.")(1).replaceAll("`", "").toLowerCase()
+    } else {
+      e.sql.replaceAll("`", "").toLowerCase()
+    }
+  }
+
+  override def output: Seq[Attribute] = {
+    val valueColumnDataType: DataType = {
+      val colName = getName(columns.toIterator.next())
+      child.output.find( f => f.name.equalsIgnoreCase(colName)).get.dataType
+    }
+
+    def fileterOutPut(a: Attribute) : Boolean = {
+      var f = false
+      columns.foreach(c => {
+          if (c.asInstanceOf[AttributeReference].name.
+            equalsIgnoreCase(a.asInstanceOf[AttributeReference].name)) {
+            f = true
+          }
+      })
+      f
+    }
+    var valueColumnAttr: AttributeReference = null
+    if (valueColumn.isInstanceOf[UnresolvedAttribute]) {
+      valueColumnAttr = AttributeReference(getName(valueColumn),
+        valueColumnDataType)()
+    } else if (valueColumn.isInstanceOf[AttributeReference]) {
+      valueColumnAttr = valueColumn.asInstanceOf[AttributeReference]
+    }
+
+    var unpivotColumnAttr: AttributeReference = null
+    if (unpivotColumn.isInstanceOf[UnresolvedAttribute]) {
+      unpivotColumnAttr = AttributeReference(getName(unpivotColumn),
+        StringType)()
+    } else if (unpivotColumn.isInstanceOf[AttributeReference]) {
+      unpivotColumnAttr = unpivotColumn.asInstanceOf[AttributeReference]
+    }
+    val rs = child.output.filterNot(f => fileterOutPut(f)):+
+    valueColumnAttr :+ unpivotColumnAttr
+    rs
+  }
+}
+
+object PivotObject {
+  def apply(groupByExprs: Seq[NamedExpression],
+            pivotColumn: Expression,
+            pivotValues: Seq[Literal],
+            aggregates: Seq[Expression],
+            child: LogicalPlan): UnaryNode = {
+    Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child)
   }
 }
 

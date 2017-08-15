@@ -938,7 +938,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         procedure.setLeastArguments();
         CreateProcedureStatement.Action action = null != ctx.CREATE() ?
                 CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
-        CreateProcedureStatement statement = new CreateProcedureStatement(procedure, action);
+        CreateProcedureStatement statement = new CreateProcedureStatement(procedure, action, 2);
         treeBuilder.pushStatement(statement);
         return statement;
     }

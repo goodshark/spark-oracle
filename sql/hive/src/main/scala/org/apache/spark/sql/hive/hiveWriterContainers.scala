@@ -53,6 +53,7 @@ import org.apache.spark.util.SerializableJobConf
 import org.apache.spark.util.collection.unsafe.sort.UnsafeExternalSorter
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
  * Internal helper class that saves an RDD using a Hive OutputFormat.
@@ -179,7 +180,16 @@ private[hive] class SparkHiveWriterContainer(
       .asInstanceOf[StructObjectInspector]
 
     val fieldOIs = standardOI.getAllStructFieldRefs.asScala.map(_.getFieldObjectInspector).toArray
-    val dataTypes = inputSchema.map(_.dataType)
+    val fieldsLen = fieldOIs.length
+    val allDataTypes = table.catalogTable.schema.map(_.dataType)
+    val dataTypes: ListBuffer[DataType] = new ListBuffer[DataType]
+    for(index <- 0 to (fieldsLen - 1)) {
+      dataTypes += allDataTypes(index)
+    }
+//    val dataTypes = buf.toSeq
+//    val dataTypes = allDataTypes.filter({ index+=1; index < fieldsLen })
+//    val dataTypes = inputSchema.map(_.dataType)
+//    val dataTypes = fieldOIs.map(in => DataType.nameToType(in.getTypeName))
     val wrappers = fieldOIs.zip(dataTypes).map { case (f, dt) => wrapperFor(f, dt) }
     val outputData = new Array[Any](fieldOIs.length)
     (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData)
@@ -251,7 +261,7 @@ private[hive] class SparkHiveWriterContainer(
     } else if (dataType.equalsIgnoreCase("short")) {
       rs = "tinyint"
     }
-    logInfo("dataType src is " + dataType + "is + " + rs)
+    logDebug("dataType src is " + dataType + "is + " + rs)
     rs
   }
 
@@ -330,18 +340,51 @@ private[hive] class SparkHiveWriterContainer(
   val SPARK_TRANSACTION_ACID: String = "spark.transaction.acid"
   val OPTION_TYPE: String = "OPTION_TYPE"
 
+  private def eliminateVidColumn(originPositions: Array[Int], vidPosition: Int) : Array[Int] = {
+    val ret: ListBuffer[Int] = new ListBuffer[Int]
+    if (!originPositions.isEmpty) {
+      for (i <- 0 to originPositions.length) {
+        if (vidPosition != i) {
+          ret += originPositions(i)
+        }
+
+      }
+    }
+    ret.toArray
+  }
+
+
+
+
   // this function is executed on executor side
   def writeToFile(context: TaskContext, iterator: Iterator[InternalRow]): Unit = {
+    // for insert with column test
+    val insertPositions = conf.value.getInts("spark.exe.insert.positions")
+//    logError(s"read from conf: insert positions " + insertPositions.mkString(","));
+    // end for insert column test
+
     val transaction_acid_flg = conf.value.get(SPARK_TRANSACTION_ACID, "false")
     if (transaction_acid_flg.equalsIgnoreCase("true")) {
+
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
+      val positions = {
+        conf.value.get(OPTION_TYPE) match {
+          case "1" => insertPositions.slice(-1, insertPositions.length - 1)
+          case "2" => insertPositions.slice(-1, insertPositions.length - 1)
+          case _ => insertPositions
+        }
+      }
+      logTrace("Final positions: " + positions.mkString(","))
+      conf.value.set("spark.exe.insert.positions", positions.mkString(","))
       var partitionPath = ""
       if (null != table.tableDesc.getProperties.getProperty("partition_columns") &&
         table.tableDesc.getProperties.getProperty("partition_columns").nonEmpty) {
         partitionPath = conf.value.get("spark.partition.value")
       }
+//      val outPutPath = new Path(
+//           FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
       val outPutPath = new Path(
-           FileOutputFormat.getOutputPath(conf.value).toString + partitionPath
+        FileOutputFormat.getOutputPath(conf.value).toString
       )
 
       val bucketColumnNames = table.catalogTable.
@@ -355,30 +398,42 @@ private[hive] class SparkHiveWriterContainer(
         transactionId = getTransactionId
         fileSinkConf.setTransactionId(transactionId)
       }
+      val optionType = conf.value.get(OPTION_TYPE)
+      val optionFlag: Boolean = {
+        optionType.equalsIgnoreCase("1") || optionType.equalsIgnoreCase("2")
+      }
+      val updateInspector = getUpdateInspector
+      val insertInspector = getInsertInspector
+      val map: Map[Int, Int] = columnMap(insertPositions, fieldOIs.length - 1)
       iterator.foreach {
         row => {
           rows.clear()
-          val bucketId: Int = rowsAddVid(bucketColumnNames, bucketNumBuckets,
+          val bucketId: Int = rowsAddVid(optionFlag, bucketColumnNames, bucketNumBuckets,
             standardOI, fieldOIs, rows, row)
+
+
           var i = 0
           while (i < fieldOIs.length) {
-            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+//            outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+            outputData(i) = {
+              buildOutputData(positions.isEmpty, map, dataTypes, wrappers, row, i)
+            }
             rows.add(outputData(i))
             i += 1
           }
 
-          conf.value.get(OPTION_TYPE) match {
+          optionType match {
             case "1" =>
-              getUpdateRecord(bucketId, getUpdateInspector, outPutPath,
-                updateRecordMap, conf.value.get(OPTION_TYPE))
+              getUpdateRecord(bucketId, updateInspector, outPutPath,
+                updateRecordMap, optionType)
               updateRecordMap.get(bucketId).get.update(transactionId, rows)
             case "2" =>
-              getUpdateRecord(bucketId, getUpdateInspector, outPutPath,
-                updateRecordMap, conf.value.get(OPTION_TYPE))
+              getUpdateRecord(bucketId, updateInspector, outPutPath,
+                updateRecordMap, optionType)
               updateRecordMap.get(bucketId).get.delete(transactionId, rows)
             case "0" =>
-              getUpdateRecord(bucketId, getInsertInspector, outPutPath,
-                updateRecordMap, conf.value.get(OPTION_TYPE))
+              getUpdateRecord(bucketId, insertInspector, outPutPath,
+                updateRecordMap, optionType)
               updateRecordMap.get(bucketId).get.insert(transactionId, rows)
             case _ =>
               logError(s" no operation ")
@@ -391,16 +446,52 @@ private[hive] class SparkHiveWriterContainer(
     } else {
       val (serializer, standardOI, fieldOIs, dataTypes, wrappers, outputData) = prepareForWrite()
       executorSideSetup(context.stageId, context.partitionId, context.attemptNumber)
+      val map: Map[Int, Int] = columnMap(insertPositions, fieldOIs.length - 1)
+
       iterator.foreach { row =>
         var i = 0
         while (i < fieldOIs.length) {
-          outputData(i) = if (row.isNullAt(i)) null else wrappers(i)(row.get(i, dataTypes(i)))
+          outputData(i) = {
+            buildOutputData(insertPositions.isEmpty, map, dataTypes, wrappers, row, i)
+          }
           i += 1
         }
         writer.write(serializer.serialize(outputData, standardOI))
       }
       close()
     }
+  }
+
+  private def columnMap(inserts: Array[Int], total: Int): Map[Int, Int] = {
+    var map: Map[Int, Int] = Map()
+    for (i <- 0 to total) {
+      map += (i -> inserts.indexOf(i))
+    }
+    map
+  }
+
+  private def buildOutputData(isPositionEmpty: Boolean, map: Map[Int, Int],
+                              dataTypes: ListBuffer[DataType],
+                              wrappers: Array[(Any) => Any], row: InternalRow, i: Int) = {
+//    if (row.isNullAt(i)) {
+//      null
+//    } else {
+      if (isPositionEmpty) {
+        wrappers(i)(row.get(i, dataTypes(i)))
+      } else {
+        val columnIndex = map.get(i).get
+        if (-1 == columnIndex) {
+          null
+        } else {
+          wrappers(i)(row.get(columnIndex, dataTypes(i)))
+        }
+      }
+//    }
+  }
+
+  def getInsertIndex(index: Int, positions: Array[Int]): Int = {
+    return positions.indexOf(index)
+
   }
 
   def closeUpdateRecord(updateRecordMap: mutable.Map[Integer, RecordUpdater]): Unit = {
@@ -413,7 +504,8 @@ private[hive] class SparkHiveWriterContainer(
   }
 
 
-  def rowsAddVid(bucketColumnNames: Seq[String],
+  def rowsAddVid(optionFlag: Boolean,
+                 bucketColumnNames: Seq[String],
                  bucketNumber: Int,
                  standardOI: StructObjectInspector,
                  fieldOIs: Array[ObjectInspector],
@@ -421,15 +513,13 @@ private[hive] class SparkHiveWriterContainer(
                  row: InternalRow): Int = {
 
     var bucketId: Int = 0
-    if (conf.value.get(OPTION_TYPE).equalsIgnoreCase("1")
-      || conf.value.get(OPTION_TYPE).equalsIgnoreCase("2")) {
-      val vidValue = row.getString(fieldOIs.length).toString
+    if (optionFlag) {
+      val vidValue = row.getString(inputSchema.length-1).toString
       val vidInfo = new util.ArrayList[Object]
       val txnBucketRowId: Array[String] = vidValue.split('^')
       val txnId = new LongWritable(txnBucketRowId(0).trim.toLong)
       val bucketIdWritable = new LongWritable(txnBucketRowId(1).trim.toLong)
       val rowId = new LongWritable(txnBucketRowId(2).trim.toLong)
-
       logDebug(s" vidValue is : $vidValue txnId: $txnId bucketId: $bucketIdWritable ," +
         s"rowId: $rowId age: ${row.getString(1)}")
       vidInfo.add(txnId)

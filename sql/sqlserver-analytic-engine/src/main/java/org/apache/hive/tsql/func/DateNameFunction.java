@@ -36,7 +36,8 @@ public class DateNameFunction extends BaseFunction {
         Var date = (Var) expr.getRs().getObject(0);
         results.add(new Var(dateUnit, Var.DataType.DEFAULT));
         results.add(date);
-        System.out.println("Excuting function # " + this.getSql());
+        results.add(new Var(getName().getFullFuncName(), Var.DataType.STRING));
+//        System.out.println("Excuting function # " + this.getSql());
         doCall(results);
         return 0;
     }
@@ -45,19 +46,19 @@ public class DateNameFunction extends BaseFunction {
     public String getSql() {
 
         StringBuffer sb = new StringBuffer(getFunctionAliasName());
-        Var v = new Var(expr.getSql(), Var.DataType.DATETIME);
-        try {
-            if(null == v.getVarValue()) {
-                return sb.toString();
-            }
-            if(v.getVarValue().toString().charAt(0) == '@') {
-                return sb.append(expr.getSql()).append(")").toString();
-            }
+//        Var v = new Var(expr.getSql(), Var.DataType.DATETIME);
+//        try {
+//            if(null == v.getVarValue()) {
+//                return sb.toString();
+//            }
+//            if(v.getVarValue().toString().charAt(0) == '@') {
+//                return sb.append("(").append(expr.getSql()).append(")").toString();
+//            }
 
-            sb.append("(").append(StrUtils.addQuot(v.getDateStr())).append(")");
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
+            sb.append("(").append(expr.getSql()).append(")");
+//        } catch (ParseException e) {
+//            e.printStackTrace();
+//        }
         return sb.toString();
     }
 

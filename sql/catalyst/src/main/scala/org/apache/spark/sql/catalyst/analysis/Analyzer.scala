@@ -16,14 +16,13 @@
  */
 
 package org.apache.spark.sql.catalyst.analysis
-
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.{CatalystConf, ScalaReflection, SimpleCatalystConf}
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, InMemoryCatalog, SessionCatalog}
 import org.apache.spark.sql.catalyst.encoders.OuterScopes
-import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.{Expression, _}
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.expressions.objects.NewInstance
 import org.apache.spark.sql.catalyst.expressions.xml.{XmlColattval, XmlForest}
@@ -35,6 +34,9 @@ import org.apache.spark.sql.catalyst.rules._
 import org.apache.spark.sql.catalyst.trees.TreeNodeRef
 import org.apache.spark.sql.catalyst.util.toPrettySQL
 import org.apache.spark.sql.types._
+
+
+
 
 /**
  * A trivial [[Analyzer]] with a dummy [[SessionCatalog]] and [[EmptyFunctionRegistry]].
@@ -75,6 +77,8 @@ class Analyzer(
   val extendedResolutionRules: Seq[Rule[LogicalPlan]] = Nil
 
   lazy val batches: Seq[Batch] = Seq(
+    Batch("resolveXMLPathName", Once,
+      XMLPathNameListResolve ),
     Batch("Substitution", fixedPoint,
       CTESubstitution,
       WindowsSubstitution,
@@ -83,13 +87,16 @@ class Analyzer(
     Batch("Resolution", fixedPoint,
       ResolveTableValuedFunctions ::
       ResolveRelations ::
+      ResolvePivot ::
+      //  ResolveUnPivot ::
       ResolveReferences ::
       ResolveCreateNamedStruct ::
       ResolveDeserializer ::
       ResolveNewInstance ::
       ResolveUpCast ::
       ResolveGroupingAnalytics ::
-      ResolvePivot ::
+      ResolveUnPivot ::
+      // ResolvePivot ::
       ResolveOrdinalInOrderByAndGroupBy ::
       ResolveMissingReferences ::
       ExtractGenerator ::
@@ -103,6 +110,7 @@ class Analyzer(
       ResolveNaturalAndUsingJoin ::
       ExtractWindowExpressions ::
       GlobalAggregates ::
+      GroupingScalaSubquery::
       ResolveAggregateFunctions ::
       TimeWindowing ::
       ResolveInlineTables ::
@@ -117,6 +125,119 @@ class Analyzer(
     Batch("Cleanup", fixedPoint,
       CleanupAliases)
   )
+
+  object ResolveUnPivot extends Rule[LogicalPlan] {
+    def fileter(a: NamedExpression,
+                      valueColumn: Expression,
+                      unpivotColumn: Expression) : Boolean = {
+        a.name.equalsIgnoreCase(valueColumn.sql.replaceAll("`", "")) ||
+        a.name.equalsIgnoreCase(unpivotColumn.sql.replaceAll("`", ""))
+    }
+
+    def childOutFileter(a: Attribute, columns: Seq[Expression]) : Boolean = {
+      var rs: Boolean = false
+          for (c <- columns) {
+            if (getName(c).equalsIgnoreCase(a.name )) {
+              rs = true
+            }
+          }
+      rs
+    }
+    def getName(e: Expression): String = {
+      if (e.sql.contains(".")) {
+        e.sql.split("\\.")(1).replaceAll("`", "").toLowerCase()
+      } else {
+        e.sql.replaceAll("`", "").toLowerCase()
+      }
+    }
+
+  /*  def apply(plan: LogicalPlan): LogicalPlan = plan transform {
+      case p: Pivot if !p.childrenResolved | !p.aggregates.forall(_.resolved)
+        | !p.groupByExprs.forall(_.resolved) | !p.pivotColumn.resolved => p
+      case p @ Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
+
+*/
+    override def apply(plan: LogicalPlan): LogicalPlan = plan transform {
+     /*   case p: UnPivotedTableScan if !p.childrenResolved | !p.valueColumn.resolved
+          | !p.columns.forall(_.resolved) | !p.unpivotColumn.resolved =>
+          p */
+      case p @ UnPivotedTableScan(valueColumn, unpivotColumn, columns, child) if !p.analyzed
+        && p.childrenResolved =>
+        val valueColumnDataType: DataType = {
+          val colName = getName(columns.toIterator.next())
+          child.output.find( f => f.name.equalsIgnoreCase(colName)).get.dataType
+        }
+        val resolveValueCol: AttributeReference = valueColumn match {
+          case n: NamedExpression => AttributeReference(n.name, valueColumnDataType)()
+          case _ => AttributeReference(valueColumn.sql, valueColumnDataType)()
+        }
+        val resolveUnpivotColumn: AttributeReference = resolveColumn(unpivotColumn)
+        val resolveColumns = child.output.filter( c => childOutFileter(c, columns))
+        val unpivotedRs = UnPivotedTableScan(resolveValueCol, resolveUnpivotColumn,
+          resolveColumns, child)
+        unpivotedRs.setAnalyzed()
+        unpivotedRs
+
+    }
+
+    private def resolveColumn(valueColumn: Expression) = {
+      val resolveValueCol = valueColumn match {
+        case n: NamedExpression => AttributeReference(n.name, StringType)()
+        case _ => AttributeReference(valueColumn.sql, StringType)()
+      }
+      resolveValueCol
+    }
+  }
+
+  object XMLPathNameListResolve extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators  {
+      case xfor @ ForClause( fordetail, child, outs, elms) if elms.isEmpty =>
+        val colnames: Option[Seq[String]] = child.collectFirst {
+          case  p @ Project( projlist, _) =>
+            projlist.map {
+              case ref : UnresolvedAttribute => ref.name
+              case al : Alias => al.name
+              case _ => ""
+            }
+
+          case ag @ Aggregate(_, agexpr, _) =>
+            agexpr.map {
+              case ref : UnresolvedAttribute => ref.name
+              case al : Alias => al.name
+              case _ => ""
+            }
+        }
+        ForClause(fordetail, child, outs, colnames.get)
+      case o => o
+    }
+  }
+  object GroupingScalaSubquery extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators  {
+      case agg @ Aggregate(grouping, aggExpr, child) if agg.resolved =>
+        val subqueriesAttr: Seq[Attribute] = aggExpr.flatMap { expr =>
+          expr.flatMap {
+            case a @ ScalarSubquery(splan, children, _) if children.nonEmpty =>
+              val childAttr: Seq[Expression] = children.flatMap { ex =>
+                ex.collect[Attribute] {
+                  case t : AttributeReference => t
+                }
+              }
+              splan.output.filterNot { e =>
+                childAttr.exists( x => x.semanticEquals(e) ) ||
+                  grouping.exists( y => y.semanticEquals(e) )
+              }
+            case _ => Nil
+          }
+         }
+        if ( subqueriesAttr.isEmpty ) {
+          agg
+        } else {
+          Aggregate( grouping ++ subqueriesAttr.distinct, aggExpr, child )
+        }
+
+      case other => other
+    }
+  }
 
   /**
    * Analyze cte definitions and substitute child plan with analyzed cte definitions.
@@ -377,18 +498,50 @@ class Analyzer(
     def apply(plan: LogicalPlan): LogicalPlan = plan transform {
       case p: Pivot if !p.childrenResolved | !p.aggregates.forall(_.resolved)
         | !p.groupByExprs.forall(_.resolved) | !p.pivotColumn.resolved => p
-      case Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
-        val singleAgg = aggregates.size == 1
-        def outputName(value: Literal, aggregate: Expression): String = {
-          if (singleAgg) {
-            value.toString
-          } else {
-            val suffix = aggregate match {
-              case n: NamedExpression => n.name
-              case _ => aggregate.sql
-            }
-            value + "_" + suffix
+      case p @ Pivot(groupByExprs, pivotColumn, pivotValues, aggregates, child) =>
+        var singleAgg = aggregates.size == 1
+        var rs = groupByExprs
+        if (rs.size == 0) {
+          var neadFilteColumns = Seq[String]()
+           def getAggregateColumnName(seqE: Seq[Expression]) : Unit = {
+             seqE.foreach( e => {
+               if (e.children.size == 0) {
+                 neadFilteColumns = neadFilteColumns :+
+                   e.asInstanceOf[AttributeReference].name
+               } else {
+                 getAggregateColumnName(e.children)
+               }
+             })
+           }
+          def checkColumn(cName: String, neadFilteColumns: Seq[String]) : Boolean = {
+            var flag = false
+            neadFilteColumns.foreach(f => {
+              if (cName.equalsIgnoreCase(f)) {
+                flag = true
+              }
+            })
+            flag
           }
+          aggregates.foreach( a => {
+            a.asInstanceOf[AggregateExpression].aggregateFunction.foreach(
+              functionChild => getAggregateColumnName(functionChild.children)
+            )
+          })
+         neadFilteColumns = neadFilteColumns :+ pivotColumn.asInstanceOf[AttributeReference].name
+          logWarning(s"pivot child outPut is ${child.output}")
+           child.output.filterNot( c => {
+            val cName = c.asInstanceOf[AttributeReference].name
+            checkColumn(cName, neadFilteColumns)
+          }).foreach( c => {
+            val cn = c.asInstanceOf[AttributeReference].name
+            rs = rs :+ Alias(c, cn)()
+          }
+          )
+          logWarning(s"group by is ==> ${rs}")
+        }
+        singleAgg = rs.size == 1
+        def outputName(value: Literal, aggregate: Expression): String = {
+          value.toString
         }
         if (aggregates.forall(a => PivotFirst.supportsDataType(a.dataType))) {
           // Since evaluating |pivotValues| if statements for each input row can get slow this is an
@@ -398,7 +551,8 @@ class Analyzer(
             case n: NamedExpression => n
             case _ => Alias(pivotColumn, "__pivot_col")()
           }
-          val bigGroup = groupByExprs :+ namedPivotCol
+         //  val bigGroup = groupByExprs :+ namedPivotCol
+          val bigGroup = rs :+ namedPivotCol
           val firstAgg = Aggregate(bigGroup, bigGroup ++ namedAggExps, child)
           val castPivotValues = pivotValues.map(Cast(_, pivotColumn.dataType).eval(EmptyRow))
           val pivotAggs = namedAggExps.map { a =>
@@ -406,7 +560,8 @@ class Analyzer(
               .toAggregateExpression()
             , "__pivot_" + a.sql)()
           }
-          val groupByExprsAttr = groupByExprs.map(_.toAttribute)
+          // val groupByExprsAttr = groupByExprs.map(_.toAttribute)
+          val groupByExprsAttr = rs.map(_.toAttribute)
           val secondAgg = Aggregate(groupByExprsAttr, groupByExprsAttr ++ pivotAggs, firstAgg)
           val pivotAggAttribute = pivotAggs.map(_.toAttribute)
           val pivotOutputs = pivotValues.zipWithIndex.flatMap { case (value, i) =>
@@ -444,7 +599,8 @@ class Analyzer(
               Alias(filteredAggregate, outputName(value, aggregate))()
             }
           }
-          Aggregate(groupByExprs, groupByExprs ++ pivotAggregates, child)
+          // Aggregate(groupByExprs, groupByExprs ++ pivotAggregates, child)
+          Aggregate(rs, rs ++ pivotAggregates, child)
         }
     }
   }
@@ -463,12 +619,15 @@ class Analyzer(
     }
 
     def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
-      case i @ InsertIntoTable(u: UnresolvedRelation, parts, child, _, _, _, _) if child.resolved =>
+      case i @ InsertIntoTable(u: UnresolvedRelation,
+      parts, child, _, _, _, _, _) if child.resolved =>
         i.copy(table = EliminateSubqueryAliases(lookupTableFromCatalog(u)))
       case u: UnresolvedRelation =>
         val table = u.tableIdentifier
-        if (table.database.isDefined && conf.runSQLonFile && !catalog.isTemporaryTable(table) &&
-            (!catalog.databaseExists(table.database.get) || !catalog.tableExists(table))) {
+        if (table.database.isDefined && conf.runSQLonFile &&
+          !catalog.isTemporaryTable(table) &&
+            (!catalog.databaseExists(table.database.get)
+              || !catalog.tableExists(table))) {
           // If the database part is specified, and we support running SQL directly on files, and
           // it's not a temporary view, and the table does not exist, then let's just return the
           // original UnresolvedRelation. It is possible we are matching a query like "select *
@@ -589,6 +748,17 @@ class Analyzer(
           ordering.map(order => resolveExpression(order, child).asInstanceOf[SortOrder])
         Sort(newOrdering, global, child)
 
+      case p @ ForClause( forClauseDetail, child, _, colnames) if !p.analyzed && child.resolved =>
+        val isDistinct = child.isInstanceOf[Distinct]
+        val sRoot = if ( forClauseDetail.forXmlClause.hasRoot ) "root" else ""
+        var sRow = forClauseDetail.forXmlClause.rowLabel
+        val outs = child.output ++ Seq( Literal(Array(sRoot, sRow) ++ colnames))
+        val xmlfunc = CollectGroupXMLPath( outs )
+        val aggExpr = AggregateExpression( xmlfunc, Complete, isDistinct )
+        val namedAgg = Alias( aggExpr, "xmlpath" + aggExpr.resultId.id )()
+        Aggregate( Seq.empty[Expression], namedAgg :: Nil, child )
+
+
       // A special case for Generate, because the output of Generate should not be resolved by
       // ResolveReferences. Attributes in the output will be resolved by ResolveGenerate.
       case g @ Generate(generator, _, _, _, _, _) if generator.resolved => g
@@ -600,6 +770,8 @@ class Analyzer(
         } else {
           Generate(newG.asInstanceOf[Generator], join, outer, qualifier, output, child)
         }
+
+
 
       // Skips plan which contains deserializer expressions, as they should be resolved by another
       // rule: ResolveDeserializer.

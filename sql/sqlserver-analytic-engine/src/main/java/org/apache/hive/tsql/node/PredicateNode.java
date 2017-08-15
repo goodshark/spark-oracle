@@ -369,8 +369,9 @@ public class PredicateNode extends LogicNode {
     private boolean compareIn(boolean exec) throws Exception {
         if (exprList.size() != 2)
             return false;
-        SqlStatement leftExpr = (SqlStatement) exprList.get(0);
-        SqlStatement rightExpr = (SqlStatement) exprList.get(1);
+
+        TreeNode leftExpr =  exprList.get(0);
+        TreeNode rightExpr = exprList.get(1);
 
         if (!exec) {
             String not = notComp ? " NOT" : "";
@@ -571,12 +572,12 @@ public class PredicateNode extends LogicNode {
         if (res == 0) {
             if (operator.equals("==") || operator.equals(">=") || operator.equals("<="))
                 return true;
-        } else if (res == -1) {
+        } else if (res <= -1) {
             if (operator.equals("<") || operator.equals("<=") || operator.equals("!="))
                 return notComp ? false : true;
             if (notComp && (operator.equals(">") || operator.equals(">=")))
                 return notComp ? true : false;
-        } else if (res == 1) {
+        } else if (res >= 1) {
             if (operator.equals(">") || operator.equals(">=") || operator.equals("!="))
                 return notComp ? false : true;
             if (notComp && (operator.equals("<") || operator.equals("<=")))

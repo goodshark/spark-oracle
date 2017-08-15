@@ -7,7 +7,10 @@ import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.cursor.Cursor;
+import org.apache.hive.tsql.dml.SelectStatement;
 import org.apache.hive.tsql.func.Procedure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -239,6 +242,7 @@ public class VariableContainer {
             }
         }
 //        this.functions.put(function.getName().getFullFuncName(), function);
+
     }
 
     public ConcurrentHashMap<String, Var> getVars() {
@@ -465,7 +469,7 @@ public class VariableContainer {
 
     public boolean updateSys(String sysVarName, Object val) {
         Var v = systemVariables.get(sysVarName.toUpperCase());
-        if(null == v) {
+        if (null == v) {
             return false;
         }
         v.setVarValue(val);

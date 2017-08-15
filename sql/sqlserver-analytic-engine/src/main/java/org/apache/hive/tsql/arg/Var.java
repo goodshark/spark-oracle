@@ -326,7 +326,7 @@ public class Var implements Serializable {
     }
 
     public Object getVarValue() throws ParseException {
-        if (null == varValue) {
+        if (null == varValue || null == varValue.toString()) {
             return null;
         }
         switch (dataType) {
@@ -356,7 +356,8 @@ public class Var implements Serializable {
     }
 
 
-    public String getExecString() {
+
+    public String getExecString() throws ParseException {
         if (null == varValue) {
             return null;
         }
@@ -377,6 +378,8 @@ public class Var implements Serializable {
             case DATETIME2:
                 if (varValue instanceof String) {
                     val = StrUtils.addQuot(val);
+                } else {
+                    val = StrUtils.addQuot(getDateStr());
                 }
                 break;
             default:
@@ -452,7 +455,7 @@ public class Var implements Serializable {
             case DATETIME:
             case DATETIME2:
 //                varValue = fillDate(varValue.toString());
-                pattern = "yyyy-MM-dd HH:mm:ss";
+                pattern = "yyyy-MM-dd HH:mm:ss.SSS";
                 break;
             case TIME:
 //                varValue = fillDate(varValue.toString());
@@ -592,6 +595,38 @@ public class Var implements Serializable {
             return ((ExpressionStatement) expr).getFinalSql();
         }
         return "";
+    }
+
+    public boolean isDate() {
+        boolean flag = false;
+        switch (dataType) {
+            case DATE:
+            case DATETIME:
+            case DATETIME2:
+            case TIME:
+            case TIMESTAMP:
+                flag = true;
+                break;
+            default:
+                break;
+        }
+        return flag;
+    }
+
+    public boolean isNumber() {
+        boolean flag = false;
+        switch (dataType) {
+            case LONG:
+            case INT:
+            case INTEGER:
+            case DOUBLE:
+            case FLOAT:
+                flag = true;
+                break;
+            default:
+                break;
+        }
+        return flag;
     }
 }
 

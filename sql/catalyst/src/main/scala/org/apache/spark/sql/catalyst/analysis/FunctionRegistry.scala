@@ -267,6 +267,7 @@ object FunctionRegistry {
     expression[VarianceSamp]("var_samp"),
     expression[CollectList]("collect_list"),
     expression[CollectSet]("collect_set"),
+    expression[CollectGroupXMLPath]("group_xmlpath"),
 
     // string functions
     expression[Ascii]("ascii"),

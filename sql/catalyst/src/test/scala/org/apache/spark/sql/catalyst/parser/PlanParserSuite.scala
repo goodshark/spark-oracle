@@ -45,6 +45,14 @@ class PlanParserSuite extends PlanTest {
     }
   }
 
+  test("drop logical plan") {
+    val sql = "select id ,name,jidu,xiaoshou " +
+      "from test_001 unpivot (xiaoshou for jidu in (q1,q2,q3,q4)) as f"
+    val p = parsePlan(sql)
+    print(p.treeString)
+  }
+
+
   test("case insensitive") {
     val plan = table("a").select(star())
     assertEqual("sELEct * FroM a", plan)

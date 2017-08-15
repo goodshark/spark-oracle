@@ -45,7 +45,6 @@ public class NullIfFunction extends BaseFunction {
 
     @Override
     public String getSql() {
-
         StringBuffer sb = new StringBuffer(FunctionAliasName.getFunctionAlias()
                 .getFunctionAliasName(getName().getFullFuncName()));
         sb.append("(").append(leftExpr.getSql()).append(", ").append(rightExpr.getSql()).append(")");

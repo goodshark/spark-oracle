@@ -19,6 +19,7 @@ package org.apache.spark.sql.hive.client
 
 import java.io.{File, PrintStream}
 import java.net.URL
+import java.util
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -84,6 +85,7 @@ private[hive] class HiveClientImpl(
   extends HiveClient
   with Logging {
 
+  var hiveDb: Hive = _
   // Circular buffer to hold what hive prints to STDOUT and ERR.  Only printed when failures occur.
   private val outputBuffer = new CircularBuffer()
 
@@ -97,7 +99,7 @@ private[hive] class HiveClientImpl(
   }
 
   // Create an internal session state for this HiveClientImpl.
-  val state: SessionState = {
+  /*val state: SessionState = {
     val original = Thread.currentThread().getContextClassLoader
     // Switch to the initClassLoader.
     Thread.currentThread().setContextClassLoader(initClassLoader)
@@ -203,17 +205,19 @@ private[hive] class HiveClientImpl(
   logInfo(
     s"Warehouse location for Hive client " +
       s"(version ${version.fullVersion}) is ${conf.get("hive.metastore.warehouse.dir")}")
-
+*/
+  var state: SessionState = _
   /** Returns the configuration for the current session. */
-  def conf: HiveConf = state.getConf
+  // def conf: HiveConf = state.getConf
+  lazy val conf: HiveConf = state.getConf
 
   override def getConf(key: String, defaultValue: String): String = {
     conf.get(key, defaultValue)
   }
 
   // We use hive's conf for compatibility.
-  private val retryLimit = conf.getIntVar(HiveConf.ConfVars.METASTORETHRIFTFAILURERETRIES)
-  private val retryDelayMillis = shim.getMetastoreClientConnectRetryDelayMillis(conf)
+  private lazy val retryLimit = conf.getIntVar(HiveConf.ConfVars.METASTORETHRIFTFAILURERETRIES)
+  private lazy val retryDelayMillis = shim.getMetastoreClientConnectRetryDelayMillis(conf)
 
   /**
    * Runs `f` with multiple retries in case the hive metastore is temporarily unreachable.
@@ -259,9 +263,10 @@ private[hive] class HiveClientImpl(
     if (clientLoader.cachedHive != null) {
       clientLoader.cachedHive.asInstanceOf[Hive]
     } else {
-      val c = Hive.get(conf)
+     /* val c = Hive.get(conf)
       clientLoader.cachedHive = c
-      c
+      c */
+      hiveDb
     }
   }
 
@@ -397,7 +402,9 @@ private[hive] class HiveClientImpl(
         partitionColumnNames = partCols.map(_.name),
         // We can not populate bucketing information for Hive tables as Spark SQL has a different
         // implementation of hash function from Hive.
-        bucketSpec = None,
+        bucketSpec = Option(new BucketSpec(h.getNumBuckets,
+          h.getBucketCols.asScala.toSeq, Seq())),
+        // bucketSpec = None,
         owner = h.getOwner,
         createTime = h.getTTable.getCreateTime.toLong * 1000,
         lastAccessTime = h.getLastAccessTime.toLong * 1000,
@@ -438,6 +445,24 @@ private[hive] class HiveClientImpl(
     val qualifiedTableName = s"${table.database}.$tableName"
     client.alterTable(qualifiedTableName, hiveTable)
   }
+
+ /* override def createIndex(tableName: String, indexName: String, indexHandlerClass: String,
+                           indexedCols: util.List[String], indexTblName: String,
+                           deferredRebuild: Boolean, inputFormat: String, outputFormat: String,
+                           serde: String, storageHandler: String, location: String,
+                           idxProps: util.Map[String, String],
+                           tblProps: util.Map[String, String],
+                           serdeProps: util.Map[String, String],
+                           collItemDelim: String, fieldDelim: String,
+                           fieldEscape: String, lineDelim: String,
+                           mapKeyDelim: String, indexComment: String): Unit = withHiveState{
+    client.createIndex(tableName, indexName, indexHandlerClass, indexedCols,
+      indexTblName,deferredRebuild, inputFormat,outputFormat,
+      serde,storageHandler,location,idxProps,
+      tblProps,serdeProps,collItemDelim,
+      fieldDelim,fieldEscape,lineDelim,
+      mapKeyDelim,indexComment)
+  } */
 
   override def createPartitions(
       db: String,
@@ -745,7 +770,109 @@ private[hive] class HiveClientImpl(
     clientLoader.createClient().asInstanceOf[HiveClientImpl]
   }
 
-  def reset(): Unit = withHiveState {
+  def setDb(hiveDb: Hive): Unit = {
+    this.hiveDb = hiveDb
+    Hive.set(hiveDb)
+    val newstate={
+      val original = Thread.currentThread().getContextClassLoader
+      // Switch to the initClassLoader.
+      Thread.currentThread().setContextClassLoader(initClassLoader)
+
+      // Set up kerberos credentials for UserGroupInformation.loginUser within
+      // current class loader
+      // Instead of using the spark conf of the current spark context, a new
+      // instance of SparkConf is needed for the original value of spark.yarn.keytab
+      // and spark.yarn.principal set in SparkSubmit, as yarn.Client resets the
+      // keytab configuration for the link name in distributed cache
+      if (sparkConf.contains("spark.yarn.principal") && sparkConf.contains("spark.yarn.keytab")) {
+        val principalName = sparkConf.get("spark.yarn.principal")
+        val keytabFileName = sparkConf.get("spark.yarn.keytab")
+        if (!new File(keytabFileName).exists()) {
+          throw new SparkException(s"Keytab file: ${keytabFileName}" +
+            " specified in spark.yarn.keytab does not exist")
+        } else {
+          logInfo("Attempting to login to Kerberos" +
+            s" using principal: ${principalName} and keytab: ${keytabFileName}")
+          UserGroupInformation.loginUserFromKeytab(principalName, keytabFileName)
+        }
+      }
+
+      def isCliSessionState(state: SessionState): Boolean = {
+        var temp: Class[_] = if (state != null) state.getClass else null
+        var found = false
+        while (temp != null && !found) {
+          found = temp.getName == "org.apache.hadoop.hive.cli.CliSessionState"
+          temp = temp.getSuperclass
+        }
+        found
+      }
+
+      val ret = try {
+        // originState will be created if not exists, will never be null
+        val originalState = SessionState.get()
+        if (isCliSessionState(originalState)) {
+          // In `SparkSQLCLIDriver`, we have already started a `CliSessionState`,
+          // which contains information like configurations from command line. Later
+          // we call `SparkSQLEnv.init()` there, which would run into this part again.
+          // so we should keep `conf` and reuse the existing instance of `CliSessionState`.
+          originalState
+        } else {
+          val hiveConf = new HiveConf(hadoopConf, classOf[SessionState])
+          // HiveConf is a Hadoop Configuration, which has a field of classLoader and
+          // the initial value will be the current thread's context class loader
+          // (i.e. initClassLoader at here).
+          // We call initialConf.setClassLoader(initClassLoader) at here to make
+          // this action explicit.
+          hiveConf.setClassLoader(initClassLoader)
+
+          // Second, we set all entries in config to this hiveConf.
+          extraConfig.foreach { case (k, v) =>
+            if (k.toLowerCase.contains("password")) {
+              logDebug(s"Applying extra config to HiveConf: $k=xxx")
+            } else {
+              logDebug(s"Applying extra config to HiveConf: $k=$v")
+            }
+            hiveConf.set(k, v)
+          }
+
+          hadoopConf.iterator().asScala.foreach { entry =>
+            val key = entry.getKey
+            val value = entry.getValue
+            if (key.toLowerCase.contains("password")) {
+              logDebug(s"Applying Hadoop and Hive config to Hive Conf: $key=xxx")
+            } else {
+              logDebug(s"Applying Hadoop and Hive config to Hive Conf: $key=$value")
+            }
+            hiveConf.set(key, value)
+          }
+
+          // First, we set all spark confs to this hiveConf.
+          sparkConf.getAll.foreach { case (k, v) =>
+            if (k.toLowerCase.contains("password")) {
+              logDebug(s"Applying Spark config to Hive Conf: $k=xxx")
+            } else {
+              logDebug(s"Applying Spark config to Hive Conf: $k=$v")
+            }
+            hiveConf.set(k, v)
+          }
+          logInfo(s"Hive start: $hiveDb")
+          val state = new SessionState(hiveConf)
+          SessionState.start(state)
+          state.out = new PrintStream(outputBuffer, true, "UTF-8")
+          state.err = new PrintStream(outputBuffer, true, "UTF-8")
+          state
+        }
+      } finally {
+        Thread.currentThread().setContextClassLoader(original)
+      }
+      ret
+    }
+    this.state = newstate
+  }
+
+
+
+    def reset(): Unit = withHiveState {
     client.getAllTables("default").asScala.foreach { t =>
         logDebug(s"Deleting table $t")
         val table = client.getTable("default", t)
@@ -831,9 +958,20 @@ private[hive] class HiveClientImpl(
     }
     hiveTable.setPartCols(partCols.asJava)
     // TODO: set sort columns here too
-    hiveTable.setBucketCols(table.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).bucketColumnNames.asJava)
+    val bucketColumnInfo = table.bucketSpec.
+      getOrElse(new BucketSpec(-1, Seq(), Seq()))
+    val bucketColumnNames = new util.ArrayList[String]()
+    schema.foreach( f => {
+      bucketColumnInfo.bucketColumnNames.foreach( bucketName => {
+        if ( f.getName.equalsIgnoreCase(bucketName)) {
+          bucketColumnNames.add(f.getName)
+        }
+      })
+    })
+
+    hiveTable.setBucketCols(bucketColumnNames)
     hiveTable.setOwner(conf.getUser)
-    hiveTable.setNumBuckets(table.bucketSpec.getOrElse(new BucketSpec(-1,Seq(), Seq())).numBuckets)
+    hiveTable.setNumBuckets(bucketColumnInfo.numBuckets)
     hiveTable.setCreateTime((table.createTime / 1000).toInt)
     hiveTable.setLastAccessTime((table.lastAccessTime / 1000).toInt)
     table.storage.locationUri.foreach { loc => shim.setDataLocation(hiveTable, loc) }
@@ -889,4 +1027,6 @@ private[hive] class HiveClientImpl(
         parameters =
           if (hp.getParameters() != null) hp.getParameters().asScala.toMap else Map.empty)
   }
+
+
 }

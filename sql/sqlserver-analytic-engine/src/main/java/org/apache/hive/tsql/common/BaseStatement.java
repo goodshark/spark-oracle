@@ -2,11 +2,14 @@ package org.apache.hive.tsql.common;
 
 import org.apache.hive.plsql.cursor.OracleCursor;
 import org.apache.hive.plsql.type.LocalTypeDeclare;
+import org.apache.hive.tsql.arg.SystemVName;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.GotoStatement;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.util.*;
@@ -25,6 +28,7 @@ public abstract class BaseStatement extends TreeNode {
     public static final String CODE_NOT = "!";
     public static final String CODE_LINE_END = "\n";
 
+    private static final Logger LOG = LoggerFactory.getLogger(BaseStatement.class);
     private StringBuffer exeSql = new StringBuffer();
     // store labels with while
     private Set<String> labels = new HashSet<>();
@@ -70,10 +74,21 @@ public abstract class BaseStatement extends TreeNode {
         getExecSession().addLogicalPlans(plan);
         Dataset dataset = sparkSession.sql(exeSql);
         SparkResultSet sparkResultSet = new SparkResultSet(dataset);
-        if(isAddResult()) {
+        updateRowcount(sparkResultSet);
+        if (isAddResult()) {
             getExecSession().addRs(sparkResultSet);
         }
+
         return sparkResultSet;
+    }
+
+
+    public void updateRowcount(SparkResultSet rs) {
+        try {
+            updateSys(SystemVName.ROWCOUNT, null == rs ? 0 : rs.getRow());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
