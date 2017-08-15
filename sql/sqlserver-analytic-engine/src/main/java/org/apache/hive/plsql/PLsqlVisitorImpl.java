@@ -3770,5 +3770,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return oracleUseStatement;
     }
 
+    //游标为select 的一部分
+    @Override
+    public Object visitCursor_expression_alias(PlsqlParser.Cursor_expression_aliasContext ctx) {
+        treeBuilder.addException("sqlstatment has cursor.", ctx);
+        return null;
+    }
+
 
 }
