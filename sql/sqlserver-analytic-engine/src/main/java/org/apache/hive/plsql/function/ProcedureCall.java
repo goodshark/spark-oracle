@@ -17,9 +17,7 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.FunctionIdentifier;
 import org.apache.spark.sql.catalyst.expressions.*;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
-import org.apache.spark.sql.types.DataType;
-import org.apache.spark.sql.types.IntegerType;
-import org.apache.spark.sql.types.LongType;
+import org.apache.spark.sql.types.*;
 import scala.collection.JavaConversions;
 
 import java.text.ParseException;
@@ -249,8 +247,8 @@ public class ProcedureCall extends CallStatement {
         } else {
             ExpressionInfo expressionInfo = sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName()));
             String classname = expressionInfo.getClassName();
-            if(classname == null || "".equals(classname)){
-                throw new Exception("Can not obtain Function class for [" + funcName.getFuncName() + "]");
+            if(classname == null || "".equals(classname) || sparkSession.getSessionState().catalog().lookupFunctionBuilder(new FunctionIdentifier(funcName.getFuncName())) == null){
+                throw new Exception("Can not obtain Function Info for [" + funcName.getFuncName() + "]");
             } else {
                 String[] sim = classname.split("\\.");
                 String simpleName = sim[sim.length-1];
@@ -260,10 +258,11 @@ public class ProcedureCall extends CallStatement {
                 declare.append(CODE_SEP);
                 declare.append(funcVar);
                 declare.append(CODE_EQ);
-                declare.append("new ");
-                declare.append(classname);
+
 
                 if(isExtendFrom(classname, UDF.class)){
+                    declare.append("new ");
+                    declare.append(classname);
                     declare.append("()");
                     if(!variables.contains(declare.toString())){
                         variables.add(declare.toString());
@@ -303,20 +302,48 @@ public class ProcedureCall extends CallStatement {
                     }
                 }
 
-                if(isExtendFrom(classname, Expression.class) && !isExtendFrom(classname, UnaryExpression.class)){
-                    declare.append("(scala.collection.JavaConversions.asScalaBuffer(java.util.Arrays.asList(new org.apache.spark.sql.catalyst.expressions.Expression[]{");
-                    int i = 0;
-                    while (i < arguments.size()) {
-                        declare.append("new org.apache.spark.sql.catalyst.expressions.FunctionValueExpression(" + i + ")");
-                        i++;
-                        if(i != arguments.size()){
-                            declare.append(",");
-                        }
-                    }
-                    declare.append("})))");
+                if(isExtendFrom(classname, Expression.class)){
+                    declare.append("(");
+                    declare.append(classname);
+                    declare.append(")");
+                    declare.append("org.apache.spark.sql.catalyst.plfunc.PlFunctionUtils.getExpressionInstance(\"");
+                    declare.append(classname);
+                    declare.append("\",");
+                    declare.append(arguments.size());
+                    declare.append(")");
                     if(!variables.contains(declare.toString())){
                         variables.add(declare.toString());
                     }
+
+                    List<Expression> expressions = new ArrayList<>(arguments.size());
+                    for(int i = 0; i < arguments.size(); i++){
+                        expressions.add(new FunctionValueExpression(i));
+                    }
+                    Expression expr = sparkSession.getSessionState().catalog().lookupFunctionBuilder(new FunctionIdentifier(funcName.getFuncName())).get().apply(scala.collection.JavaConversions.asScalaBuffer(expressions));
+                    DataType functionType = expr.dataType();
+                    List<AbstractDataType> inputTypes = null;
+                    if(expr instanceof ImplicitCastInputTypes){
+                        inputTypes = scala.collection.JavaConversions.bufferAsJavaList(((ImplicitCastInputTypes) expr).inputTypes().<AbstractDataType>toBuffer());
+                    }
+                    String functionReturnType = null;
+                    if(functionType instanceof StringType){
+                        functionReturnType = "String";
+                    } else if(functionType instanceof LongType){
+                        functionReturnType = "Long";
+                    } else if(functionType instanceof DoubleType){
+                        functionReturnType = "Double";
+                    } else if(functionType instanceof FloatType){
+                        functionReturnType = "Float";
+                    } else if(functionType instanceof BooleanType){
+                        functionReturnType = "Boolean";
+                    } else if(functionType instanceof IntegerType){
+                        functionReturnType = "Integer";
+                    } else {
+                        throw new Exception("Not support for type = " + functionType.toString());
+                    }
+                    sb.append("(");
+                    sb.append(functionReturnType);
+                    sb.append(")");
 
                     String rowVarName = this.realFuncName + "row" + arguments.size();
                     StringBuilder rowDeclare = new StringBuilder();
@@ -330,6 +357,10 @@ public class ProcedureCall extends CallStatement {
                     sb.append(".update(new org.apache.spark.sql.catalyst.expressions.UpdateValue[]{");
                     int j = 0;
                     for(Var arg : arguments){
+                        boolean stringt = false;
+                        if(inputTypes != null && inputTypes.get(j) instanceof StringType){
+                            stringt = true;
+                        }
                         if (arg.getDataType() == Var.DataType.VAR) {
                             Object value = null;
                             try{
@@ -340,15 +371,23 @@ public class ProcedureCall extends CallStatement {
                             if(value != null){
                                 sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                                 sb.append(j);
-                                sb.append(",\"");
+                                sb.append(",");
+                                if(stringt){
+                                    sb.append("UTF8String.fromString");
+                                }
+                                sb.append("(\"");
                                 sb.append(value.toString());
-                                sb.append("\")");
+                                sb.append("\"))");
                             } else {
                                 sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                                 sb.append(j);
                                 sb.append(",");
+                                if(stringt){
+                                    sb.append("UTF8String.fromString");
+                                }
+                                sb.append("(");
                                 sb.append(arg.getVarName());
-                                sb.append(")");
+                                sb.append("))");
                             }
                         } else  if (arg.getValueType() == Var.ValueType.EXPRESSION) {
                             TreeNode baseStatement = arg.getExpr();
@@ -357,15 +396,23 @@ public class ProcedureCall extends CallStatement {
                                 sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                                 sb.append(j);
                                 sb.append(",");
+                                if(stringt){
+                                    sb.append("UTF8String.fromString");
+                                }
+                                sb.append("(");
                                 sb.append(code);
-                                sb.append(")");
+                                sb.append("))");
                             }
                         } else {
                             sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
                             sb.append(j);
-                            sb.append(",\"");
+                            sb.append(",");
+                            if(stringt){
+                                sb.append("UTF8String.fromString");
+                            }
+                            sb.append("(\"");
                             sb.append(arg.toString());
-                            sb.append("\")");
+                            sb.append("\"))");
                         }
                         j++;
                         if(j != arguments.size()){
@@ -373,60 +420,9 @@ public class ProcedureCall extends CallStatement {
                         }
                     }
                     sb.append("}))");
-                }
-                if(isExtendFrom(classname, UnaryExpression.class) && arguments.size() == 1){
-
-                    declare.append("(new new org.apache.spark.sql.catalyst.expressions.FunctionValueExpression(0))");
-                    if(!variables.contains(declare.toString())){
-                        variables.add(declare.toString());
+                    if("String".equalsIgnoreCase(functionReturnType)) {
+                        sb.append(".toString()");
                     }
-
-                    String rowVarName = this.realFuncName + "row" + arguments.size();
-                    StringBuilder rowDeclare = new StringBuilder();
-                    rowDeclare.append("org.apache.spark.sql.catalyst.expressions.FunctionArgsRow" + CODE_SEP + rowVarName + CODE_EQ + "new org.apache.spark.sql.catalyst.expressions.FunctionArgsRow(" + arguments.size() +")");
-                    if(!variables.contains(rowDeclare.toString())){
-                        variables.add(rowDeclare.toString());
-                    }
-                    sb.append(funcVar);
-                    sb.append(".eval(row.update(new org.apache.spark.sql.catalyst.expressions.UpdateValue[]{");
-                    Var arg = arguments.get(0);
-                    if (arg.getDataType() == Var.DataType.VAR) {
-                        Object value = null;
-                        try{
-                            value = arg.getVarValue();
-                        } catch (ParseException e) {
-                        }
-                        if(value != null){
-                            sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
-                            sb.append(0);
-                            sb.append(",\"");
-                            sb.append(value.toString());
-                            sb.append("\")");
-                        } else {
-                            sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
-                            sb.append(0);
-                            sb.append(",");
-                            sb.append(arg.getVarName());
-                            sb.append(")");
-                        }
-                    } else  if (arg.getValueType() == Var.ValueType.EXPRESSION) {
-                        TreeNode baseStatement = arg.getExpr();
-                        if(baseStatement instanceof BaseStatement){
-                            String code = ((BaseStatement) baseStatement).doCodegen(variables, childPlfuncs);
-                            sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
-                            sb.append(0);
-                            sb.append(",");
-                            sb.append(code);
-                            sb.append(")");
-                        }
-                    } else {
-                        sb.append("new org.apache.spark.sql.catalyst.expressions.UpdateValue(");
-                        sb.append(0);
-                        sb.append(",\"");
-                        sb.append(arg.toString());
-                        sb.append("\")");
-                    }
-                    sb.append("}))");
                 }
             }
         }

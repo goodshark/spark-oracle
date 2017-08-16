@@ -4,6 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.dbservice.ProcService;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.exception.FunctionNotFound;
 import org.apache.hive.tsql.exception.NotDeclaredException;
@@ -17,7 +18,7 @@ import java.util.List;
 /**
  * Created by dengrb1 on 5/24 0024.
  */
-public abstract class CallStatement extends BaseStatement {
+public abstract class CallStatement extends ExpressionStatement {
     protected List<Var> arguments = new ArrayList<>();
     protected FuncName funcName;
     protected String realFuncName;
