@@ -9,6 +9,7 @@ import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
 import org.apache.hive.tsql.exception.UnsupportedException;
+import org.apache.hive.tsql.node.LogicNode;
 import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -293,7 +294,9 @@ public class Executor {
         }
         if (initLoop) {
             stack.push(new BlockBorder(node));
-            ((WhileStatement) node).getCondtionNode().initIndex();
+            TreeNode conditionNode = ((WhileStatement) node).getCondtionNode();
+            if (conditionNode instanceof LogicNode)
+                ((LogicNode) conditionNode).initIndex();
             enterBlock(node);
         }
 
