@@ -3263,7 +3263,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitSimple_case_statement(PlsqlParser.Simple_case_statementContext ctx) {
         CaseStatement caseStatement = new CaseStatement(true);
-        caseStatement.setSwitchVar(ctx.atom().getText());
+        caseStatement.setSwitchVar(ctx.atom().getText().toUpperCase());
         List<PlsqlParser.Simple_case_when_partContext> whens = ctx.simple_case_when_part();
         for (PlsqlParser.Simple_case_when_partContext whenc : whens) {
             visit(whenc);
