@@ -7,6 +7,7 @@ import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.PredicateNode;
 
+import java.sql.ResultSet;
 import java.text.ParseException;
 import java.util.*;
 
@@ -15,7 +16,7 @@ import java.util.*;
  */
 public class WhileStatement extends BaseStatement {
 
-    private LogicNode condtionNode = null;
+    private TreeNode condtionNode = null;
     // store index variables in loop: for i in 1..10
 //    private Map<String, Var> varMap = new HashMap<>();
     // store labels with while
@@ -31,11 +32,11 @@ public class WhileStatement extends BaseStatement {
         setNodeType(t);
     }
 
-    public void setCondtionNode(LogicNode node) {
+    public void setCondtionNode(TreeNode node) {
         condtionNode = node;
     }
 
-    public LogicNode getCondtionNode() {
+    public TreeNode getCondtionNode() {
         return condtionNode;
     }
 
@@ -43,7 +44,8 @@ public class WhileStatement extends BaseStatement {
         if (condtionNode != null) {
             condtionNode.setExecSession(getExecSession());
             condtionNode.execute();
-            return condtionNode.getBool();
+            Var res = (Var) condtionNode.getRs().getObject(0);
+            return (boolean) res.getVarValue();
         } else {
             return false;
         }
@@ -100,14 +102,16 @@ public class WhileStatement extends BaseStatement {
     @Override
     public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
         StringBuffer sb = new StringBuffer();
-        if(this.condtionNode.getBool()){
+        ResultSet rs = condtionNode.getRs();
+        boolean bool = rs == null ? false : (boolean)((Var)rs.getObject(0)).getVarValue();
+        if(bool){
             sb.append("while(true){");
             sb.append(CODE_LINE_END);
         } else {
             boolean reverse = false;
-            if(this.condtionNode.getIndexIter() != null){
-                Var loopvar = this.condtionNode.getIndexIter().getIndexVar();
-                reverse = this.condtionNode.getIndexIter().isReverse();
+            if(condtionNode instanceof LogicNode && ((LogicNode)this.condtionNode).getIndexIter() != null){
+                Var loopvar = ((LogicNode)this.condtionNode).getIndexIter().getIndexVar();
+                reverse = ((LogicNode)this.condtionNode).getIndexIter().isReverse();
                 CreateFunctionStatement.SupportDataTypes type = CreateFunctionStatement.fromString(loopvar.getDataType().name());
                 if(type != null){
                     sb.append("for(");
@@ -117,35 +121,35 @@ public class WhileStatement extends BaseStatement {
                     sb.append(CODE_EQ);
                     try{
                         if(!reverse){
-                            if(this.condtionNode.getIndexIter().getLower().getVarValue() != null){
-                                sb.append(this.condtionNode.getIndexIter().getLower().getVarValue().toString());
+                            if(((LogicNode)this.condtionNode).getIndexIter().getLower().getVarValue() != null){
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getLower().getVarValue().toString());
                             } else {
-                                sb.append(this.condtionNode.getIndexIter().getLower().getVarName());
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getLower().getVarName());
                             }
                             sb.append(CODE_END);
                             sb.append(loopvar.getVarName());
                             sb.append("<=");
-                            if(this.condtionNode.getIndexIter().getUpper().getVarValue() != null) {
-                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarValue().toString());
+                            if(((LogicNode)this.condtionNode).getIndexIter().getUpper().getVarValue() != null) {
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getUpper().getVarValue().toString());
                             } else {
-                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarName());
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getUpper().getVarName());
                             }
                             sb.append(CODE_END);
                             sb.append(loopvar.getVarName());
                             sb.append("++");
                         } else {
-                            if(this.condtionNode.getIndexIter().getUpper().getVarValue() != null) {
-                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarValue().toString());
+                            if(((LogicNode)this.condtionNode).getIndexIter().getUpper().getVarValue() != null) {
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getUpper().getVarValue().toString());
                             } else {
-                                sb.append(this.condtionNode.getIndexIter().getUpper().getVarName());
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getUpper().getVarName());
                             }
                             sb.append(CODE_END);
                             sb.append(loopvar.getVarName());
                             sb.append("<=");
-                            if(this.condtionNode.getIndexIter().getLower().getVarValue() != null){
-                                sb.append(this.condtionNode.getIndexIter().getLower().getVarValue().toString());
+                            if(((LogicNode)this.condtionNode).getIndexIter().getLower().getVarValue() != null){
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getLower().getVarValue().toString());
                             } else {
-                                sb.append(this.condtionNode.getIndexIter().getLower().getVarName());
+                                sb.append(((LogicNode)this.condtionNode).getIndexIter().getLower().getVarName());
                             }
                             sb.append(CODE_END);
                             sb.append(loopvar.getVarName());
@@ -157,7 +161,7 @@ public class WhileStatement extends BaseStatement {
                 }
             } else {
                 sb.append("while(");
-                sb.append(condtionNode.doCodegen(variables, childPlfuncs));
+                sb.append(((BaseStatement)this.condtionNode).doCodegen(variables, childPlfuncs));
             }
             sb.append("){");
             sb.append(CODE_LINE_END);
