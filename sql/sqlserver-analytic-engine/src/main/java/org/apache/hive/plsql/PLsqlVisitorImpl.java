@@ -769,7 +769,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         IfStatement ifStatement = new IfStatement(TreeNode.Type.IF);
         if (ctx.condition() != null) {
             visit(ctx.condition());
-            ifStatement.setCondtion((LogicNode) treeBuilder.popStatement());
+            ifStatement.setCondtion(treeBuilder.popStatement());
         }
         if (ctx.seq_of_statements() != null) {
             visit(ctx.seq_of_statements());
@@ -819,19 +819,20 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitLoop_statement(PlsqlParser.Loop_statementContext ctx) {
         WhileStatement loopStatement = new WhileStatement(TreeNode.Type.WHILE);
-        LogicNode conditionNode = null;
+        TreeNode conditionNode = null;
         // while statement
         if (ctx.WHILE() != null) {
             visit(ctx.condition());
-            conditionNode = (LogicNode) treeBuilder.popStatement();
+            conditionNode = treeBuilder.popStatement();
         } else if (ctx.FOR() != null) {
             // for statement
             visit(ctx.cursor_loop_param());
-            conditionNode = (LogicNode) treeBuilder.popStatement();
+            conditionNode = treeBuilder.popStatement();
         } else {
             // basic loop condition always be true
-            conditionNode = new LogicNode();
-            conditionNode.setBool(true);
+            LogicNode condition = new LogicNode();
+            condition.setBool(true);
+            conditionNode = condition;
         }
 //        loopStatement.setLoopIndexVar(conditionNode.getIndexVar());
         loopStatement.setCondtionNode(conditionNode);
@@ -1104,7 +1105,11 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         if (ctx.numeric() != null) {
             var = (Var) visit(ctx.numeric());
         } else {
-            var = new Var("", ctx.getText(), Var.DataType.STRING);
+            String value = ctx.getText();
+            if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
+                var = new Var("", Boolean.parseBoolean(value), Var.DataType.BOOLEAN);
+            else
+                var = new Var("", value, Var.DataType.STRING);
         }
         expressionBean.setVar(var);
         ExpressionStatement expressionStatement = new ExpressionStatement(expressionBean);

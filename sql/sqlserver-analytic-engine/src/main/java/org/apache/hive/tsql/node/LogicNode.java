@@ -129,6 +129,7 @@ public class LogicNode extends ExpressionStatement {
 
     public void setBool(boolean bool) {
         boolFlag = bool;
+        setRs(new SparkResultSet().addRow(new Object[] {new Var("bool result", true, Var.DataType.BOOLEAN)}));
     }
 
     public void setIndexIter(IndexIterator iter) {
