@@ -203,6 +203,14 @@ private[hive] class SparkExecuteStatementOperation(
     }
   }
 
+  private def checkSparkEngin(engineName: String): Boolean = {
+    if (engineName.equalsIgnoreCase("spark")) {
+      true
+    } else {
+      false
+    }
+  }
+
   private def execute(): Unit = {
     statementId = UUID.randomUUID().toString
     logInfo(s"Running query '$statement' with $statementId")
@@ -224,11 +232,11 @@ private[hive] class SparkExecuteStatementOperation(
     }
     var plan: LogicalPlan = null
     var sqlServerPlans: java.util.List[LogicalPlan] = new util.ArrayList[LogicalPlan]()
+    val SQL_ENGINE = "spark.sql.analytical.engine"
     val engineName = sqlContext.sessionState.
-      conf.getConfString("spark.sql.analytical.engine", "")
+      conf.getConfString(SQL_ENGINE, "spark")
     try {
-      // 执行sqlserver
-      if (StringUtils.isNotBlank(engineName)) {
+      if (!checkSparkEngin(engineName)) {
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement, engineName)
         val sqlServerRs = procCli.getExecSession().getResultSets()
@@ -252,6 +260,16 @@ private[hive] class SparkExecuteStatementOperation(
         HiveThriftServer2.sqlSessionListenr.addTable(
           parentSession.getSessionHandle.getSessionId.toString,
           allTable)
+
+        logInfo("logical is " + sqlServerPlans.get(0))
+        sqlServerPlans.get(0) match {
+          case SetCommand(Some((SQL_ENGINE, Some(value)))) =>
+            sessionToActivePool.put(parentSession.getSessionHandle, value)
+            sqlContext.sessionState.conf.setConfString(SQL_ENGINE, value)
+            logInfo(s"Setting spark.sql.analytical.engine=$value " +
+              s"for future statements in this session.")
+          case _ =>
+        }
       } else {
         plan = sqlContext.sessionState.sqlParser.parsePlan(statement)
         result = sqlContext.sql(statement)
@@ -263,9 +281,10 @@ private[hive] class SparkExecuteStatementOperation(
           case _ =>
         }
       }
-      logInfo(s"HiveThriftServer: ${HiveThriftServer2}, result: ${result}")
-      logInfo(s"lister: ${HiveThriftServer2.listener}")
-      logInfo(s"queryExecution: ${result.queryExecution}")
+
+
+
+
       HiveThriftServer2.listener.onStatementParsed(statementId, result.queryExecution.toString())
       iter = {
         val useIncrementalCollect =
@@ -298,8 +317,8 @@ private[hive] class SparkExecuteStatementOperation(
           statementId, e.getMessage, SparkUtils.exceptionString(e))
         throw new HiveSQLException(e.toString)
     } finally {
-       clearCrudTableMap(plan)
-      if (StringUtils.isNotBlank(engineName)) {
+      clearCrudTableMap(plan)
+      if (!checkSparkEngin(engineName)) {
         clearCrudTableMapForSqlServer(sqlServerPlans)
         dropSqlserverTables
       } else {

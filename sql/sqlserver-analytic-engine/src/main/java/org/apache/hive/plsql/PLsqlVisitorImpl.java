@@ -3770,5 +3770,24 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return oracleUseStatement;
     }
 
+    //游标为select 的一部分
+    @Override
+    public Object visitCursor_expression_alias(PlsqlParser.Cursor_expression_aliasContext ctx) {
+        treeBuilder.addException("sqlstatment has cursor.", ctx);
+        return null;
+    }
 
+    @Override
+    public SqlStatement visitSet_oracle_engine(PlsqlParser.Set_oracle_engineContext ctx) {
+        StringBuffer sql = new StringBuffer();
+        sql.append(ctx.SET().getText());
+        sql.append(Common.SPACE);
+        sql.append(ctx.SPARK_SQL_ANALYTICAL_ENGINE().getText());
+        sql.append("=");
+        sql.append(getFullSql(ctx.id_expression()));
+        SqlStatement setSqlStatement = new SqlStatement();
+        setSqlStatement.setSql(sql.toString());
+        treeBuilder.pushStatement(setSqlStatement);
+        return setSqlStatement;
+    }
 }

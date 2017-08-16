@@ -4445,5 +4445,18 @@ public class TExec extends TSqlBaseVisitor<Object> {
         return sourceNotMatchedBean;
     }
 
+    @Override
+    public SqlStatement visitSet_sqlserver_engine(TSqlParser.Set_sqlserver_engineContext ctx) {
+        StringBuffer sql = new StringBuffer();
+        sql.append(ctx.SET().getText());
+        sql.append(Common.SPACE);
+        sql.append(ctx.SPARK_SQL_ANALYTICAL_ENGINE().getText());
+        sql.append("=");
+        sql.append(ctx.id().getText());
+        SqlStatement setSqlStatement = new SqlStatement();
+        setSqlStatement.setSql(sql.toString());
+        treeBuilder.pushStatement(setSqlStatement);
+        return setSqlStatement;
 
+    }
 }

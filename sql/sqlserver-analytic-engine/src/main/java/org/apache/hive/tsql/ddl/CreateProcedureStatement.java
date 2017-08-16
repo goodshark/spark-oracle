@@ -20,10 +20,11 @@ public class CreateProcedureStatement extends BaseStatement {
 
     private Action action;
 
-    public CreateProcedureStatement(CommonProcedureStatement function, Action action, int type) {
+    public CreateProcedureStatement(CommonProcedureStatement function, Action action, int t) {
         super(STATEMENT_NAME);
         this.function = function;
         this.action=action;
+        type = t;
     }
 
     @Override

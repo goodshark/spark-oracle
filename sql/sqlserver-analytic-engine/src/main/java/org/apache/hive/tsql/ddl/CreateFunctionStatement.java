@@ -176,7 +176,12 @@ public class CreateFunctionStatement extends BaseStatement {
             sb2.append(CODE_EQ);
             sb2.append("(");
             sb2.append(fromString(var.getDataType().name()).toString());
-            sb2.append(")inputdatas[" + i + "];\n");
+            sb2.append(")inputdatas[" + i + "]");
+            if("String".equalsIgnoreCase(fromString(var.getDataType().name()).toString())){
+                sb2.append(".toString()");
+            }
+            sb2.append(CODE_END);
+            sb2.append(CODE_LINE_END);
             i++;
         }
         List<TreeNode> children = this.function.getSqlClauses().getChildrenNodes();

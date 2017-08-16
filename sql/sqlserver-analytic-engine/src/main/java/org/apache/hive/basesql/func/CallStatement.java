@@ -1,8 +1,10 @@
 package org.apache.hive.basesql.func;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.dbservice.ProcService;
+import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.exception.FunctionNotFound;
 import org.apache.hive.tsql.exception.NotDeclaredException;
@@ -16,7 +18,7 @@ import java.util.List;
 /**
  * Created by dengrb1 on 5/24 0024.
  */
-public abstract class CallStatement extends BaseStatement {
+public abstract class CallStatement extends ExpressionStatement {
     protected List<Var> arguments = new ArrayList<>();
     protected FuncName funcName;
     protected String realFuncName;
@@ -66,10 +68,11 @@ public abstract class CallStatement extends BaseStatement {
     }
 
     protected void findFuncName() throws Exception {
+        funcName.setDatabase(getExecSession().getDatabase());
         if (funcName == null)
             throw new FunctionNotFound(realFuncName);
         if (funcName.isVariable()) {
-            Var v = findVar(funcName.getFuncName());
+            Var v = findVar(funcName.getRealFullFuncName());
             if (null == v) {
                 throw new NotDeclaredException(funcName.getFuncName());
             }
@@ -77,16 +80,16 @@ public abstract class CallStatement extends BaseStatement {
         }
         CommonProcedureStatement function = null;
         if (null == this.func) {
-            function = super.findFunc(realFuncName, arguments);
+            function = super.findFunc(funcName.getRealFullFuncName(), arguments);
         } else {
             function = func;
         }
         if (null == function) {
             // 待测试
             ProcService procService = new ProcService(getExecSession().getSparkSession());
-            int count = procService.getCountByName(realFuncName, type);
+            int count = procService.getCountByName(funcName.getRealFullFuncName(), type);
             if (count == 1) {
-                function = procService.getProcContent(realFuncName, type);
+                function = procService.getProcContent(funcName.getRealFullFuncName(), type);
                 //1表示从数据库读取
                 function.setProcSource(1);
                 addFunc(function);
