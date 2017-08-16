@@ -80,4 +80,26 @@ public class PlFunctionUtils {
         }
     }
 
+    public static String generateCodeForTest(PlFunctionRegistry.PlFunctionDescription func, PlFunctionRegistry registry) {
+        if(func != null){
+            StringBuilder sb = new StringBuilder();
+            sb.append("public Object generate(Object[] references) {\n");
+            sb.append("return new ");
+            sb.append(func.getFunc().getDb() + "_" + func.getFunc().getName());
+            sb.append("(); \n}\n");
+            List<PlFunctionIdentify> list = new ArrayList<>();
+            sb.append(func.getCode());
+            sb.append("\n");
+            list.add(func.getFunc());
+            if(func.getChildPlfuncs() != null && func.getChildPlfuncs().size() > 0){
+                for (PlFunctionIdentify identify : func.getChildPlfuncs()){
+                    getCode(sb, identify, registry, list);
+                }
+            }
+            return sb.toString();
+        } else {
+            return null;
+        }
+    }
+
 }

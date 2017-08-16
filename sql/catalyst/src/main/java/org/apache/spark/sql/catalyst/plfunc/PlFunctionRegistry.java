@@ -210,6 +210,10 @@ public class PlFunctionRegistry {
             return db;
         }
 
+        public String toString(){
+            return db + "." + name;
+        }
+
         public int hashCode(){
             return Objects.hash(name,db);
         }
