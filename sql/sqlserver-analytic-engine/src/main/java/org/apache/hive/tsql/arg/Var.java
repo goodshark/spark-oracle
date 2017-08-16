@@ -571,7 +571,7 @@ public class Var implements Serializable {
     }
 
     public String getOriginalSql() {
-        if (varName != null)
+        if (StringUtils.isNotBlank(varName))
             return varName;
         if (varValue != null)
             return varValue.toString();
