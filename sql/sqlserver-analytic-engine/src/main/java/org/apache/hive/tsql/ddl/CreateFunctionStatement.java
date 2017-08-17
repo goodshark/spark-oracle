@@ -159,10 +159,12 @@ public class CreateFunctionStatement extends BaseStatement {
                 PlFunctionService service = PlFunctionService.getInstance(sparkSession.sparkContext().hadoopConfiguration().get(Common.DBURL),
                         sparkSession.sparkContext().hadoopConfiguration().get(Common.USER_NAME),
                         sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD));
-                if(PlFunctionRegistry.getInstance().getOraclePlFunc(func.getFunc()) != null){
-                    service.updatePlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
-                } else {
-                    service.createPlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
+                if(service.isEnableDbMeta()){
+                    if(PlFunctionRegistry.getInstance().getOraclePlFunc(func.getFunc()) != null){
+                        service.updatePlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
+                    } else {
+                        service.createPlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
+                    }
                 }
                 PlFunctionRegistry.getInstance().registerOrReplaceOraclePlFunc(func);
             }

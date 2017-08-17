@@ -29,6 +29,7 @@ public class PlFunctionService {
     private final static String TABLE_NAME = "LENOVO_SQLSERVER_PROCEDURE";
     private final static int TYPE = 3;
     private final static String ENGINE_NAME = "spark.sql.analytical.engine";
+    private boolean enableDbMeta = true; //just for test
 
     private String dbUrl;
     private String userName;
@@ -49,6 +50,15 @@ public class PlFunctionService {
             }
         }
         return plFunctionService;
+    }
+
+    //just for local test
+    public void setEnableDbMeta(boolean enable) {
+        this.enableDbMeta = enable;
+    }
+
+    public boolean isEnableDbMeta(){
+        return enableDbMeta;
     }
 
     public int createPlFunction(PlFunctionRegistry.PlFunctionDescription function, String userName, int type) throws Exception{
