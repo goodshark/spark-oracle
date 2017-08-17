@@ -75,7 +75,6 @@ public class PlFunctionService {
         sql.append(" )");
         Connection connection = null;
         PreparedStatement stmt = null;
-        ObjectOutputStream out = null;
 
         try {
             DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
@@ -101,7 +100,6 @@ public class PlFunctionService {
             throw e;
         } finally {
             close(connection, stmt);
-            out.close();
         }
         return rs;
     };
@@ -125,7 +123,6 @@ public class PlFunctionService {
         Connection connection = null;
         PreparedStatement stmt = null;
         int rs = 0;
-        ObjectOutputStream out = null;
         try {
             DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
             connection = dbUtils.getConn();
@@ -146,7 +143,6 @@ public class PlFunctionService {
             throw e;
         } finally {
             close(connection, stmt);
-            out.close();
         }
         return rs;
     }

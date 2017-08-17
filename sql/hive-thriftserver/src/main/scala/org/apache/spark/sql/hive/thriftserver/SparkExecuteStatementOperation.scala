@@ -33,11 +33,13 @@ import org.apache.hadoop.hive.shims.Utils
 import org.apache.hive.service.cli._
 import org.apache.hive.service.cli.operation.ExecuteStatementOperation
 import org.apache.hive.service.cli.session.HiveSession
-import org.apache.hive.tsql.common.SparkResultSet
+import org.apache.hive.tsql.common.{Common, SparkResultSet}
+import org.apache.hive.tsql.dbservice.PlFunctionService
 import org.apache.hive.tsql.{ExecSession, ProcedureCli}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan}
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry
 import org.apache.spark.sql.{DataFrame, SQLContext, Row => SparkRow}
 import org.apache.spark.sql.execution.command.SetCommand
 import org.apache.spark.sql.execution.datasources.{AcidDelCommand, AcidUpdateCommand}
@@ -54,6 +56,16 @@ private[hive] class SparkExecuteStatementOperation(
                                                   (sqlContext: SQLContext, sessionToActivePool: JMap[SessionHandle, String])
   extends ExecuteStatementOperation(parentSession, statement, confOverlay, runInBackground)
     with Logging {
+
+  private val loaded: Boolean = {
+    val service: PlFunctionService = PlFunctionService.getInstance(
+      sqlContext.sparkSession.sparkContext.hadoopConfiguration.get(Common.DBURL),
+      sqlContext.sparkSession.sparkContext.hadoopConfiguration.get(Common.USER_NAME),
+      sqlContext.sparkSession.sparkContext.hadoopConfiguration.get(Common.PASSWORD)
+    )
+    val funcs = service.getPlFunctions(PlFunctionService.ORACLE_FUNCTION_TYPE);
+    PlFunctionRegistry.getInstance().loadPlFuncFromMetadata(funcs)
+  }
 
   private var result: DataFrame = _
   private var iter: Iterator[SparkRow] = _

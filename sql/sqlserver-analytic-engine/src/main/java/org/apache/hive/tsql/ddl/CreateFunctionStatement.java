@@ -4,10 +4,15 @@ import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.plsql.PlsqlParser;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
+import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.dbservice.PlFunctionService;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.expressions.PlFunction;
+import org.apache.spark.sql.catalyst.expressions.PlFunctionInstanceGenerator;
 import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -144,8 +149,19 @@ public class CreateFunctionStatement extends BaseStatement {
                     children.add(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str));
                 }
             }
-            PlFunctionRegistry.getInstance().registerOrReplacePlFunc(new PlFunctionRegistry.
-                    PlFunctionDescription(id, function.getProcSql(),function.getMd5(), code, returnType.toString(), children));
+            PlFunctionRegistry.PlFunctionDescription func =  new PlFunctionRegistry.
+                    PlFunctionDescription(id, function.getProcSql(),function.getMd5(), code, returnType.toString(), children);
+            String finalCode = PlFunctionUtils.generateCodeForTest(func, PlFunctionRegistry.getInstance());
+            PlFunction.generateInstance(finalCode);
+            PlFunctionService service = PlFunctionService.getInstance(sparkSession.sparkContext().hadoopConfiguration().get(Common.DBURL),
+                    sparkSession.sparkContext().hadoopConfiguration().get(Common.USER_NAME),
+                    sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD));
+            if(PlFunctionRegistry.getInstance().getPlFunc(func.getFunc()) != null){
+                service.updatePlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
+            } else {
+                service.createPlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
+            }
+            PlFunctionRegistry.getInstance().registerOrReplacePlFunc(func);
         }
         return 0;
     }

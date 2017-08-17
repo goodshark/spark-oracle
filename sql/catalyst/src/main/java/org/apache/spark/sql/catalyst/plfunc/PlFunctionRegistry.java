@@ -19,6 +19,7 @@ public class PlFunctionRegistry {
 
     private Map<String,Map<String,PlFunctionDescription>> plfuncs = new HashMap<>();
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private boolean loaded = false;
 
     public List<String> listPlFunc(String db){
         readLock();
@@ -35,8 +36,23 @@ public class PlFunctionRegistry {
         }
     }
 
-    public void loadPlFuncFromMetadata(){
+    public boolean isLoaded(){
+        return loaded;
+    }
 
+    public boolean loadPlFuncFromMetadata(List<PlFunctionDescription> list){
+        writeLock();
+        try {
+            if(!loaded){
+                for(PlFunctionDescription f : list){
+                    registerPlFunc(f);
+                }
+                loaded = true;
+            }
+            return loaded;
+        } finally {
+            writeUnLock();
+        }
     }
 
     public PlFunctionDescription getPlFunc(PlFunctionIdentify id) {

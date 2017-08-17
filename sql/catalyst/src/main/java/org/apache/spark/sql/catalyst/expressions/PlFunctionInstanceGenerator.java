@@ -1,7 +1,9 @@
 package org.apache.spark.sql.catalyst.expressions;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by chenfolin on 2017/8/8.
@@ -9,11 +11,11 @@ import java.util.Map;
 public class PlFunctionInstanceGenerator {
     private PlFunctionExecutor object;
 
-    private static Map<String, String> functionCodes = new HashMap<>();
+    private static Cache<String, String> functionCodes = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).build();
 
     public PlFunctionExecutor getFuncInstance(String name){
         if(object == null){
-            this.object = PlFunction.generateInstance(functionCodes.get(name));
+            this.object = PlFunction.generateInstance(functionCodes.getIfPresent(name));
         }
         return object;
     }
