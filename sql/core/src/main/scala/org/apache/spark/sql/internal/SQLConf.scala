@@ -867,7 +867,7 @@ private[sql] class SQLConf extends Serializable with CatalystConf with Logging {
    * Return the `string` value of Spark SQL configuration property for the given key. If the key is
    * not set yet, return `defaultValue`.
    */
-  def getConfString(key: String, defaultValue: String): String = {
+  override def getConfString(key: String, defaultValue: String): String = {
     val entry = sqlConfEntries.get(key)
     if (entry != null && defaultValue != "<undefined>") {
       // Only verify configs in the SQLConf object

@@ -17,16 +17,16 @@ public class PlFunctionRegistry {
     private static PlFunctionRegistry plFunctionRegistry;
     private static AtomicBoolean singleLetonDone = new AtomicBoolean(false);
 
-    private Map<String,Map<String,PlFunctionDescription>> plfuncs = new HashMap<>();
+    private Map<String,Map<String,PlFunctionDescription>> oraclePlfuncs = new HashMap<>();
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private boolean loaded = false;
 
-    public List<String> listPlFunc(String db){
+    public List<String> listOraclePlFunc(String db){
         readLock();
         try {
-            if(plfuncs.get(db) != null){
+            if(oraclePlfuncs.get(db) != null){
                 List<String> result = new ArrayList<>();
-                result.addAll(plfuncs.get(db).keySet());
+                result.addAll(oraclePlfuncs.get(db).keySet());
                 return result;
             } else {
                 return new ArrayList<>();
@@ -40,12 +40,12 @@ public class PlFunctionRegistry {
         return loaded;
     }
 
-    public boolean loadPlFuncFromMetadata(List<PlFunctionDescription> list){
+    public boolean loadOraclePlFuncFromMetadata(List<PlFunctionDescription> list){
         writeLock();
         try {
             if(!loaded){
                 for(PlFunctionDescription f : list){
-                    registerPlFunc(f);
+                    registerOraclePlFunc(f);
                 }
                 loaded = true;
             }
@@ -55,12 +55,12 @@ public class PlFunctionRegistry {
         }
     }
 
-    public PlFunctionDescription getPlFunc(PlFunctionIdentify id) {
+    public PlFunctionDescription getOraclePlFunc(PlFunctionIdentify id) {
         readLock();
         try {
             if(id != null){
-                if(plfuncs.get(id.getDb()) != null){
-                    return plfuncs.get(id.getDb()).get(id.getName());
+                if(oraclePlfuncs.get(id.getDb()) != null){
+                    return oraclePlfuncs.get(id.getDb()).get(id.getName());
                 } else {
                     return null;
                 }
@@ -72,16 +72,16 @@ public class PlFunctionRegistry {
         }
     }
 
-    public boolean registerOrReplacePlFunc(PlFunctionDescription function) {
+    public boolean registerOrReplaceOraclePlFunc(PlFunctionDescription function) {
         logger.info("register function : " + function.getCode());
         writeLock();
         try {
             if(function != null){
-                Map<String, PlFunctionDescription> dbfuncs = plfuncs.get(function.getFunc().getDb());
+                Map<String, PlFunctionDescription> dbfuncs = oraclePlfuncs.get(function.getFunc().getDb());
                 if(dbfuncs == null){
                     dbfuncs = new HashMap<>();
                     dbfuncs.put(function.getFunc().getName(), function);
-                    plfuncs.put(function.getFunc().getDb(), dbfuncs);
+                    oraclePlfuncs.put(function.getFunc().getDb(), dbfuncs);
                     return true;
                 } else {
                     dbfuncs.put(function.getFunc().getName(), function);
@@ -95,16 +95,16 @@ public class PlFunctionRegistry {
         }
     }
 
-    public boolean registerPlFunc(PlFunctionDescription function) {
-        logger.info("register function : " + function.getCode());
+    public boolean registerOraclePlFunc(PlFunctionDescription function) {
+        logger.info("register oracle function : " + function.getCode());
         writeLock();
         try {
             if(function != null){
-                Map<String, PlFunctionDescription> dbfuncs = plfuncs.get(function.getFunc().getDb());
+                Map<String, PlFunctionDescription> dbfuncs = oraclePlfuncs.get(function.getFunc().getDb());
                 if(dbfuncs == null){
                     dbfuncs = new HashMap<>();
                     dbfuncs.put(function.getFunc().getName(), function);
-                    plfuncs.put(function.getFunc().getDb(), dbfuncs);
+                    oraclePlfuncs.put(function.getFunc().getDb(), dbfuncs);
                     return true;
                 } else {
                     if(dbfuncs.get(function.getFunc().getName()) != null){

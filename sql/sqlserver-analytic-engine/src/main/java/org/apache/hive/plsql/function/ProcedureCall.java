@@ -182,8 +182,12 @@ public class ProcedureCall extends CallStatement {
         if(functionDb == null || functionName == null){
             throw new Exception("Can not obtain DATABASE or FUNCTIONNAME.");
         }
-        PlFunctionRegistry.PlFunctionDescription f = PlFunctionRegistry.getInstance().getPlFunc(new PlFunctionRegistry.
-                PlFunctionIdentify(functionName, functionDb));
+        String enname = sparkSession.sessionState().conf().getConfString("spark.sql.analytical.engine", "spark");
+        PlFunctionRegistry.PlFunctionDescription f = null;
+        if("oracle".equalsIgnoreCase(enname)){
+            f= PlFunctionRegistry.getInstance().getOraclePlFunc(new PlFunctionRegistry.
+                    PlFunctionIdentify(functionName, functionDb));
+        }
         if(f != null){
             sb.append("(");
             sb.append(f.getReturnType());

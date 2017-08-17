@@ -1057,15 +1057,21 @@ class Analyzer(
         q transformExpressions {
           case u @ UnresolvedFunction(funcId, children, isDistinct) =>
             withPosition(u) {
-              val db = funcId.database
-              val dbstr = if (db != None && db.get != null) funcId.
-                database.get else catalog.getCurrentDatabase
-              val func = PlFunctionRegistry.getInstance()
-                .getPlFunc(new PlFunctionRegistry.PlFunctionIdentify(funcId.funcName, dbstr))
-              if (func != null) {
-                val codeString = PlFunctionUtils.generateCode(new PlFunctionRegistry.PlFunctionIdentify(funcId.funcName, dbstr), PlFunctionRegistry.getInstance())
-                val returnType = func.getReturnType
-                PlFunction(children, dbstr, funcId.funcName, codeString, returnType)
+              val engineName = conf.getConfString("spark.sql.analytical.engine", "spark")
+              if("oracle".equalsIgnoreCase(engineName)){
+                val db = funcId.database
+                val dbstr = if (db != None && db.get != null) funcId.
+                  database.get else catalog.getCurrentDatabase
+                val func = PlFunctionRegistry.getInstance()
+                  .getOraclePlFunc(new PlFunctionRegistry.PlFunctionIdentify(funcId.funcName, dbstr))
+                if (func != null) {
+                  val codeString = PlFunctionUtils.generateCode(new PlFunctionRegistry.PlFunctionIdentify(
+                    funcId.funcName, dbstr), PlFunctionRegistry.getInstance(), engineName)
+                  val returnType = func.getReturnType
+                  PlFunction(children, dbstr, funcId.funcName, codeString, returnType)
+                } else {
+                  u
+                }
               } else {
                 u
               }

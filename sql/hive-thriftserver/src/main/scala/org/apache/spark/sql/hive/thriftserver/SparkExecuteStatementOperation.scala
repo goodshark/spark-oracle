@@ -57,14 +57,14 @@ private[hive] class SparkExecuteStatementOperation(
   extends ExecuteStatementOperation(parentSession, statement, confOverlay, runInBackground)
     with Logging {
 
-  private val loaded: Boolean = {
+  private val loadedOracleFunction: Boolean = {
     val service: PlFunctionService = PlFunctionService.getInstance(
       sqlContext.sparkSession.sparkContext.hadoopConfiguration.get(Common.DBURL),
       sqlContext.sparkSession.sparkContext.hadoopConfiguration.get(Common.USER_NAME),
       sqlContext.sparkSession.sparkContext.hadoopConfiguration.get(Common.PASSWORD)
     )
     val funcs = service.getPlFunctions(PlFunctionService.ORACLE_FUNCTION_TYPE);
-    PlFunctionRegistry.getInstance().loadPlFuncFromMetadata(funcs)
+    PlFunctionRegistry.getInstance().loadOraclePlFuncFromMetadata(funcs)
   }
 
   private var result: DataFrame = _
