@@ -46,6 +46,7 @@ import org.apache.hive.plsql.dml.fragment.updateFragment.OracleUpdateStatement;
 import org.apache.hive.plsql.dml.fragment.updateFragment.StaticReturningClauseFm;
 import org.apache.hive.plsql.dml.fragment.updateFragment.UpdateSetClauseFm;
 import org.apache.hive.plsql.expression.GeneralExpression;
+import org.apache.hive.plsql.expression.RelationUnaryExpression;
 import org.apache.hive.plsql.function.FakeFunction;
 import org.apache.hive.plsql.function.Function;
 import org.apache.hive.plsql.function.ProcedureCall;
@@ -392,18 +393,46 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     }
 
     @Override
+    public Object visitQuantified_expression(PlsqlParser.Quantified_expressionContext ctx) {
+        // SOME | EXISTS | ALL | ANY
+        RelationUnaryExpression unaryExpression = new RelationUnaryExpression();
+        if (ctx.SOME() != null)
+            unaryExpression.setAction(ctx.SOME().getText());
+        if (ctx.EXISTS() != null)
+            unaryExpression.setAction(ctx.EXISTS().getText());
+        if (ctx.ANY() != null)
+            unaryExpression.setAction(ctx.ANY().getText());
+        if (ctx.ALL() != null)
+            unaryExpression.setAction(ctx.ALL().getText());
+        if (ctx.subquery() != null) {
+            visit(ctx.subquery());
+            TreeNode queryNode = treeBuilder.popStatement();
+            unaryExpression.setQuery(queryNode);
+        } else {
+            for (PlsqlParser.ExpressionContext exprCtx: ctx.expression()) {
+                visit(exprCtx);
+                unaryExpression.addExpr(treeBuilder.popStatement());
+            }
+        }
+        treeBuilder.pushStatement(unaryExpression);
+        return unaryExpression;
+    }
+
+    @Override
     public Object visitUnary_expression(PlsqlParser.Unary_expressionContext ctx) {
         ExpressionStatement unaryEs = null;
         // TODO only implement standard funciton
         if (ctx.standard_function() != null) {
             visit(ctx.standard_function());
-            unaryEs = (ExpressionStatement) treeBuilder.popStatement();
         }
         // TODO only implement general_element_part for x(i).y
         if (ctx.atom() != null) {
             visit(ctx.atom());
-            unaryEs = (ExpressionStatement) treeBuilder.popStatement();
         }
+        if (ctx.quantified_expression() != null) {
+            visit(ctx.quantified_expression());
+        }
+        unaryEs = (ExpressionStatement) treeBuilder.popStatement();
         treeBuilder.pushStatement(unaryEs);
         return unaryEs;
     }
