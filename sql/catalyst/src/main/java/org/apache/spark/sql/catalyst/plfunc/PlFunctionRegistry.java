@@ -22,17 +22,51 @@ public class PlFunctionRegistry {
     private boolean loaded = false;
 
     public List<String> listOraclePlFunc(String db){
-        readLock();
-        try {
-            if(oraclePlfuncs.get(db) != null){
-                List<String> result = new ArrayList<>();
-                result.addAll(oraclePlfuncs.get(db).keySet());
-                return result;
+        if(oraclePlfuncs.get(db) != null){
+            List<String> result = new ArrayList<>();
+            result.addAll(oraclePlfuncs.get(db).keySet());
+            return result;
+        } else {
+            return new ArrayList<>();
+        }
+    }
+
+    public List<PlFunctionDescription> listOraclePlFunc(String db, String name){
+        if(oraclePlfuncs.get(db) != null){
+            List<PlFunctionDescription> result = new ArrayList<>();
+            if (name.contains("*")) {
+                if(name.equals("*")){
+                    String namestring = name.substring(1);
+                    List<PlFunctionDescription> funcs = new ArrayList<>();
+                    funcs.addAll(oraclePlfuncs.get(db).values());
+                    for(PlFunctionDescription func : funcs){
+                        result.add(func);
+                    }
+                } else if(name.startsWith("*")){
+                    String namestring = name.substring(1);
+                    List<PlFunctionDescription> funcs = new ArrayList<>();
+                    funcs.addAll(oraclePlfuncs.get(db).values());
+                    for(PlFunctionDescription func : funcs){
+                        if(func.getFunc().getName().endsWith(namestring)){
+                            result.add(func);
+                        }
+                    }
+                } else {
+                    String namestring = name.substring(0,name.indexOf("*"));
+                    List<PlFunctionDescription> funcs = new ArrayList<>();
+                    funcs.addAll(oraclePlfuncs.get(db).values());
+                    for(PlFunctionDescription func : funcs){
+                        if(func.getFunc().getName().startsWith(namestring)){
+                            result.add(func);
+                        }
+                    }
+                }
             } else {
-                return new ArrayList<>();
+                result.add(getOraclePlFunc(new PlFunctionIdentify(db, name)));
             }
-        } finally {
-            readUnLock();
+            return result;
+        } else {
+            return new ArrayList<>();
         }
     }
 
@@ -50,6 +84,24 @@ public class PlFunctionRegistry {
                 loaded = true;
             }
             return loaded;
+        } finally {
+            writeUnLock();
+        }
+    }
+
+    public boolean delOraclePlFunc(PlFunctionIdentify id) {
+        writeLock();
+        try {
+            if(id != null){
+                if(oraclePlfuncs.get(id.getDb()) != null){
+                    oraclePlfuncs.get(id.getDb()).remove(id.getName());
+                    return true;
+                } else {
+                    return true;
+                }
+            } else {
+                return false;
+            }
         } finally {
             writeUnLock();
         }

@@ -55,6 +55,7 @@ unit_statement
     | create_type
 
     | drop_function
+    | drop_pl_function
     | drop_package
     | drop_procedure
     | drop_sequence
@@ -69,6 +70,7 @@ unit_statement
     | use_statement
     | show_tables
     | show_databases
+    | show_pl_functions
     | set_oracle_engine
     ;
 show_databases:
@@ -76,6 +78,9 @@ show_databases:
     ;
 show_tables:
     SHOW TABLES ';'?
+    ;
+show_pl_functions:
+    SHOW PL FUNCTIONS function_name? ';'?
     ;
 use_statement
     : USE database=id ';'?
@@ -94,6 +99,9 @@ anonymous_block
 
 drop_function
     : DROP FUNCTION function_name ';'
+    ;
+drop_pl_function
+    : DROP PL FUNCTION function_name ';'?
     ;
 
 alter_function
@@ -2855,7 +2863,9 @@ FORALL:                       F O R A L L;
 FORCE:                        F O R C E;
 FROM:                         F R O M;
 FULL:                         F U L L;
+PL:                           P L;
 FUNCTION:                     F U N C T I O N;
+FUNCTIONS:                     F U N C T I O N S;
 GOTO:                         G O T O;
 GRANT:                        G R A N T;
 GROUP:                        G R O U P;
