@@ -4,10 +4,15 @@ import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.hive.plsql.PlsqlParser;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
+import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.dbservice.PlFunctionService;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.expressions.PlFunction;
+import org.apache.spark.sql.catalyst.expressions.PlFunctionInstanceGenerator;
 import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -118,34 +123,51 @@ public class CreateFunctionStatement extends BaseStatement {
             db = function.getName().getDatabase();
         }
         PlFunctionRegistry.PlFunctionIdentify id = new PlFunctionRegistry.PlFunctionIdentify(function.getName().getFuncName(), db);
-        PlFunctionRegistry.PlFunctionDescription old = PlFunctionRegistry.getInstance().getPlFunc(id);
-        if(replace == null && old != null){
-            throw new Exception("Function exsits in current database.");
-        } else if (old != null && old.getMd5().equals(function.getMd5())){
-            return 0;
-        } else {
-            List<String> childPlfuncs = new ArrayList<>();
-            String code = this.doCodeGen(childPlfuncs);
-            List<PlFunctionRegistry.PlFunctionIdentify> children = new ArrayList<>();
-            for(String str : childPlfuncs){
-                if(str.contains(".")){
-                    String[] ns = str.split("\\.");
-                    if(ns.length != 2){
-                        throw new Exception("Function call invalid. [db].[name] or [name].");
+        String enname = sparkSession.sessionState().conf().getConfString("spark.sql.analytical.engine", "spark");
+        PlFunctionRegistry.PlFunctionDescription old = null;
+        if("oracle".equalsIgnoreCase(enname)){
+            old = PlFunctionRegistry.getInstance().getOraclePlFunc(id);
+            if(replace == null && old != null){
+                throw new Exception("Function exsits in current database.");
+            } else if (old != null && old.getMd5().equals(function.getMd5())){
+                return 0;
+            } else {
+                List<String> childPlfuncs = new ArrayList<>();
+                String code = this.doCodeGen(childPlfuncs);
+                List<PlFunctionRegistry.PlFunctionIdentify> children = new ArrayList<>();
+                for(String str : childPlfuncs){
+                    if(str.contains(".")){
+                        String[] ns = str.split("\\.");
+                        if(ns.length != 2){
+                            throw new Exception("Function call invalid. [db].[name] or [name].");
+                        }
+                        if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]))){
+                            throw new Exception("Can not call self function.");
+                        }
+                        children.add(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]));
+                    } else {
+                        if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str))){
+                            throw new Exception("Can not call self function.");
+                        }
+                        children.add(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str));
                     }
-                    if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]))){
-                        throw new Exception("Can not call self function.");
-                    }
-                    children.add(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]));
-                } else {
-                    if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str))){
-                        throw new Exception("Can not call self function.");
-                    }
-                    children.add(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str));
                 }
+                PlFunctionRegistry.PlFunctionDescription func =  new PlFunctionRegistry.
+                        PlFunctionDescription(id, function.getProcSql(),function.getMd5(), code, returnType.toString(), children);
+                String finalCode = PlFunctionUtils.generateCodeForTest(func, PlFunctionRegistry.getInstance(), enname);
+                PlFunction.generateInstance(finalCode);
+                PlFunctionService service = PlFunctionService.getInstance(sparkSession.sparkContext().hadoopConfiguration().get(Common.DBURL),
+                        sparkSession.sparkContext().hadoopConfiguration().get(Common.USER_NAME),
+                        sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD));
+                if(service.isEnableDbMeta()){
+                    if(PlFunctionRegistry.getInstance().getOraclePlFunc(func.getFunc()) != null){
+                        service.updatePlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
+                    } else {
+                        service.createPlFunction(func, sparkSession.sparkSessionUserName(), PlFunctionService.ORACLE_FUNCTION_TYPE);
+                    }
+                }
+                PlFunctionRegistry.getInstance().registerOrReplaceOraclePlFunc(func);
             }
-            PlFunctionRegistry.getInstance().registerOrReplacePlFunc(new PlFunctionRegistry.
-                    PlFunctionDescription(id, function.getProcSql(),function.getMd5(), code, returnType.toString(), children));
         }
         return 0;
     }

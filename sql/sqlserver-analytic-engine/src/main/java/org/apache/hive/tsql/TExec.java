@@ -1625,6 +1625,7 @@ public class TExec extends TSqlBaseVisitor<Object> {
         }
         rs.setSql(sql.toString());
         DropProcedureStatement statement = new DropProcedureStatement(funcNames);
+        statement.setType(1);
         treeBuilder.pushStatement(statement);
 
         return statement;

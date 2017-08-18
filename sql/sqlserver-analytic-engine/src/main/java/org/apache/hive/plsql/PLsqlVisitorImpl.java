@@ -63,8 +63,11 @@ import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.cursor.DeclareCursorStatement;
 import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.hive.tsql.ddl.CreateProcedureStatement;
+import org.apache.hive.tsql.ddl.DropProcedureStatement;
+import org.apache.hive.tsql.ddl.DropPlFunctionStatement;
 import org.apache.hive.tsql.dml.ExpressionListStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
+import org.apache.hive.tsql.dml.ShowPlFunctionStatement;
 import org.apache.hive.tsql.exception.Position;
 import org.apache.hive.tsql.func.FuncName;
 import org.apache.hive.tsql.func.Procedure;
@@ -966,12 +969,35 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         visit(ctx.anonymous_block());
         procedure.setSqlClauses(treeBuilder.popStatement());
         procedure.setLeastArguments();
-        CreateProcedureStatement.Action action = null != ctx.CREATE() ?
+        CreateProcedureStatement.Action action = null == ctx.REPLACE() ?
                 CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
         CreateProcedureStatement statement = new CreateProcedureStatement(procedure, action, 2);
         treeBuilder.pushStatement(statement);
         return statement;
     }
+
+    @Override
+    public BaseStatement visitDrop_procedure(PlsqlParser.Drop_procedureContext ctx) {
+        /*  : DROP PROCEDURE procedure_name ';'
+        ;*/
+        SqlStatement rs = new SqlStatement();
+        StringBuffer sql = new StringBuffer();
+        sql.append(ctx.DROP().getText()).append(Common.SPACE);
+        sql.append("PROCEDURE ").append(Common.SPACE);
+        List<FuncName> funcNames = new ArrayList<>();
+        String procName = ctx.procedure_name().getText();
+        sql.append(procName);
+        FuncName procId = new FuncName();
+        procId.setFuncName(procName);
+        funcNames.add(procId);
+        rs.setSql(sql.toString());
+        DropProcedureStatement statement = new DropProcedureStatement(funcNames);
+        statement.setType(2);
+        treeBuilder.pushStatement(statement);
+        return statement;
+    }
+
+
 
     @Override
     public Object visitParameter(PlsqlParser.ParameterContext ctx) {
@@ -3780,6 +3806,46 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         sqlStatement.setAddResult(true);
         treeBuilder.pushStatement(sqlStatement);
         return sqlStatement;
+    }
+
+    @Override
+    public ShowPlFunctionStatement visitShow_pl_functions(PlsqlParser.Show_pl_functionsContext ctx) {
+        PlsqlParser.Function_nameContext funcctx = ctx.function_name();
+        ShowPlFunctionStatement statement = null;
+        if(funcctx == null){
+            statement = new ShowPlFunctionStatement(null, null, sparkSession);
+            treeBuilder.pushStatement(statement);
+            return statement;
+        }
+        List<PlsqlParser.Id_expressionContext> idExprs = ctx.function_name().id_expression();
+        String functionName = null;
+        String dbName = null;
+        if(idExprs.size() == 1){
+            functionName = idExprs.get(0).getText();
+        } else if(idExprs.size() ==2){
+            dbName = idExprs.get(0).getText();
+            functionName = idExprs.get(1).getText();
+        }
+        statement = new ShowPlFunctionStatement(dbName, functionName, sparkSession);
+        treeBuilder.pushStatement(statement);
+        return statement;
+    }
+
+    @Override
+    public DropPlFunctionStatement visitDrop_pl_function(PlsqlParser.Drop_pl_functionContext ctx) {
+        DropPlFunctionStatement statement = null;
+        List<PlsqlParser.Id_expressionContext> idExprs = ctx.function_name().id_expression();
+        String functionName = null;
+        String dbName = null;
+        if(idExprs.size() == 1){
+            functionName = idExprs.get(0).getText();
+        } else if(idExprs.size() ==2){
+            dbName = idExprs.get(0).getText();
+            functionName = idExprs.get(1).getText();
+        }
+        statement = new DropPlFunctionStatement(dbName, functionName, sparkSession);
+        treeBuilder.pushStatement(statement);
+        return statement;
     }
 
     @Override

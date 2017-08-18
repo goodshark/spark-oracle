@@ -15,9 +15,6 @@ public class DropProcedureStatement extends SqlStatement {
     private List<FuncName> funcNames;
     private int type = 1;
 
-    public DropProcedureStatement(int t) {
-        type = t;
-    }
 
     @Override
     public int execute() throws Exception {
@@ -38,5 +35,13 @@ public class DropProcedureStatement extends SqlStatement {
 
     public DropProcedureStatement(List<FuncName> funcNames) {
         this.funcNames = funcNames;
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
     }
 }

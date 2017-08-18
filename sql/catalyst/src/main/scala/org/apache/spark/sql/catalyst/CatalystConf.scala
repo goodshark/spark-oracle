@@ -49,6 +49,10 @@ trait CatalystConf {
   def resolver: Resolver = {
     if (caseSensitiveAnalysis) caseSensitiveResolution else caseInsensitiveResolution
   }
+
+  def getConfString(key: String, defaultValue: String): String = {
+    defaultValue
+  }
 }
 
 
