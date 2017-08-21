@@ -469,7 +469,19 @@ object FunctionRegistry {
     expression[XmlElement]("xmlelement"),
     expression[XmlAgg]("xmlagg"),
     expression[XmlColattval]("xmlcolattval"),
-    expression[XmlForest]("xmlforest")
+    expression[XmlForest]("xmlforest"),
+    //for extra function
+    expression[Width_Bucket]("width_bucket2"),
+    expression[HexToRaw]("hextoraw"),
+    expression[ToChar]("to_char"),
+    expression[ToChar2]("to_char2"),
+    expression[ToDate2]("to_date2"),
+    expression[ToTimestamp]("to_timestamp"),
+    expression[NumToDSInterval]("numtodsinterval"),
+    expression[NumToYMInterval]("numtoyminterval"),
+    expression[ToDSInterval]("to_dsinterval"),
+    expression[ToYMInterval]("to_yminterval")
+
   )
 
   val builtin: SimpleFunctionRegistry = {
