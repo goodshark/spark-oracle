@@ -106,6 +106,8 @@
                         <option>-keep class org.apache.hive.tsql.ExecSession {*;}</option>
                         <option>-keep class org.apache.hive.tsql.common.SparkResultSet {*;}</option>
                         <option>-keep class org.apache.hive.tsql.common.ColumnDataType {*;}</option>
+                        <option>-keep class org.apache.hive.tsql.common.Common {*;}</option>
+                        <option>-keep class org.apache.hive.tsql.dbservice.PlFunctionService {*;}</option>
                         <option>-keep class org.apache.hive.tsql.func.** {*;}</option>
                         <option>-keep class org.apache.hive.tsql.udf.**{*;}</option>
                         <option>-keep class org.apache.hive.tsql.arg.**{*;}</option>
