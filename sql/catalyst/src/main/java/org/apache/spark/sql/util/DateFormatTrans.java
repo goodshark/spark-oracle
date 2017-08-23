@@ -12,7 +12,7 @@ public final class DateFormatTrans {
 
     public static String specifiedDateToSparkDate(String dateString, String formatString){
 
-        // 返回值为 result_year+"-"+result_month+"-"+result_day
+        // 返回值为spark能够识别的日期格式： result_year+"-"+result_month+"-"+result_day
         String result_year = null;
         String result_month = null;
         String result_day = null;
@@ -36,28 +36,26 @@ public final class DateFormatTrans {
             if(c=='-' | c=='/' | c==','  | c=='.' | c==' ' | c==':' | c==';'){     // 如果当前字符是分界符的情况
                 count++;
                 lastIsDelimiter = true;
-            }else if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')){           // 当前字符是字母的时候
+                continue;
+            }
+            if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')){           // 当前字符是字母的时候
                 if(lastIsDelimiter){                                              // 如果上一个字符是分界符，记录上一个时间模式为
                     pattern_name.add("Delimiter" + "-"+ count);                   // 分界符，count记录这个时间模式中分界符的个数
                     count = 0;
                     lastIsDelimiter = false;
                 }
-                m_1  = p_1.matcher(formatString.substring(i));
-                String cutHere = "";
-                if(m_1.find()){
-                    cutHere += m_1.group();
-                } else {
+                m_1 = p_1.matcher(formatString.substring(i));
+                if(!m_1.find()){                                // 如果当前字母不属于任何待匹配的时间模式，则报错
                     return null;
                 }
-                if(pattern_name.contains(cutHere + "-0")){                   // 同时如果该时间模式没有重复出现，则记录，否则报错
+                if(pattern_name.contains(m_1.group()+"-0")){    // 如果该时间模式没有重复出现，则记录，否则报错
                     return null;
-                }else {
-                    pattern_name.add(cutHere + "-0");
                 }
-                i += cutHere.length() - 1;
-            }else{
-                return null;
+                pattern_name.add(m_1.group()+"-0");
+                i += m_1.group().length() - 1;
+                continue;
             }
+            return null;
         }
 
         int index = 0;                                // 用于标记之前解析出的待处理的时间模式的索引值
@@ -270,7 +268,6 @@ public final class DateFormatTrans {
                     }else {
                         return null;
                     }
-
                 }else{
                     return null;
                 }
@@ -506,12 +503,12 @@ public final class DateFormatTrans {
                     }
                 }else if(pattern_here[0].equals("MM")){
                     if(dateString.substring(i).matches("[1-9]")|dateString.substring(i).matches("^[1-9][^0-9].*")){
-                            result_month = "0"+dateString.charAt(i);
-                            index++;
+                        result_month = "0"+dateString.charAt(i);
+                        index++;
                     } else if(dateString.substring(i,i+2).matches("00|01|02|03|04|05|06|07|08|09|10|11|12")){
-                            result_month = dateString.substring(i,i+2);
-                            i += 1;
-                            index++;
+                        result_month = dateString.substring(i,i+2);
+                        i += 1;
+                        index++;
                     }else{
                         return null;
                     }
@@ -554,8 +551,8 @@ public final class DateFormatTrans {
                     }
                 }else if(pattern_here[0].equals("DD")){
                     if(dateString.substring(i).matches("[1-9]")|dateString.substring(i).matches("^[1-9][^0-9].*")){
-                            result_day = "0"+dateString.charAt(i);
-                            index++;
+                        result_day = "0"+dateString.charAt(i);
+                        index++;
                     }else if(dateString.substring(i,i+2).matches("[0-9]{2}")){
                         int the_day = Integer.parseInt(dateString.substring(i,i+2));
                         if(the_day>0 && the_day<32){
@@ -570,8 +567,8 @@ public final class DateFormatTrans {
                     }
                 }else if(pattern_here[0].equals("MI")){
                     if(dateString.substring(i).matches("[1-9]")|dateString.substring(i).matches("^[1-9][^0-9].*")){
-                            result_minute = "0"+dateString.charAt(i);
-                            index++;
+                        result_minute = "0"+dateString.charAt(i);
+                        index++;
                     }else if(dateString.substring(i,i+2).matches("[0-9]{2}")){
                         int the_minute = Integer.parseInt(dateString.substring(i,i+2));
                         if(the_minute>=0 && the_minute<60){
@@ -586,8 +583,8 @@ public final class DateFormatTrans {
                     }
                 }else if (pattern_here[0].equals("SS")){
                     if(dateString.substring(i).matches("[1-9]")|dateString.substring(i).matches("^[1-9][^0-9].*")){
-                            result_second = "0"+dateString.charAt(i);
-                            index++;
+                        result_second = "0"+dateString.charAt(i);
+                        index++;
                     } else if(dateString.substring(i,i+2).matches("[0-9]{2}")){
                         int the_second = Integer.parseInt(dateString.substring(i,i+2));
                         if(the_second>=0 && the_second<60){
@@ -662,7 +659,7 @@ public final class DateFormatTrans {
                                 }
                             } else {
                                 if(Integer.parseInt(cut_here)==12){
-                                    result_hour = " 00" ;
+                                    result_hour = "00" ;
                                     i += 1;
                                     index++;
                                 } else {
@@ -742,7 +739,10 @@ public final class DateFormatTrans {
         String hour = dateString.substring(11,13);
         String minute = dateString.substring(14,16);
         String second = dateString.substring(17,19);
-        String milli = dateString.substring(20);
+        String milli = "";
+        if (dateString.length()>= 21){
+            milli = dateString.substring(20);
+        }
 
         String upperFormatString = formatString.toUpperCase();
 
@@ -936,8 +936,6 @@ public final class DateFormatTrans {
             return oracleIntervalString;
         }
     }
-
-
 
 
 }
