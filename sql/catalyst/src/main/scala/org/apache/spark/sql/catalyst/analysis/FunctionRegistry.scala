@@ -471,10 +471,9 @@ object FunctionRegistry {
     expression[XmlColattval]("xmlcolattval"),
     expression[XmlForest]("xmlforest"),
     //for extra function
-    expression[Width_Bucket]("width_bucket2"),
+    expression[WidthBucket2]("width_bucket2"),
     expression[HexToRaw]("hextoraw"),
     expression[ToChar]("to_char"),
-    expression[ToChar2]("to_char2"),
     expression[ToDate2]("to_date2"),
     expression[ToTimestamp]("to_timestamp"),
     expression[NumToDSInterval]("numtodsinterval"),
