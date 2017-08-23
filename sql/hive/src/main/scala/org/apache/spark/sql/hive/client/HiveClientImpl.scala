@@ -771,9 +771,10 @@ private[hive] class HiveClientImpl(
   }
 
   def setDb(hiveDb: Hive): Unit = {
+    val setDbStartTime = System.currentTimeMillis()
     this.hiveDb = hiveDb
     Hive.set(hiveDb)
-    val newstate={
+    val newstate = {
       val original = Thread.currentThread().getContextClassLoader
       // Switch to the initClassLoader.
       Thread.currentThread().setContextClassLoader(initClassLoader)
@@ -835,6 +836,7 @@ private[hive] class HiveClientImpl(
             hiveConf.set(k, v)
           }
 
+          val hadoopConfStartTime = System.currentTimeMillis()
           hadoopConf.iterator().asScala.foreach { entry =>
             val key = entry.getKey
             val value = entry.getValue
@@ -845,7 +847,8 @@ private[hive] class HiveClientImpl(
             }
             hiveConf.set(key, value)
           }
-
+          logWarning(s" hadoopConf iterator use : " +
+            s"" + (System.currentTimeMillis() - hadoopConfStartTime) )
           // First, we set all spark confs to this hiveConf.
           sparkConf.getAll.foreach { case (k, v) =>
             if (k.toLowerCase.contains("password")) {
@@ -868,6 +871,8 @@ private[hive] class HiveClientImpl(
       ret
     }
     this.state = newstate
+    logWarning(s" setDb  use : " +
+      s"" + (System.currentTimeMillis() - setDbStartTime) )
   }
 
 
