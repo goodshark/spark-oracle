@@ -9,6 +9,7 @@ import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.spark.sql.catalog.Column;
 import org.apache.spark.sql.catalog.Table;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -136,7 +137,7 @@ public class DeclareStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         String varName = declareVars.get(0).getVarName();
         CreateFunctionStatement.SupportDataTypes dataType = CreateFunctionStatement.fromString(declareVars.get(0).getDataType().name());
@@ -147,7 +148,7 @@ public class DeclareStatement extends BaseStatement {
             if(declareVars.get(0).getExpr() instanceof BaseStatement){
                 sb.append(CODE_EQ);
                 BaseStatement bs = (BaseStatement)declareVars.get(0).getExpr();
-                sb.append(bs.doCodegen(variables, childPlfuncs));
+                sb.append(bs.doCodegen(variables, childPlfuncs, current, returnType));
             }
         }
         sb.append(CODE_END);

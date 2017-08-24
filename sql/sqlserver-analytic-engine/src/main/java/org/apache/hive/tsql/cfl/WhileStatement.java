@@ -6,6 +6,7 @@ import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.PredicateNode;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.sql.ResultSet;
 import java.text.ParseException;
@@ -100,7 +101,7 @@ public class WhileStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         ResultSet rs = condtionNode.getRs();
         boolean bool = rs == null ? false : (boolean)((Var)rs.getObject(0)).getVarValue();
@@ -161,7 +162,7 @@ public class WhileStatement extends BaseStatement {
                 }
             } else {
                 sb.append("while(");
-                sb.append(((BaseStatement)this.condtionNode).doCodegen(variables, childPlfuncs));
+                sb.append(((BaseStatement)this.condtionNode).doCodegen(variables, childPlfuncs, current, returnType));
             }
             sb.append("){");
             sb.append(CODE_LINE_END);
@@ -169,7 +170,7 @@ public class WhileStatement extends BaseStatement {
         List<TreeNode> childs = this.getChildrenNodes();
         for(TreeNode child : childs){
             if(child instanceof BaseStatement){
-                sb.append(((BaseStatement) child).doCodegen(variables, childPlfuncs));
+                sb.append(((BaseStatement) child).doCodegen(variables, childPlfuncs, current, returnType));
                 sb.append(CODE_LINE_END);
             }
         }

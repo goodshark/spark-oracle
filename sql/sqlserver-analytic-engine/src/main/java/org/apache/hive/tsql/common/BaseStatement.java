@@ -8,6 +8,7 @@ import org.apache.hive.tsql.cfl.GotoStatement;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -259,5 +260,5 @@ public abstract class BaseStatement extends TreeNode {
             var.addArrayVar(typeVar.typeClone());
         }
     }
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{throw new Exception("Base not support codegen");};
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{throw new Exception("Base not support codegen");};
 }

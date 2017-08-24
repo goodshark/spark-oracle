@@ -3,6 +3,7 @@ package org.apache.hive.tsql.cfl;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.List;
 
@@ -29,14 +30,14 @@ public class CaseElsePartStatement extends BaseStatement{
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         sb.append("else {");
         sb.append(CODE_LINE_END);
         List<TreeNode> childs = getChildrenNodes();
         for(TreeNode child : childs){
             if(child instanceof BaseStatement){
-                sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs));
+                sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs, current, returnType));
                 sb.append(CODE_LINE_END);
             }
         }

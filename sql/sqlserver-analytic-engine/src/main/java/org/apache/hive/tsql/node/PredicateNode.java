@@ -5,6 +5,7 @@ import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.exception.CompareException;
 import org.apache.hive.tsql.exception.WrongArgNumberException;
 import org.apache.hive.tsql.util.StrUtils;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -698,15 +699,15 @@ public class PredicateNode extends LogicNode {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         if(this.getChildrenNodes().size()==2){
             TreeNode left = this.getChildrenNodes().get(0);
             TreeNode rift = this.getChildrenNodes().get(1);
             if(left instanceof BaseStatement && rift instanceof BaseStatement){
-                sb.append(((BaseStatement) left).doCodegen(variables, childPlfuncs));
+                sb.append(((BaseStatement) left).doCodegen(variables, childPlfuncs, current, returnType));
                 sb.append(this.operator);
-                sb.append(((BaseStatement) rift).doCodegen(variables, childPlfuncs));
+                sb.append(((BaseStatement) rift).doCodegen(variables, childPlfuncs, current, returnType));
             }
         }
         return sb.toString();

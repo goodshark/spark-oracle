@@ -4,6 +4,7 @@ import org.apache.hive.plsql.function.ProcedureCall;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.List;
 
@@ -31,7 +32,7 @@ public class BeginEndStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = getChildrenNodes();
         int i=0;
@@ -43,12 +44,12 @@ public class BeginEndStatement extends BaseStatement {
             } else {
                 if(node instanceof ProcedureCall){
                     ProcedureCall bs = (ProcedureCall)node;
-                    sb.append(bs.doCodegen(variables, childPlfuncs));
+                    sb.append(bs.doCodegen(variables, childPlfuncs, current, returnType));
                     sb.append(CODE_END);
                     sb.append(CODE_LINE_END);
                 } else if (node instanceof BaseStatement){
                     BaseStatement bs = (BaseStatement)node;
-                    sb.append(bs.doCodegen(variables, childPlfuncs));
+                    sb.append(bs.doCodegen(variables, childPlfuncs, current, returnType));
                     sb.append(CODE_LINE_END);
                 }
             }

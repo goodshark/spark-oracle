@@ -4,6 +4,7 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.LogicNode;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 import sun.reflect.generics.tree.Tree;
 
 import java.util.List;
@@ -43,12 +44,12 @@ public class CaseStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         List<TreeNode> childs = getChildrenNodes();
         for(TreeNode child : childs){
             if(child instanceof BaseStatement){
-                sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs));
+                sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs, current, returnType));
             }
         }
         return sb.toString();

@@ -7,6 +7,7 @@ import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.cursor.Cursor;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.exception.NotDeclaredException;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 import org.glassfish.jersey.message.internal.StringBuilderUtils;
 
 import java.util.List;
@@ -125,11 +126,11 @@ public class SetStatement extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         String varName = var.getVarName();
         String op = aop.val;
-        String result = ((BaseStatement)var.getExpr()).doCodegen(variables, childPlfuncs);
+        String result = ((BaseStatement)var.getExpr()).doCodegen(variables, childPlfuncs, current, returnType);
         sb.append(varName);
         sb.append(op);
         sb.append(result);
