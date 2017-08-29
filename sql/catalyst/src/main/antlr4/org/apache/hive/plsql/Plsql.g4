@@ -1433,6 +1433,7 @@ condition
 
 expression
     : cursor_expression                                     #cursor_expression_alias
+    | logical_or_expression                                 #complex_expression_alias
     | id_expression ('.' id_expression)*                    #id_expression_alias
     | constant                                              #constant_alias
     | function_call                                         #function_call_alias
@@ -1446,7 +1447,6 @@ expression
     | logical_and_expression (OR logical_and_expression)*   #bool_condition_alias
     | negated_expression (AND negated_expression)*          #bool_condition_alias
     | expression op=('||' | '|') expression                 #binary_expression_alias
-    | logical_or_expression                                 #complex_expression_alias
     ;
 
 // only for logic condition (avoid nested left-recursive)
