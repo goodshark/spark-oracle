@@ -293,11 +293,12 @@ public class Executor {
             }
         }
         if (initLoop) {
+            enterBlock(node);
             stack.push(new BlockBorder(node));
             TreeNode conditionNode = ((WhileStatement) node).getCondtionNode();
+            conditionNode.setExecSession(session);
             if (conditionNode instanceof LogicNode)
                 ((LogicNode) conditionNode).initIndex();
-            enterBlock(node);
         }
 
         WhileStatement whileStmt = (WhileStatement) node;
