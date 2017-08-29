@@ -6,6 +6,7 @@ import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.SparkResultSet;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.List;
 
@@ -302,7 +303,7 @@ public class LogicNode extends ExpressionStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         String op = this.getNodeType().name();
         if(this.boolFlag){
@@ -313,7 +314,7 @@ public class LogicNode extends ExpressionStatement {
                 if(node instanceof BaseStatement){
                     sb.append(CODE_NOT);
                     sb.append("(");
-                    sb.append(((BaseStatement) node).doCodegen(variables, childPlfuncs));
+                    sb.append(((BaseStatement) node).doCodegen(variables, childPlfuncs, current, returnType));
                     sb.append(")");
                 }
             }
@@ -322,9 +323,9 @@ public class LogicNode extends ExpressionStatement {
                 TreeNode rift = this.getChildrenNodes().get(1);
                 if(left instanceof BaseStatement && rift instanceof BaseStatement){
                     sb.append("(");
-                    sb.append(((BaseStatement) left).doCodegen(variables, childPlfuncs));
+                    sb.append(((BaseStatement) left).doCodegen(variables, childPlfuncs, current, returnType));
                     sb.append(CODE_OR);
-                    sb.append(((BaseStatement) rift).doCodegen(variables, childPlfuncs));
+                    sb.append(((BaseStatement) rift).doCodegen(variables, childPlfuncs, current, returnType));
                     sb.append(")");
                 }
             }
@@ -335,7 +336,7 @@ public class LogicNode extends ExpressionStatement {
                 for(TreeNode child : childs){
                     i++;
                     if(child instanceof BaseStatement){
-                        sb.append(((BaseStatement) child).doCodegen(variables, childPlfuncs));
+                        sb.append(((BaseStatement) child).doCodegen(variables, childPlfuncs, current, returnType));
                         if(i != childs.size()){
                             sb.append(CODE_AND);
                         }

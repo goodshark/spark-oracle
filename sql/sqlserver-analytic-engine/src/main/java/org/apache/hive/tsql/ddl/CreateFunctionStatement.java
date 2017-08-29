@@ -9,6 +9,7 @@ import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dbservice.PlFunctionService;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.expressions.PlFunction;
+import org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor;
 import org.apache.spark.sql.catalyst.expressions.PlFunctionInstanceGenerator;
 import org.apache.spark.sql.catalyst.plans.logical.Except;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
@@ -172,6 +173,41 @@ public class CreateFunctionStatement extends BaseStatement {
         return 0;
     }
 
+    public PlFunctionExecutor generateInstance() throws Exception{
+        String db = null;
+        if(function.getName().getDatabase() == null) {
+            db = sparkSession.getSessionState().catalog().getCurrentDatabase();
+        } else {
+            db = function.getName().getDatabase();
+        }
+        PlFunctionRegistry.PlFunctionIdentify id = new PlFunctionRegistry.PlFunctionIdentify(function.getName().getFuncName(), db);
+        List<String> childPlfuncs = new ArrayList<>();
+        String code = doCodeGen(childPlfuncs);
+        List<PlFunctionRegistry.PlFunctionIdentify> children = new ArrayList<>();
+        for(String str : childPlfuncs){
+            if(str.contains(".")){
+                String[] ns = str.split("\\.");
+                if(ns.length != 2){
+                    throw new Exception("Function call invalid. [db].[name] or [name].");
+                }
+                if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]))){
+                    throw new Exception("Can not call self function.");
+                }
+                children.add(new PlFunctionRegistry.PlFunctionIdentify(ns[1],ns[0]));
+            } else {
+                if(id.equals(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str))){
+                    throw new Exception("Can not call self function.");
+                }
+                children.add(new PlFunctionRegistry.PlFunctionIdentify(sparkSession.getSessionState().catalog().getCurrentDatabase(), str));
+            }
+        }
+        PlFunctionRegistry.PlFunctionDescription func =  new PlFunctionRegistry.
+                PlFunctionDescription(id, function.getProcSql(),function.getMd5(), code, returnType.toString(), children);
+        String enname = sparkSession.sessionState().conf().getConfString("spark.sql.analytical.engine", "spark");
+        String finalCode = PlFunctionUtils.generateCodeForTest(func, PlFunctionRegistry.getInstance(), enname);
+        return PlFunction.generateInstance(finalCode);
+    }
+
     public String doCodeGen(List<String> childPlfuncs) throws Exception{
         List<String> variables = new ArrayList<>();
         StringBuffer sb = new StringBuffer();
@@ -210,7 +246,7 @@ public class CreateFunctionStatement extends BaseStatement {
         if(children != null){
             for(TreeNode node : children){
                 if(node instanceof BaseStatement){
-                    sb2.append(((BaseStatement) node).doCodegen(variables, childPlfuncs));
+                    sb2.append(((BaseStatement) node).doCodegen(variables, childPlfuncs, new PlFunctionRegistry.PlFunctionIdentify(function.getName().getFuncName(), db), returnType.toString()));
                 }
             }
         }

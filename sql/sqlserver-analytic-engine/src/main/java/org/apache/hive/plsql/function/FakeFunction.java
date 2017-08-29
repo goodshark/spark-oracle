@@ -4,6 +4,7 @@ import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ public class FakeFunction extends BaseStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         StringBuilder result = new StringBuilder();
         for (Var var: vars) {
@@ -72,7 +73,7 @@ public class FakeFunction extends BaseStatement {
             if (var.getValueType() == Var.ValueType.EXPRESSION) {
                 TreeNode baseStatement = var.getExpr();
                 if(baseStatement instanceof BaseStatement){
-                    String code = ((BaseStatement) baseStatement).doCodegen(variables, childPlfuncs);
+                    String code = ((BaseStatement) baseStatement).doCodegen(variables, childPlfuncs, current, returnType);
                     result.append(code);
                     result.append("+\" \"");
                 }

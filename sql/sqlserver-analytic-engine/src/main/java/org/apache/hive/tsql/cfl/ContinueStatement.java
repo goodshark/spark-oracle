@@ -6,6 +6,7 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.node.LogicNode;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.List;
 
@@ -78,11 +79,11 @@ public class ContinueStatement extends NonSeqStatement {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         if(condition != null){
             sb.append("if(");
-            sb.append(((LogicNode)condition).doCodegen(variables, childPlfuncs));
+            sb.append(((LogicNode)condition).doCodegen(variables, childPlfuncs, current, returnType));
             sb.append("){");
             sb.append(CODE_LINE_END);
             if(label != null){

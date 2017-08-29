@@ -4,6 +4,7 @@ import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.List;
 
@@ -51,7 +52,7 @@ public class CaseWhenPartStatement extends BaseStatement{
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         String ifstr = null;
         if(first){
@@ -61,7 +62,7 @@ public class CaseWhenPartStatement extends BaseStatement{
         }
         if(isSimple){
             if(whenCondition instanceof  BaseStatement){
-                String str = ((BaseStatement)whenCondition).doCodegen(variables, childPlfuncs);
+                String str = ((BaseStatement)whenCondition).doCodegen(variables, childPlfuncs, current, returnType);
                 if(str != null && str.startsWith("\"") && str.endsWith("\"")){
                     sb.append(ifstr);
                     sb.append("(");
@@ -82,7 +83,7 @@ public class CaseWhenPartStatement extends BaseStatement{
                 List<TreeNode> childs = getChildrenNodes();
                 for(TreeNode child : childs){
                     if(child instanceof BaseStatement){
-                        sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs));
+                        sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs, current, returnType));
                         sb.append(CODE_LINE_END);
                     }
                 }
@@ -91,7 +92,7 @@ public class CaseWhenPartStatement extends BaseStatement{
             }
         } else {
             if(whenCondition instanceof  BaseStatement){
-                String str = ((BaseStatement)whenCondition).doCodegen(variables, childPlfuncs);
+                String str = ((BaseStatement)whenCondition).doCodegen(variables, childPlfuncs, current, returnType);
                 sb.append(ifstr);
                 sb.append("(");
                 sb.append(str);
@@ -100,7 +101,7 @@ public class CaseWhenPartStatement extends BaseStatement{
                 List<TreeNode> childs = getChildrenNodes();
                 for(TreeNode child : childs){
                     if(child instanceof BaseStatement){
-                        sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs));
+                        sb.append(((BaseStatement)child).doCodegen(variables, childPlfuncs, current, returnType));
                         sb.append(CODE_LINE_END);
                     }
                 }

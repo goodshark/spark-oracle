@@ -5,6 +5,7 @@ import org.apache.hive.tsql.common.*;
 import org.apache.hive.tsql.ddl.CreateFunctionStatement;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.util.StrUtils;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -362,7 +363,7 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
     }
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         Var var = getExpressionBean().getVar();
         OperatorSign op = getExpressionBean().getOperatorSign();
@@ -397,24 +398,24 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
             if(getChildrenNodes().get(0) instanceof BaseStatement){
                 BaseStatement bs = (BaseStatement)getChildrenNodes().get(0);
                 sb.append(BaseStatement.CODE_SEP);
-                sb.append(bs.doCodegen(variables, childPlfuncs));
+                sb.append(bs.doCodegen(variables, childPlfuncs, current, returnType));
                 sb.append(BaseStatement.CODE_SEP);
             }
         } else if(op != null && var == null && getChildrenNodes().size() == 2){
             sb.append(CODE_SEP);
             if(getChildrenNodes().get(0) instanceof BaseStatement && getChildrenNodes().get(1) instanceof BaseStatement){
                 BaseStatement bs0 = (BaseStatement)getChildrenNodes().get(0);
-                sb.append(bs0.doCodegen(variables, childPlfuncs));
+                sb.append(bs0.doCodegen(variables, childPlfuncs, current, returnType));
                 sb.append(op.getOperator());
                 BaseStatement bs1 = (BaseStatement)getChildrenNodes().get(1);
-                sb.append(bs1.doCodegen(variables, childPlfuncs));
+                sb.append(bs1.doCodegen(variables, childPlfuncs, current, returnType));
             }
             sb.append(CODE_SEP);
         } else if(op != null && var == null && getChildrenNodes().size() == 1){
             if(getChildrenNodes().get(0) instanceof BaseStatement){
                 BaseStatement bs = (BaseStatement)getChildrenNodes().get(0);
                 sb.append(BaseStatement.CODE_SEP);
-                sb.append(bs.doCodegen(variables, childPlfuncs));
+                sb.append(bs.doCodegen(variables, childPlfuncs, current, returnType));
                 sb.append(BaseStatement.CODE_SEP);
             }
         }

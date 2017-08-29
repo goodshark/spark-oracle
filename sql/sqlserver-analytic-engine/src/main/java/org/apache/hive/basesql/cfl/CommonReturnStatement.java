@@ -3,6 +3,7 @@ package org.apache.hive.basesql.cfl;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.List;
 
@@ -37,11 +38,11 @@ public abstract class CommonReturnStatement extends BaseStatement {
     public abstract void postExecute(Var res) throws Exception;
 
     @Override
-    public String doCodegen(List<String> variables, List<String> childPlfuncs) throws Exception{
+    public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         sb.append("return ");
         BaseStatement bs = (BaseStatement)expr;
-        sb.append(bs.doCodegen(variables, childPlfuncs));
+        sb.append(bs.doCodegen(variables, childPlfuncs, current, returnType));
         sb.append(CODE_END);
         return sb.toString();
     }
