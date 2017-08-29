@@ -8,6 +8,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hive.basesql.TreeBuilder;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
+import org.apache.hive.plsql.cfl.LoopAnonyCursorCodition;
+import org.apache.hive.plsql.cfl.LoopCursorConditionStmt;
 import org.apache.hive.plsql.cfl.OracleRaiseStatement;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
 import org.apache.hive.plsql.cursor.*;
@@ -906,7 +908,23 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             rightPredicateNode.addNode(upperStmt);
             genLoopIndex(andNode, indexExprNode, lowerStmt, upperStmt, ctx.REVERSE() != null);
         } else if (ctx.record_name() != null) {
-            // cursor seq
+            if (ctx.cursor_name() != null) {
+                // cursor loop
+                LoopCursorConditionStmt cursorConditionStmt = new LoopCursorConditionStmt();
+                cursorConditionStmt.setIndexName(ctx.record_name().getText());
+                cursorConditionStmt.setCursorName(ctx.cursor_name().getText());
+                treeBuilder.pushStatement(cursorConditionStmt);
+                return cursorConditionStmt;
+            } else if (ctx.select_statement() != null) {
+                // TODO select loop, implicit cursor
+                LoopAnonyCursorCodition anonyCursorCodition = new LoopAnonyCursorCodition();
+                anonyCursorCodition.setIndexName(ctx.record_name().getText());
+                visit(ctx.select_statement());
+                TreeNode dmlStmt = treeBuilder.popStatement();
+                anonyCursorCodition.setDmlNode(dmlStmt);
+                treeBuilder.pushStatement(anonyCursorCodition);
+                return anonyCursorCodition;
+            }
         } else {
             // non exists
         }
