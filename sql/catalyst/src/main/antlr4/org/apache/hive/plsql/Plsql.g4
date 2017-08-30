@@ -1428,17 +1428,19 @@ expression_list
     ;
 
 condition
-    : expression
+//    : expression
+    : logical_or_expression
     ;
+
 
 expression
     : cursor_expression                                     #cursor_expression_alias
-    | logical_or_expression                                 #complex_expression_alias
     | id_expression ('.' id_expression)*                    #id_expression_alias
+    | logical_or_expression                                 #complex_expression_alias
+    | '(' expression ')'                                    #expression_nested_alias
     | constant                                              #constant_alias
     | function_call                                         #function_call_alias
     | case_statement                                        #case_statement_alias
-    | '(' expression ')'                                    #expression_nested_alias
     | expression op=('*' | '/' | '%') expression            #binary_expression_alias
     | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
@@ -1501,8 +1503,10 @@ relational_expression
     : compound_expression relational_operator compound_expression
     | sub_expression NOT? (IN in_elements | BETWEEN between_elements | like_type expression like_escape_part?)
     // only for ( bool_compare )
-    | '(' expression ')'
-//    | compound_expression
+    | '(' logical_or_expression ')'
+    | (TRUE | FALSE)
+//    | sub_expression
+    | id_expression ('.' id_expression)?
     ;
 
 compound_expression

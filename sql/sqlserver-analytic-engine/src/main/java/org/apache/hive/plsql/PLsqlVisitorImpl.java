@@ -577,7 +577,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return es;
     }
 
-    /*@Override
+    @Override
     public Object visitLogical_or_expression(PlsqlParser.Logical_or_expressionContext ctx) {
         LogicNode orNode = new LogicNode(TreeNode.Type.OR);
         List<PlsqlParser.Logical_and_expressionContext> andList = ctx.logical_and_expression();
@@ -601,7 +601,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         treeBuilder.pushStatement(orNode);
         return orNode;
-    }*/
+    }
+
     @Override
     public Object visitLogical_and_expression(PlsqlParser.Logical_and_expressionContext ctx) {
         LogicNode andNode = new LogicNode(TreeNode.Type.AND);
@@ -681,13 +682,30 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
         }
-        if (ctx.expression() != null) {
+        if (ctx.logical_or_expression() != null) {
             // bracket
-            visit(ctx.expression());
+            visit(ctx.logical_or_expression());
             LogicNode innerNode = (LogicNode) treeBuilder.popStatement();
             innerNode.setPriority();
             treeBuilder.pushStatement(innerNode);
             return innerNode;
+        }
+        if (ctx.TRUE() != null || ctx.FALSE() != null) {
+            // boolean constant
+            String boolStr = ctx.TRUE() != null ? "true" : "false";
+            ExpressionStatement es = genExpression("condition", Boolean.valueOf(boolStr), Var.DataType.BOOLEAN);
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.id_expression().size() > 0) {
+            // boolean variable
+            ExpressionStatement es = genId_expression(ctx.id_expression());
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
         }
         // expression compare expression
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
@@ -2436,7 +2454,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      */
     @Override
     public ExpressionStatement visitCondition(PlsqlParser.ConditionContext ctx) {
-        visit(ctx.expression());
+        visit(ctx.logical_or_expression());
         ExpressionStatement expressionStatement = (ExpressionStatement) treeBuilder.popStatement();
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
