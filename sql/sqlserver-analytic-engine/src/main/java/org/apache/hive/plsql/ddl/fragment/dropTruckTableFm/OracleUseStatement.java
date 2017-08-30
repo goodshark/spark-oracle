@@ -1,5 +1,6 @@
 package org.apache.hive.plsql.ddl.fragment.dropTruckTableFm;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.plsql.dml.commonFragment.IdFragment;
 import org.apache.hive.tsql.common.SqlStatement;
@@ -15,7 +16,9 @@ public class OracleUseStatement extends SqlStatement {
     public String getFinalSql() throws Exception {
         StringBuffer sql = new StringBuffer();
         sql.append("USE ");
-        sql.append(FragMentUtils.appendFinalSql(dbName, getExecSession()));
+        // oracle 中关键字需要用""
+        String database = FragMentUtils.appendFinalSql(dbName, getExecSession());
+        sql.append(database.replaceAll("\"","`"));
         return sql.toString();
     }
 
