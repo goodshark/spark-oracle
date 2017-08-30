@@ -37,7 +37,7 @@ import org.apache.spark.util.{MutableURLClassLoader, Utils}
  */
 private[sql] class SharedState(val sparkContext: SparkContext) extends Logging {
 
-  val warehousePath = SharedState.warehousePath
+  val warehousePath = SharedState.sharedWarehousePath
   logInfo(s"Warehouse path is '$warehousePath'.")
 
 
@@ -115,15 +115,12 @@ object SharedState {
   private val HIVE_EXTERNAL_CATALOG_CLASS_NAME = "org.apache.spark.sql.hive.HiveExternalCatalog"
   // Load hive-site.xml into hadoopConf and determine the warehouse path we want to use, based on
   // the config from both hive and Spark SQL. Finally set the warehouse config value to sparkConf.
-  lazy val warehousePath = {
+  lazy val sharedWarehousePath = {
     val sparkContext = SparkContext.getOrCreate()
-    val confFile = sparkContext.hadoopConfiguration.getResource("hive-site.xml")
-    if ( confFile == null ) {
       val configFile = Utils.getContextOrSparkClassLoader.getResource("hive-site.xml")
       if (configFile != null ) {
         sparkContext.hadoopConfiguration.addResource(configFile)
       }
-    }
     // Set the Hive metastore warehouse path to the one we use
     val hiveWarehouseDir = sparkContext.hadoopConfiguration.get("hive.metastore.warehouse.dir")
     if (hiveWarehouseDir != null && !sparkContext.conf.contains(WAREHOUSE_PATH.key)) {
