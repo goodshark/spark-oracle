@@ -29,20 +29,19 @@ public class CreateProcedureStatement extends BaseStatement {
 
     @Override
     public int execute() throws Exception {
+        // add database prefix for procedure
+        if(StringUtils.isBlank(function.getName().getDatabase())){
+            function.getName().setDatabase(getExecSession().getDatabase());
+        }
         // oracle procedure can be created in block
         if (getExecSession().getCurrentScope() != null) {
-            if(StringUtils.isBlank(function.getName().getDatabase())){
-                function.getName().setDatabase(getExecSession().getDatabase());
-            }
             addFunc(function);
             return 0;
         }
         switch (action){
             case CREATE:
-                /**
-                 * 运行时才将PROC加入到变量容器的VariableContainer.functions map
-                 */
-                //在内存中的proc需要保存在数据库中
+                // 运行时才将PROC加入到变量容器的VariableContainer.functions map
+                // 在内存中的proc需要保存在数据库中
                 if(function.getProcSource()==0){
                     ProcService procService = new ProcService(getExecSession().getSparkSession());
                     if(StringUtils.isBlank(function.getName().getDatabase())){
