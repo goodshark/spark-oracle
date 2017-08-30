@@ -1507,6 +1507,7 @@ relational_expression
     | (TRUE | FALSE)
 //    | sub_expression
     | id_expression ('.' id_expression)?
+    | cursor_name ( PERCENT_ISOPEN | PERCENT_FOUND | PERCENT_NOTFOUND | PERCENT_ROWCOUNT )
     ;
 
 compound_expression

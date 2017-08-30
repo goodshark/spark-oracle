@@ -378,10 +378,33 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return visitChildren(ctx);
     }*/
 
+    private OracleCursorAttribute genCursorAttribute(String name, String status) {
+        OracleCursorAttribute ca = new OracleCursorAttribute();
+        ca.setCursorName(name);
+        ca.setMark(status);
+        return ca;
+    }
+
     @Override
     public Object visitStandard_function(PlsqlParser.Standard_functionContext ctx) {
         // TODO only implement cursor attribute
-        OracleCursorAttribute ca = new OracleCursorAttribute();
+        if (ctx.cursor_name() != null) {
+            String cursorStatus = "INIT_STATUS";
+            if (ctx.PERCENT_FOUND() != null)
+                cursorStatus = ctx.PERCENT_FOUND().getText();
+            else if (ctx.PERCENT_NOTFOUND() != null)
+                cursorStatus = ctx.PERCENT_NOTFOUND().getText();
+            else if (ctx.PERCENT_ISOPEN() != null)
+                cursorStatus = ctx.PERCENT_ISOPEN().getText();
+            else if (ctx.PERCENT_ROWCOUNT() != null)
+                cursorStatus = ctx.PERCENT_ROWCOUNT().getText();
+            OracleCursorAttribute ca = genCursorAttribute(ctx.cursor_name().getText(), cursorStatus);
+            treeBuilder.pushStatement(ca);
+            return ca;
+        }
+        return null;
+
+        /*OracleCursorAttribute ca = new OracleCursorAttribute();
         if (ctx.cursor_name() != null) {
             ca.setCursorName(ctx.cursor_name().getText());
             if (ctx.PERCENT_FOUND() != null)
@@ -394,7 +417,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 ca.setMark(ctx.PERCENT_ROWCOUNT().getText());
             treeBuilder.pushStatement(ca);
         }
-        return ca;
+        return ca;*/
     }
 
     @Override
@@ -702,6 +725,23 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         if (ctx.id_expression().size() > 0) {
             // boolean variable
             ExpressionStatement es = genId_expression(ctx.id_expression());
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.cursor_name() != null) {
+            // cursor attribute
+            String cursorStatus = "INIT_STATUS";
+            if (ctx.PERCENT_FOUND() != null)
+                cursorStatus = ctx.PERCENT_FOUND().getText();
+            else if (ctx.PERCENT_NOTFOUND() != null)
+                cursorStatus = ctx.PERCENT_NOTFOUND().getText();
+            else if (ctx.PERCENT_ISOPEN() != null)
+                cursorStatus = ctx.PERCENT_ISOPEN().getText();
+            else if (ctx.PERCENT_ROWCOUNT() != null)
+                cursorStatus = ctx.PERCENT_ROWCOUNT().getText();
+            ExpressionStatement es = genCursorAttribute(ctx.cursor_name().getText(), cursorStatus);
             predicateNode.addNode(es);
             predicateNode.setEvalType(PredicateNode.CompType.EVAL);
             treeBuilder.pushStatement(predicateNode);
