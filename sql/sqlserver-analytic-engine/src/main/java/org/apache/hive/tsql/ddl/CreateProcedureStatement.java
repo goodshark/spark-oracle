@@ -31,6 +31,9 @@ public class CreateProcedureStatement extends BaseStatement {
     public int execute() throws Exception {
         // oracle procedure can be created in block
         if (getExecSession().getCurrentScope() != null) {
+            if(StringUtils.isBlank(function.getName().getDatabase())){
+                function.getName().setDatabase(getExecSession().getDatabase());
+            }
             addFunc(function);
             return 0;
         }

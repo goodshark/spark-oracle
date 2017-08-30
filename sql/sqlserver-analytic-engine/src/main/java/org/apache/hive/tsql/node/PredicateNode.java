@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * Created by dengrb1 on 12/5 0005.
  */
 public class PredicateNode extends LogicNode {
-    public enum CompType {EXISTS, COMP, COMPALL, COMPSOME, COMPANY, BETWEEN, IN, LIKE, IS}
+    public enum CompType {EXISTS, COMP, COMPALL, COMPSOME, COMPANY, BETWEEN, IN, LIKE, IS, EVAL}
 
     ;
 
@@ -113,6 +113,8 @@ public class PredicateNode extends LogicNode {
             boolRes = compareLike(true);
         } else if (type == CompType.IS) {
             boolRes = compareIs(true);
+        } else if (type == CompType.EVAL) {
+            boolRes = evalBoolean(true);
         }
         setBool(boolRes);
         return 0;
@@ -152,8 +154,6 @@ public class PredicateNode extends LogicNode {
     private boolean compare(boolean exec) throws Exception {
         if (exprList.size() != 2)
             throw new WrongArgNumberException("compare");
-//        BaseStatement leftExpr = (BaseStatement) exprList.get(0);
-//        BaseStatement rightExpr = (BaseStatement) exprList.get(1);
 
         TreeNode leftExpr = exprList.get(0);
         TreeNode rightExpr = exprList.get(1);
@@ -561,6 +561,25 @@ public class PredicateNode extends LogicNode {
         }
     }
 
+    private boolean evalBoolean(boolean exec) throws Exception {
+        if (exprList.size() != 1)
+            return false;
+        TreeNode expr = exprList.get(0);
+        expr.execute();
+        ResultSet exprRes = expr.getRs();
+        Var val = (Var) exprRes.getObject(0);
+
+        if (!exec) {
+            predicateStr = val.getVarValue().toString();
+            return true;
+        }
+
+        if (null == val || val.getVarValue() == null || val.getDataType() == Var.DataType.NULL)
+            return notComp ? true : false;
+        else
+            return notComp ? !(boolean)val.getVarValue() : (boolean)val.getVarValue();
+    }
+
     private String cutString(String str) {
         // str: "'xyz'" -> "xyx"
         if (str == null)
@@ -674,6 +693,8 @@ public class PredicateNode extends LogicNode {
                 compareLike(false);
             } else if (type == CompType.IS) {
                 compareIs(false);
+            } else if (type == CompType.EVAL) {
+                evalBoolean(false);
             }
         } catch (Exception e) {
             e.printStackTrace();
