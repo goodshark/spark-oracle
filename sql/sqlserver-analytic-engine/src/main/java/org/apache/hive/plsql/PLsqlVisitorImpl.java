@@ -1006,7 +1006,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         procedure.setSqlClauses(treeBuilder.popStatement());
         procedure.setLeastArguments();
         CreateProcedureStatement.Action action = null == ctx.REPLACE() ?
-                CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
+                CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.REPLACE;
         CreateProcedureStatement statement = new CreateProcedureStatement(procedure, action, 2);
         treeBuilder.pushStatement(statement);
         return statement;

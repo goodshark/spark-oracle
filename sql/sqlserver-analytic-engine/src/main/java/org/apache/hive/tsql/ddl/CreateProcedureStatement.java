@@ -15,7 +15,7 @@ public class CreateProcedureStatement extends BaseStatement {
     private int type = 1;
 
     public enum Action {
-        CREATE,ALTER
+        CREATE, ALTER, REPLACE
     }
 
     private Action action;
@@ -23,7 +23,7 @@ public class CreateProcedureStatement extends BaseStatement {
     public CreateProcedureStatement(CommonProcedureStatement function, Action action, int t) {
         super(STATEMENT_NAME);
         this.function = function;
-        this.action=action;
+        this.action = action;
         type = t;
     }
 
@@ -31,42 +31,49 @@ public class CreateProcedureStatement extends BaseStatement {
     public int execute() throws Exception {
         // oracle procedure can be created in block
         if (getExecSession().getCurrentScope() != null) {
-            if(StringUtils.isBlank(function.getName().getDatabase())){
+            if (StringUtils.isBlank(function.getName().getDatabase())) {
                 function.getName().setDatabase(getExecSession().getDatabase());
             }
             addFunc(function);
             return 0;
         }
-        switch (action){
+        ProcService procService = new ProcService(getExecSession().getSparkSession());
+        if (StringUtils.isBlank(function.getName().getDatabase())) {
+            function.getName().setDatabase(getExecSession().getDatabase());
+        }
+        String procName = function.getName().getRealFullFuncName();
+        switch (action) {
             case CREATE:
                 /**
                  * 运行时才将PROC加入到变量容器的VariableContainer.functions map
                  */
                 //在内存中的proc需要保存在数据库中
-                if(function.getProcSource()==0){
-                    ProcService procService = new ProcService(getExecSession().getSparkSession());
-                    if(StringUtils.isBlank(function.getName().getDatabase())){
-                        function.getName().setDatabase(getExecSession().getDatabase());
-                    }
+                if (function.getProcSource() == 0) {
                     procService.createProc(function, type);
                 }
                 break;
             case ALTER:
-                ProcService procService = new ProcService(getExecSession().getSparkSession());
-                if(StringUtils.isBlank(function.getName().getDatabase())){
-                    function.getName().setDatabase(getExecSession().getDatabase());
+                int count = getProcCount(procService, procName);
+                if (count == 0) {
+                    throw new Exception(procName + " is exist;");
+                } else {
+                    procService.updateProc(function, type);
                 }
-                String procName=function.getName().getRealFullFuncName();
-                int count= procService.getCountByName(procName, type);
-                if(count==0){
-                    throw  new Exception(procName + " is exist;");
-                }else{
+                break;
+            case REPLACE:
+                if (getProcCount(procService, procName) == 0) {
+                    procService.createProc(function, type);
+                } else {
                     procService.updateProc(function, type);
                 }
                 break;
         }
         super.addFunc(function);
         return 0;
+    }
+
+    private int getProcCount(ProcService procService, String procName) throws Exception {
+        return procService.getCountByName(procName, type);
     }
 
     @Override
