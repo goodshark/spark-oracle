@@ -959,9 +959,11 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             leftPredicateNode.addNode(indexExprNode);
             visit(ctx.lower_bound());
             ExpressionStatement lowerStmt = (ExpressionStatement) treeBuilder.popStatement();
+            castToInteger(lowerStmt.getExpressionBean().getVar());
             leftPredicateNode.addNode(lowerStmt);
             visit(ctx.upper_bound());
             ExpressionStatement upperStmt = (ExpressionStatement) treeBuilder.popStatement();
+            castToInteger(upperStmt.getExpressionBean().getVar());
             rightPredicateNode.addNode(indexExprNode);
             rightPredicateNode.addNode(upperStmt);
             genLoopIndex(andNode, indexExprNode, lowerStmt, upperStmt, ctx.REVERSE() != null);
@@ -1003,6 +1005,20 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 indexIterator.setReverse();
         } catch (Exception e) {
             // TODO add exception
+            e.printStackTrace();
+        }
+    }
+
+    private void castToInteger(Var var) {
+        if (var.getDataType() == Var.DataType.INTEGER || var.getDataType() == Var.DataType.INT) {
+            return;
+        }
+        try {
+            float n = (float) var.getVarValue();
+            var.setVarValue(Math.round(n));
+            var.setDataType(Var.DataType.INT);
+        } catch (Exception e) {
+            // nothing
             e.printStackTrace();
         }
     }
@@ -1251,7 +1267,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitNumeric(PlsqlParser.NumericContext ctx) {
         Var val = new Var();
-        if (ctx.UNSIGNED_INTEGER() != null) {
+        if (ctx.UNSIGNED_INTEGER() != null || ctx.SIGNED_INEGER() != null) {
             // integer
             val.setVarValue(ctx.getText());
             val.setDataType(Var.DataType.INT);
