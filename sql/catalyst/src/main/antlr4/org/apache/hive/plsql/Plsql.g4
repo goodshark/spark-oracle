@@ -3256,7 +3256,8 @@ PERIOD:        '.';
 
 UNSIGNED_INTEGER: UNSIGNED_INTEGER_FRAGMENT;
 SIGNED_INEGER: SINGNED_INTEGER_FRAGMENT;
-APPROXIMATE_NUM_LIT: FLOAT_FRAGMENT (('e'|'E') ('+'|'-')? (FLOAT_FRAGMENT | UNSIGNED_INTEGER_FRAGMENT))? (D | F)?;
+//APPROXIMATE_NUM_LIT: FLOAT_FRAGMENT (('e'|'E') ('+'|'-')? (FLOAT_FRAGMENT | UNSIGNED_INTEGER_FRAGMENT))? (D | F)?;
+APPROXIMATE_NUM_LIT: ('e'|'E')? ('+'|'-')? (FLOAT_FRAGMENT | UNSIGNED_INTEGER_FRAGMENT) (D | F)?;
 
 // Rule #--- <CHAR_STRING> is a base for Rule #065 <char_string_lit> , it incorporates <character_representation>
 // and a superfluous subtoken typecasting of the "QUOTE"
@@ -3348,7 +3349,7 @@ SIMPLE_LETTER
 //{ Rule #615 <UNSIGNED_INTEGER> - subtoken typecast in <EXACT_NUM_LIT>
 fragment
 UNSIGNED_INTEGER_FRAGMENT: ('0'..'9')+ ;
-SINGNED_INTEGER_FRAGMENT: '-'('0'..'9')+;
+SINGNED_INTEGER_FRAGMENT: ('+'|'-')? ('0'..'9')+;
 
 fragment
 FLOAT_FRAGMENT
