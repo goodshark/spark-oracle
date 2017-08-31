@@ -730,6 +730,11 @@ public class PredicateNode extends LogicNode {
                 sb.append(this.operator);
                 sb.append(((BaseStatement) rift).doCodegen(variables, childPlfuncs, current, returnType));
             }
+        } else if(this.getChildrenNodes().size()==1){
+            TreeNode node = this.getChildrenNodes().get(0);
+            if(node instanceof BaseStatement){
+                sb.append(((BaseStatement) node).doCodegen(variables, childPlfuncs, current, returnType));
+            }
         }
         return sb.toString();
     }

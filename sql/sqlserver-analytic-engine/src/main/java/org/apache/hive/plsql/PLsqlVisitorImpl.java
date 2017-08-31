@@ -1144,8 +1144,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitReturn_statement(PlsqlParser.Return_statementContext ctx) {
         OracleReturnStatement returnStatement = new OracleReturnStatement();
-        if (ctx.condition() != null) {
-            visit(ctx.condition());
+        if (ctx.expression() != null) {
+            visit(ctx.expression());
             returnStatement.setExpr(treeBuilder.popStatement());
         }
         treeBuilder.pushStatement(returnStatement);

@@ -841,7 +841,7 @@ raise_statement
     ;
 
 return_statement
-    : RETURN condition?
+    : RETURN expression?
     ;
 
 function_call
