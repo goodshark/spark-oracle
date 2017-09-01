@@ -1267,13 +1267,18 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitNumeric(PlsqlParser.NumericContext ctx) {
         Var val = new Var();
-        if (ctx.UNSIGNED_INTEGER() != null || ctx.SIGNED_INEGER() != null) {
+        boolean negtive = false;
+        if (ctx.sign() != null && ctx.sign().getText().equalsIgnoreCase("-")) {
+            negtive = true;
+        }
+        String valueStr = negtive ? "-"+ctx.getText() : ctx.getText();
+        if (ctx.UNSIGNED_INTEGER() != null) {
             // integer
-            val.setVarValue(ctx.getText());
+            val.setVarValue(valueStr);
             val.setDataType(Var.DataType.INT);
         } else {
             // float
-            val.setVarValue(ctx.getText());
+            val.setVarValue(valueStr);
             val.setDataType(Var.DataType.FLOAT);
         }
         return val;
