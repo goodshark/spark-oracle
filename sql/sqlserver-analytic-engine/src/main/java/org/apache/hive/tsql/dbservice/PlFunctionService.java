@@ -61,7 +61,7 @@ public class PlFunctionService {
         return enableDbMeta;
     }
 
-    public int createPlFunction(PlFunctionRegistry.PlFunctionDescription function, String userName, int type) throws Exception{
+    public int createPlFunction(PlFunctionRegistry.PlFunctionDescription function, String user, int type) throws Exception{
         int rs = 0;
         String funcName = function.getFunc().toString();
         String funcSql = function.getBody();
@@ -101,7 +101,7 @@ public class PlFunctionService {
 
 
             stmt.setString(6, function.getFunc().getDb());
-            stmt.setString(7, userName);
+            stmt.setString(7, user);
             stmt.setInt(8, type);
             stmt.setString(9, funcName);
             rs = stmt.executeUpdate();
@@ -114,7 +114,7 @@ public class PlFunctionService {
         return rs;
     };
 
-    public int updatePlFunction(PlFunctionRegistry.PlFunctionDescription function, String userName, int type) throws Exception {
+    public int updatePlFunction(PlFunctionRegistry.PlFunctionDescription function, String user, int type) throws Exception {
         StringBuffer sql = new StringBuffer();
         sql.append("  UPDATE ").append(TABLE_NAME);
         sql.append(" SET  ");
@@ -143,7 +143,7 @@ public class PlFunctionService {
             stmt.setBytes(2, data.getBytes("UTF-8"));
             stmt.setString(3, function.getMd5());
             stmt.setString(4, function.getFunc().getDb());
-            stmt.setString(5, userName);
+            stmt.setString(5, user);
             stmt.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
             stmt.setString(7, function.getFunc().toString());
             stmt.setString(8, function.getFunc().toString());
