@@ -485,47 +485,6 @@ public class ProcedureCall extends CallStatement {
         return sb.toString();
     }
 
-    private String getDataType(Var args) {
-        if("EXPRESSION".equalsIgnoreCase(args.getDataType().name())){
-
-        }
-        return null;
-    }
-
-    private void getValueVars(ExpressionStatement express , List<Var> list) {
-        if(express.getChildrenNodes().size() == 0 && express.getExpressionBean() != null && express.getExpressionBean().getVar() != null){
-            list.add(express.getExpressionBean().getVar());
-        }
-
-    }
-
-    private String getDataType(String expr, List<Var> knowns) {
-        String dt = null;
-        for(Var var : knowns){
-            if(expr.contains(var.getVarName())){
-                dt = var.getDataType().name();
-            }
-        }
-        if(dt != null){
-            CreateFunctionStatement.SupportDataTypes type = CreateFunctionStatement.fromString(dt);
-            switch(type) {
-                case INT:return "INTEGER";
-                case LONG:return "LONG";
-                case FLOAT:return "FLOAT";
-                case DOUBLE:return "DOUBLE";
-                case STRING:return "STRING";
-                case BOOLEAN:return "BOOLEAN";
-                case INTEGER:return "INTEGER";
-                case CHAR:return "STRING";
-                case VARCHAR:return "STRING";
-                case VARCHAR2:return "STRING";
-                default:return null;
-            }
-        } else {
-            return null;
-        }
-    }
-
     private Boolean isExtendFrom(String className, Class ex){
         try{
             Class c = Class.forName(className);
