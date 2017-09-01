@@ -245,7 +245,7 @@ comments
     ;
 
 drop_table
-    : DROP TABLE tableview_name ';'
+    : DROP TABLE tableview_name ';'?
     ;
 
 create_view
@@ -253,11 +253,11 @@ create_view
     ;
 
 drop_view
-    : DROP VIEW tableview_name ';'
+    : DROP VIEW tableview_name ';'?
     ;
 
 truncate_table
-    : TRUNCATE TABLE tableview_name ';'
+    : TRUNCATE TABLE tableview_name ';'?
     ;
 
 column_constraint
