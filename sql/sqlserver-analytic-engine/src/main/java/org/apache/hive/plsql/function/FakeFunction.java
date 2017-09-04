@@ -82,7 +82,7 @@ public class FakeFunction extends BaseStatement {
             result.append("\"" + var.toString() + "\"");
             result.append("+\" \"");
         }
-        sb.append("System.out.println(\"function call arg: \" + " + result.toString() + " )");
+        sb.append("System.out.println(\"function call arg: \" + " + result.toString() + " );");
         return sb.toString();
     }
 }

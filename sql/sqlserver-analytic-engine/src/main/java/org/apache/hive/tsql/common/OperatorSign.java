@@ -64,6 +64,34 @@ public enum OperatorSign {
         return null;
     }
 
+    public String toJavaOpString(){
+        String javaOp = null;
+        switch (this) {
+            case ADD:javaOp = "+";
+            case SUBTRACT:javaOp = "-";
+            case MULTIPLY:javaOp = "*";
+            case DIVIDE:javaOp = "/";
+            case MOD:javaOp = "%";
+            case BRACKET:javaOp = "()";
+            case AND:javaOp = "&";
+            case OR:javaOp = "|";
+            case EQUAL:javaOp = "=";
+            case NOT_EQUAL:javaOp = "!=";
+            case GREATER_THAN:javaOp = ">";
+            case NOT_GREATER_THAN:javaOp = "<=";
+            case LESS_THEN:javaOp = "<";
+            case NOT_LESS_THEN:javaOp = ">=";
+            case XOR:javaOp = "^";
+            case GREATER_THAN_OR_EQUAL:javaOp = ">=";
+            case LESS_THEN_OR_EQUAL:javaOp = "<=";
+            case NOT_EQUAL_ANOTHER:javaOp = "!=";
+            case BIT_NOT:javaOp = "~";
+            case COMPLEX_BOOL:javaOp = "bool";
+            case CONCAT:javaOp = "+";
+        }
+        return javaOp;
+    }
+
     public String getOperator() {
         return operator;
     }
