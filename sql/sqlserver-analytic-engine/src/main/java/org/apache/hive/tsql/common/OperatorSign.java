@@ -65,31 +65,30 @@ public enum OperatorSign {
     }
 
     public String toJavaOpString(){
-        String javaOp = null;
         switch (this) {
-            case ADD:javaOp = "+";
-            case SUBTRACT:javaOp = "-";
-            case MULTIPLY:javaOp = "*";
-            case DIVIDE:javaOp = "/";
-            case MOD:javaOp = "%";
-            case BRACKET:javaOp = "()";
-            case AND:javaOp = "&";
-            case OR:javaOp = "|";
-            case EQUAL:javaOp = "=";
-            case NOT_EQUAL:javaOp = "!=";
-            case GREATER_THAN:javaOp = ">";
-            case NOT_GREATER_THAN:javaOp = "<=";
-            case LESS_THEN:javaOp = "<";
-            case NOT_LESS_THEN:javaOp = ">=";
-            case XOR:javaOp = "^";
-            case GREATER_THAN_OR_EQUAL:javaOp = ">=";
-            case LESS_THEN_OR_EQUAL:javaOp = "<=";
-            case NOT_EQUAL_ANOTHER:javaOp = "!=";
-            case BIT_NOT:javaOp = "~";
-            case COMPLEX_BOOL:javaOp = "bool";
-            case CONCAT:javaOp = "+";
+            case ADD:return "+";
+            case SUBTRACT:return "-";
+            case MULTIPLY:return "*";
+            case DIVIDE:return "/";
+            case MOD:return "%";
+            case BRACKET:return "()";
+            case AND:return "&";
+            case OR:return "|";
+            case EQUAL:return "=";
+            case NOT_EQUAL:return "!=";
+            case GREATER_THAN:return ">";
+            case NOT_GREATER_THAN:return "<=";
+            case LESS_THEN:return "<";
+            case NOT_LESS_THEN:return ">=";
+            case XOR:return "^";
+            case GREATER_THAN_OR_EQUAL:return ">=";
+            case LESS_THEN_OR_EQUAL:return "<=";
+            case NOT_EQUAL_ANOTHER:return "!=";
+            case BIT_NOT:return "~";
+            case COMPLEX_BOOL:return "bool";
+            case CONCAT:return "+";
         }
-        return javaOp;
+        return "";
     }
 
     public String getOperator() {
