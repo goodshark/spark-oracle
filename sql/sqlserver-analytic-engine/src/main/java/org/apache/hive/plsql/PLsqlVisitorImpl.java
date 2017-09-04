@@ -288,7 +288,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.LONG;
             } else if (dataType.contains("BOOLEAN")) {
                 return Var.DataType.BOOLEAN;
-            } else if (dataType.contains("INT") || dataType.contains("NUMBER") || dataType.contains("INTEGER")) {
+            } else if (dataType.contains("INT") || dataType.contains("INTEGER")) {
                 return Var.DataType.INT;
             } else if (dataType.contains("BINARY")) {
                 return Var.DataType.BINARY;
@@ -300,7 +300,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.DATE;
             } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
                 return Var.DataType.STRING;
-            } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
+            } else if (dataType.contains("FLOAT") || dataType.contains("REAL") || dataType.contains("NUMBER")) {
                 return Var.DataType.FLOAT;
             } else if (dataType.contains("BIT")
                     || dataType.contains("XML")
