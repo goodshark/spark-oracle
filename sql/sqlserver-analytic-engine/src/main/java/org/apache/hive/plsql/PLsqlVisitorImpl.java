@@ -1267,11 +1267,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitNumeric(PlsqlParser.NumericContext ctx) {
         Var val = new Var();
-        boolean negtive = false;
-        if (ctx.sign() != null && ctx.sign().getText().equalsIgnoreCase("-")) {
-            negtive = true;
-        }
-        String valueStr = negtive ? "-"+ctx.getText() : ctx.getText();
+        String valueStr = ctx.getText();
         if (ctx.UNSIGNED_INTEGER() != null) {
             // integer
             val.setVarValue(valueStr);

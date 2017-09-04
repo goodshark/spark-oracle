@@ -84,7 +84,11 @@ public class LogicNode extends ExpressionStatement {
                 initExecute = false;
             }
             indexVar.setVarValue(curIndex.getVarValue());
-            int nextIndex = (int)curIndex.getVarValue() + 1;
+            int nextIndex = 0;
+            if (reverse)
+                nextIndex = (int)curIndex.getVarValue() - 1;
+            else
+                nextIndex = (int)curIndex.getVarValue() + 1;
             curIndex.setVarValue(nextIndex);
             indexVar.setReadonly(true);
             return indexVar;
