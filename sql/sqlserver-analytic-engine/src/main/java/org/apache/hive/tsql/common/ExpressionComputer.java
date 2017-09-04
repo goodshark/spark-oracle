@@ -254,6 +254,8 @@ public class ExpressionComputer {
             } else if (v < 0d) {
                 return -1;
             }
+        } else if (var1.getDataType() == Var.DataType.BOOLEAN && var2.getDataType() == Var.DataType.BOOLEAN) {
+            return Boolean.compare((boolean)var1.getVarValue(), (boolean)var2.getVarValue());
         }
         return -1;
     }
