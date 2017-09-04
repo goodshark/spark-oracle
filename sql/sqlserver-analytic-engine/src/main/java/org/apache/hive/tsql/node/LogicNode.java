@@ -86,6 +86,7 @@ public class LogicNode extends ExpressionStatement {
             indexVar.setVarValue(curIndex.getVarValue());
             int nextIndex = (int)curIndex.getVarValue() + 1;
             curIndex.setVarValue(nextIndex);
+            indexVar.setReadonly(true);
             return indexVar;
         }
     }

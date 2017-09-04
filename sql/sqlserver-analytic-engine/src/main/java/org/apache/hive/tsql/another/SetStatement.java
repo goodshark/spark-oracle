@@ -49,6 +49,8 @@ public class SetStatement extends BaseStatement {
         switch (var.getValueType()) {
             case EXPRESSION:
                 Var v = findVar(var.getVarName());
+                if (v.isReadonly())
+                    throw new Exception("expression " + var.getVarName() + " cannot be used as an assignment target");
                 if (v == null) {
                     throw new NotDeclaredException(var.getVarName());
                 }
