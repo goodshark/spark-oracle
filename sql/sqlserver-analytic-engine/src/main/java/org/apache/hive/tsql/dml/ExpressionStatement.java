@@ -406,7 +406,7 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
             if(getChildrenNodes().get(0) instanceof BaseStatement && getChildrenNodes().get(1) instanceof BaseStatement){
                 BaseStatement bs0 = (BaseStatement)getChildrenNodes().get(0);
                 sb.append(bs0.doCodegen(variables, childPlfuncs, current, returnType));
-                sb.append(op.getOperator());
+                sb.append(op.toJavaOpString());
                 BaseStatement bs1 = (BaseStatement)getChildrenNodes().get(1);
                 sb.append(bs1.doCodegen(variables, childPlfuncs, current, returnType));
             }

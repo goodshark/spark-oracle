@@ -245,7 +245,7 @@ comments
     ;
 
 drop_table
-    : DROP TABLE tableview_name ';'
+    : DROP TABLE tableview_name ';'?
     ;
 
 create_view
@@ -253,11 +253,11 @@ create_view
     ;
 
 drop_view
-    : DROP VIEW tableview_name ';'
+    : DROP VIEW tableview_name ';'?
     ;
 
 truncate_table
-    : TRUNCATE TABLE tableview_name ';'
+    : TRUNCATE TABLE tableview_name ';'?
     ;
 
 column_constraint
@@ -1620,7 +1620,7 @@ TODO scope    {
 // $<CASE - Specific Clauses
 
 simple_case_statement
-    : label_name? ck1=CASE atom simple_case_when_part+  case_else_part? END CASE? label_name?
+    : label_name? ck1=CASE expression simple_case_when_part+  case_else_part? END CASE? label_name?
     ;
 
 simple_case_when_part

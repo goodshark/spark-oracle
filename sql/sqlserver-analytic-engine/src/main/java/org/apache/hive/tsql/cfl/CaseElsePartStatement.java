@@ -2,6 +2,7 @@ package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
+import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
@@ -27,6 +28,18 @@ public class CaseElsePartStatement extends BaseStatement{
 
     public BaseStatement createStatement() {
         return null;
+    }
+
+    @Override
+    public String getFinalSql() throws Exception {
+        StringBuffer sql = new StringBuffer();
+        sql.append("Else ");
+        for(TreeNode child : getChildrenNodes()){
+            sql.append(child.getFinalSql());
+            sql.append(Common.SPACE);
+        }
+        sql.append(Common.SPACE);
+        return sql.toString();
     }
 
     @Override
