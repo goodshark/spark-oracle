@@ -1486,7 +1486,7 @@ top_expression
 
 equality_expression
     : multiset_expression (IS NOT?
-      (NULL | NAN | PRESENT | INFINITE | A_LETTER SET | EMPTY | OF TYPE? '(' ONLY? type_spec (',' type_spec)* ')'))*
+      (NAN | PRESENT | INFINITE | A_LETTER SET | EMPTY | OF TYPE? '(' ONLY? type_spec (',' type_spec)* ')'))*
     ;
 
 multiset_expression
@@ -1507,7 +1507,8 @@ relational_expression
     | (TRUE | FALSE)
 //    | sub_expression
     | id_expression ('.' id_expression)?
-    | cursor_name ( PERCENT_ISOPEN | PERCENT_FOUND | PERCENT_NOTFOUND | PERCENT_ROWCOUNT )
+    | cursor_name ( PERCENT_ISOPEN | PERCENT_FOUND | PERCENT_NOTFOUND )
+    | sub_expression IS NOT? NULL
     ;
 
 compound_expression
