@@ -692,7 +692,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
-        if (ctx.sub_expression() != null) {
+        if (ctx.IN() != null || ctx.BETWEEN() != null || ctx.like_type() != null) {
             // in || between || like
             if (ctx.NOT() != null)
                 predicateNode.setNotComp();
@@ -744,6 +744,17 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             ExpressionStatement es = genCursorAttribute(ctx.cursor_name().getText(), cursorStatus);
             predicateNode.addNode(es);
             predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.NULL() != null) {
+            // is null
+            visit(ctx.sub_expression());
+            TreeNode es = treeBuilder.popStatement();
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.IS);
+            if (ctx.NOT() != null)
+                predicateNode.setNotComp();
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
         }
