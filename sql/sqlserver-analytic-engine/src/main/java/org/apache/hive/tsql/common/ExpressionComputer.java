@@ -45,10 +45,12 @@ public class ExpressionComputer {
      */
     public Var operatorConcat(Var v1, Var v2) throws Exception {
         StringBuilder sb = new StringBuilder();
-        if (v1 != null)
-            sb.append(v1.getVarValue().toString());
-        if (v2 != null)
-            sb.append(v2.getVarValue().toString());
+        if (v1 != null) {
+            sb.append(v1.getVarValue() == null ? "" : v1.getVarValue().toString());
+        }
+        if (v2 != null) {
+            sb.append(v2.getVarValue() == null ? "" : v2.getVarValue().toString());
+        }
         Var var = new Var();
         var.setDataType(Var.DataType.STRING);
         var.setVarValue(sb.toString());
