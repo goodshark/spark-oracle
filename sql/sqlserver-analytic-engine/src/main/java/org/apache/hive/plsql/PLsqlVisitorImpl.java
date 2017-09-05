@@ -739,8 +739,6 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 cursorStatus = ctx.PERCENT_NOTFOUND().getText();
             else if (ctx.PERCENT_ISOPEN() != null)
                 cursorStatus = ctx.PERCENT_ISOPEN().getText();
-            else if (ctx.PERCENT_ROWCOUNT() != null)
-                cursorStatus = ctx.PERCENT_ROWCOUNT().getText();
             ExpressionStatement es = genCursorAttribute(ctx.cursor_name().getText(), cursorStatus);
             predicateNode.addNode(es);
             predicateNode.setEvalType(PredicateNode.CompType.EVAL);
