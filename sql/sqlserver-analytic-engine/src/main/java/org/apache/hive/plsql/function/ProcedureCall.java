@@ -494,4 +494,19 @@ public class ProcedureCall extends CallStatement {
         }
         return  false;
     }
+
+    public String getOriginalSql() {
+        StringBuilder sb = new StringBuilder(getRealFuncName());
+        sb.append("(");
+        boolean flag = false;
+        for(Var arg: arguments) {
+            if(flag) {
+                sb.append(",");
+            }
+            sb.append(arg.getOriginalSql());
+            flag = true;
+        }
+        sb.append(")");
+        return sb.toString();
+    }
 }
