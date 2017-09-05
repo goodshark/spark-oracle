@@ -1507,7 +1507,7 @@ relational_expression
     | (TRUE | FALSE)
 //    | sub_expression
     | id_expression ('.' id_expression)?
-    | cursor_name ( PERCENT_ISOPEN | PERCENT_FOUND | PERCENT_NOTFOUND | PERCENT_ROWCOUNT )
+    | cursor_name ( PERCENT_ISOPEN | PERCENT_FOUND | PERCENT_NOTFOUND )
     | sub_expression IS NOT? NULL
     ;
 
