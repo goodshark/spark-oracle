@@ -288,7 +288,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.LONG;
             } else if (dataType.contains("BOOLEAN")) {
                 return Var.DataType.BOOLEAN;
-            } else if (dataType.contains("INT") || dataType.contains("NUMBER") || dataType.contains("INTEGER")) {
+            } else if (dataType.contains("INT") || dataType.contains("INTEGER")) {
                 return Var.DataType.INT;
             } else if (dataType.contains("BINARY")) {
                 return Var.DataType.BINARY;
@@ -300,7 +300,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.DATE;
             } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
                 return Var.DataType.STRING;
-            } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
+            } else if (dataType.contains("FLOAT") || dataType.contains("REAL") || dataType.contains("NUMBER")) {
                 return Var.DataType.FLOAT;
             } else if (dataType.contains("BIT")
                     || dataType.contains("XML")
@@ -692,7 +692,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
-        if (ctx.sub_expression() != null) {
+        if (ctx.IN() != null || ctx.BETWEEN() != null || ctx.like_type() != null) {
             // in || between || like
             if (ctx.NOT() != null)
                 predicateNode.setNotComp();
@@ -744,6 +744,17 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             ExpressionStatement es = genCursorAttribute(ctx.cursor_name().getText(), cursorStatus);
             predicateNode.addNode(es);
             predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.NULL() != null) {
+            // is null
+            visit(ctx.sub_expression());
+            TreeNode es = treeBuilder.popStatement();
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.IS);
+            if (ctx.NOT() != null)
+                predicateNode.setNotComp();
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
         }
@@ -1267,11 +1278,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitNumeric(PlsqlParser.NumericContext ctx) {
         Var val = new Var();
-        boolean negtive = false;
-        if (ctx.sign() != null && ctx.sign().getText().equalsIgnoreCase("-")) {
-            negtive = true;
-        }
-        String valueStr = negtive ? "-"+ctx.getText() : ctx.getText();
+        String valueStr = ctx.getText();
         if (ctx.UNSIGNED_INTEGER() != null) {
             // integer
             val.setVarValue(valueStr);

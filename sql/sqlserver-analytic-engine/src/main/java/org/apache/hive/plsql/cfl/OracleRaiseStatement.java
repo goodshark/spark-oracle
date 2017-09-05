@@ -9,6 +9,7 @@ import org.apache.hive.tsql.common.TreeNode;
 public class OracleRaiseStatement extends BaseStatement {
     private final String RUN_TIME_EXCEPTION = "$RUNTIME_ERROR_*";
     private String exceptionName = "";
+    private String exceptionInfo = "";
 
     public OracleRaiseStatement() {
     }
@@ -32,6 +33,14 @@ public class OracleRaiseStatement extends BaseStatement {
 
     public boolean isRunTimeException() {
         return exceptionName.equals(RUN_TIME_EXCEPTION);
+    }
+
+    public void setExceptionInfo(String str) {
+        exceptionInfo = str;
+    }
+
+    public String getExceptionInfo() {
+        return exceptionInfo;
     }
 
     @Override
