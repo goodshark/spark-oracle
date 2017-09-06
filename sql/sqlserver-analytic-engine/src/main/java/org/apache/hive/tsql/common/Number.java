@@ -27,7 +27,7 @@ public class Number {
     }
 
     public enum Operator {
-        ADD, SUB, MULTIPLY, DIV, MOD,EQUALS
+        ADD, SUB, MULTIPLY, DIV, MOD,EQUALS, REMAINDER
     }
 
     private String value;
@@ -92,6 +92,8 @@ public class Number {
             case EQUALS:
                 rsValue = n1Value - n2Value;
                 break;
+            case REMAINDER:
+                rsValue = n1Value - (n2Value * Math.round(n1Value/n2Value));
         }
         return rsValue;
     }
