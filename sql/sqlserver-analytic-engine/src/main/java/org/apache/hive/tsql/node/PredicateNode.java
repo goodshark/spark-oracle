@@ -61,7 +61,7 @@ public class PredicateNode extends LogicNode {
     private void transformOp() {
         if (origialOp.equalsIgnoreCase("=")) {
             operator = "==";
-        } else if (origialOp.equalsIgnoreCase("<>")) {
+        } else if (origialOp.equalsIgnoreCase("<>") || origialOp.equalsIgnoreCase("~=")) {
             operator = "!=";
         } else if (origialOp.equalsIgnoreCase("!>")) {
 //            setNotComp();
