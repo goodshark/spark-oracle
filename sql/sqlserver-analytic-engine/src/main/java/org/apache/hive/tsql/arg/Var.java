@@ -205,6 +205,11 @@ public class Var implements Serializable {
         return expressionComputer.operatorRemainder(this, v);
     }
 
+    public Var operatorPower(Var v) throws Exception {
+        ExpressionComputer expressionComputer = new ExpressionComputer();
+        return expressionComputer.operatorPower(this, v);
+    }
+
     /**
      * 异或操作
      *
