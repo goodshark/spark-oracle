@@ -1441,10 +1441,11 @@ expression
     | constant                                              #constant_alias
     | function_call                                         #function_call_alias
     | case_statement                                        #case_statement_alias
-    | expression op=('*' | '/' | '%') expression            #binary_expression_alias
+    | expression op=('*' | '/' | '%' | '**') expression            #binary_expression_alias
     | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
     | expression op=('+' | '-') expression                  #binary_expression_alias
+    | expression op=(MOD | REMAINDER) expression            #binary_expression_alias
 //    | concatenation
     | logical_and_expression (OR logical_and_expression)*   #bool_condition_alias
     | negated_expression (AND negated_expression)*          #bool_condition_alias
@@ -2947,6 +2948,7 @@ MINUS:                        M I N U S;
 MINUTE:                       M I N U T E;
 MINVALUE:                     M I N V A L U E;
 MLSLABEL:                     M L S L A B E L;
+MOD:                          M O D;
 MODE:                         M O D E;
 MODEL:                        M O D E L;
 MODIFY:                       M O D I F Y;
@@ -3034,6 +3036,7 @@ REFERENCE:                    R E F E R E N C E;
 REFERENCING:                  R E F E R E N C I N G;
 REJECT:                       R E J E C T;
 RELIES_ON:                    R E L I E S '_' O N;
+REMAINDER:                    R E M A I N D E R;
 RENAME:                       R E N A M E;
 REPLACE:                      R E P L A C E;
 RESPECT:                      R E S P E C T;

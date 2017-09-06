@@ -509,7 +509,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitBinary_expression_alias(PlsqlParser.Binary_expression_aliasContext ctx) {
         ExpressionBean expressionBean = new ExpressionBean();
         ExpressionStatement es = new ExpressionStatement(expressionBean);
-        expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
+        if (ctx.op.getText().equalsIgnoreCase("mod")) {
+            // MOD is different in ORACLE, need transform operator
+            expressionBean.setOperatorSign(OperatorSign.getOpator("%"));
+        } else {
+            expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
+        }
         List<PlsqlParser.ExpressionContext> exprList = ctx.expression();
         if (exprList.size() != 2) {
             // TODO exception

@@ -36,6 +36,17 @@ public class ExpressionComputer {
         return var;
     }
 
+    public Var operatorRemainder(Var v1, Var v2) throws Exception {
+        if (v1.getVarValue() == null || v2.getVarValue() == null) {
+            return Var.Null;
+        } else if (checkVarIsNumber(v1, v2)) {
+            Number number = new Number();
+            number = number.operator(paserVarToNuber(v1), paserVarToNuber(v2), Number.Operator.REMAINDER);
+            return paserNumberToVar(number);
+        }
+        return null;
+    }
+
     /**
      *
      * @param v1

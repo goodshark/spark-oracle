@@ -14,7 +14,7 @@ public enum OperatorSign {
     AND("&"), OR("|"), EQUAL("="), NOT_EQUAL("!="), GREATER_THAN(">"),
     NOT_GREATER_THAN("!>"), LESS_THEN("<"), NOT_LESS_THEN("!<"),XOR("^"),
     GREATER_THAN_OR_EQUAL(">="), LESS_THEN_OR_EQUAL("<="), NOT_EQUAL_ANOTHER("<>"), BIT_NOT("~"),
-    COMPLEX_BOOL("bool"), CONCAT("||");
+    COMPLEX_BOOL("bool"), CONCAT("||"), REMAINDER("remainder");
 
     private String operator;
 
@@ -60,6 +60,8 @@ public enum OperatorSign {
             return XOR;
         } else if (StringUtils.equals(val, "||")) {
             return CONCAT;
+        } else if (StringUtils.equalsIgnoreCase(val, "remainder")) {
+            return REMAINDER;
         }
         return null;
     }
