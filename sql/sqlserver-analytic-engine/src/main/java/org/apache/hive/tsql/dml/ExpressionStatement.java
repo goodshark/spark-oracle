@@ -140,6 +140,7 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                             break;
                         case NOT_EQUAL:
                         case NOT_EQUAL_ANOTHER:
+                        case NOT_EQUAL_V3:
                             boolean bl = leftChildrenVar.equals(rightChildrenVar);
                             var = bl ? Var.FalseVal : Var.TrueVal;
                             break;

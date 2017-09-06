@@ -14,7 +14,7 @@ public enum OperatorSign {
     AND("&"), OR("|"), EQUAL("="), NOT_EQUAL("!="), GREATER_THAN(">"),
     NOT_GREATER_THAN("!>"), LESS_THEN("<"), NOT_LESS_THEN("!<"),XOR("^"),
     GREATER_THAN_OR_EQUAL(">="), LESS_THEN_OR_EQUAL("<="), NOT_EQUAL_ANOTHER("<>"), BIT_NOT("~"),
-    COMPLEX_BOOL("bool"), CONCAT("||"), REMAINDER("remainder"), POWER("**");
+    COMPLEX_BOOL("bool"), CONCAT("||"), REMAINDER("remainder"), POWER("**"), NOT_EQUAL_V3("~=");
 
     private String operator;
 
@@ -64,6 +64,8 @@ public enum OperatorSign {
             return REMAINDER;
         } else if (StringUtils.equals(val, "**")) {
             return POWER;
+        } else if (StringUtils.equals(val, "~=")) {
+            return NOT_EQUAL_V3;
         }
         return null;
     }
