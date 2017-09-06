@@ -170,6 +170,9 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                         case REMAINDER:
                             var = leftChildrenVar.operatorRemainder(rightChildrenVar);
                             break;
+                        case POWER:
+                            var = leftChildrenVar.operatorPower(rightChildrenVar);
+                            break;
                     }
                     return var;
                 }
