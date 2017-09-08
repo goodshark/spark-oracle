@@ -26,9 +26,11 @@ public class InsertIntoClauseFm extends SqlStatement {
         sql.append(" INTO ");
         ExecSession execSession = getExecSession();
         sql.append(FragMentUtils.appendOriginalSql(generalTableRefFragment, execSession));
-        sql.append("(");
-        sql.append(FragMentUtils.appendOriginalSql(columnNames, execSession));
-        sql.append(")");
+        if(!columnNames.isEmpty()){
+            sql.append("(");
+            sql.append(FragMentUtils.appendOriginalSql(columnNames, execSession));
+            sql.append(")");
+        }
         return sql.toString();
     }
 

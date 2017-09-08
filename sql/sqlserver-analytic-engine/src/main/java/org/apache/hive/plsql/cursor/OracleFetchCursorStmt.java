@@ -17,6 +17,7 @@ public class OracleFetchCursorStmt extends BaseStatement {
     private boolean bulkCollect = false;
     private OracleCursor cursor = null;
     private SparkResultSet resultSet = null;
+    private boolean hasNoData = false;
 
     public OracleFetchCursorStmt() {
         super(STATEMENT_NAME);
@@ -139,8 +140,10 @@ public class OracleFetchCursorStmt extends BaseStatement {
         Var[] varArray = new Var[vars.size()];
         varArray = vars.values().toArray(varArray);
         int varSize = varArray.length;
-        if (resultSet == null)
-            throw new RuntimeException("Cursor has empty result");
+        if (resultSet == null || resultSet.getColumnSize() == 0) {
+            hasNoData = true;
+            return;
+        }
         cursor.getSchema();
         /*if (varSize == 1 && (varArray[0].getDataType() == Var.DataType.COMPLEX ||
                 varArray[0].getDataType() == Var.DataType.ARRAY)) {
@@ -159,7 +162,7 @@ public class OracleFetchCursorStmt extends BaseStatement {
                     throw new RuntimeException("Cursor fetch results more than array record size: " + cursorName);
             }
         } else {
-            if (resultSet == null || resultSet.getColumnSize() != vars.size())
+            if (resultSet.getColumnSize() != vars.size())
                 throw new RuntimeException("Cursor fetch results more than variables: " + cursorName);
         }
         // TODO checkCursor vars Type
@@ -170,6 +173,8 @@ public class OracleFetchCursorStmt extends BaseStatement {
         checkCursor();
         bindVars();
         checkVars();
+        if (hasNoData)
+            return 0;
         fetchValues();
         return 0;
     }

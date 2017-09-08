@@ -2,6 +2,7 @@ package org.apache.hive.tsql.cfl;
 
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
+import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
@@ -52,6 +53,21 @@ public class CaseWhenPartStatement extends BaseStatement{
     }
 
     @Override
+    public String getFinalSql() throws Exception {
+        StringBuffer sql = new StringBuffer();
+        sql.append("When ");
+        sql.append(whenCondition.getFinalSql());
+        sql.append(Common.SPACE);
+        sql.append("Then ");
+        for(TreeNode child : getChildrenNodes()){
+            sql.append(child.getFinalSql());
+            sql.append(Common.SPACE);
+        }
+        sql.append("END");
+        return sql.toString();
+    }
+
+    @Override
     public String doCodegen(List<String> variables, List<String> childPlfuncs, PlFunctionRegistry.PlFunctionIdentify current, String returnType) throws Exception{
         StringBuffer sb = new StringBuffer();
         String ifstr = null;
@@ -67,7 +83,7 @@ public class CaseWhenPartStatement extends BaseStatement{
                     sb.append(ifstr);
                     sb.append("(");
                     sb.append(str);
-                    sb.append("equals(");
+                    sb.append(".equals(");
                     sb.append(switchVar);
                     sb.append("))");
                 } else {

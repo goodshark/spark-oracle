@@ -8,6 +8,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hive.basesql.TreeBuilder;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
+import org.apache.hive.plsql.cfl.LoopAnonyCursorCodition;
+import org.apache.hive.plsql.cfl.LoopCursorConditionStmt;
 import org.apache.hive.plsql.cfl.OracleRaiseStatement;
 import org.apache.hive.plsql.cfl.OracleReturnStatement;
 import org.apache.hive.plsql.cursor.*;
@@ -286,7 +288,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.LONG;
             } else if (dataType.contains("BOOLEAN")) {
                 return Var.DataType.BOOLEAN;
-            } else if (dataType.contains("INT") || dataType.contains("NUMBER") || dataType.contains("INTEGER")) {
+            } else if (dataType.contains("INT") || dataType.contains("INTEGER")) {
                 return Var.DataType.INT;
             } else if (dataType.contains("BINARY")) {
                 return Var.DataType.BINARY;
@@ -298,7 +300,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 return Var.DataType.DATE;
             } else if (dataType.contains("CHAR") || dataType.contains("TEXT") || dataType.contains("NCHAR")) {
                 return Var.DataType.STRING;
-            } else if (dataType.contains("FLOAT") || dataType.contains("REAL")) {
+            } else if (dataType.contains("FLOAT") || dataType.contains("REAL") || dataType.contains("NUMBER")) {
                 return Var.DataType.FLOAT;
             } else if (dataType.contains("BIT")
                     || dataType.contains("XML")
@@ -376,10 +378,33 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return visitChildren(ctx);
     }*/
 
+    private OracleCursorAttribute genCursorAttribute(String name, String status) {
+        OracleCursorAttribute ca = new OracleCursorAttribute();
+        ca.setCursorName(name);
+        ca.setMark(status);
+        return ca;
+    }
+
     @Override
     public Object visitStandard_function(PlsqlParser.Standard_functionContext ctx) {
         // TODO only implement cursor attribute
-        OracleCursorAttribute ca = new OracleCursorAttribute();
+        if (ctx.cursor_name() != null) {
+            String cursorStatus = "INIT_STATUS";
+            if (ctx.PERCENT_FOUND() != null)
+                cursorStatus = ctx.PERCENT_FOUND().getText();
+            else if (ctx.PERCENT_NOTFOUND() != null)
+                cursorStatus = ctx.PERCENT_NOTFOUND().getText();
+            else if (ctx.PERCENT_ISOPEN() != null)
+                cursorStatus = ctx.PERCENT_ISOPEN().getText();
+            else if (ctx.PERCENT_ROWCOUNT() != null)
+                cursorStatus = ctx.PERCENT_ROWCOUNT().getText();
+            OracleCursorAttribute ca = genCursorAttribute(ctx.cursor_name().getText(), cursorStatus);
+            treeBuilder.pushStatement(ca);
+            return ca;
+        }
+        return null;
+
+        /*OracleCursorAttribute ca = new OracleCursorAttribute();
         if (ctx.cursor_name() != null) {
             ca.setCursorName(ctx.cursor_name().getText());
             if (ctx.PERCENT_FOUND() != null)
@@ -392,7 +417,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 ca.setMark(ctx.PERCENT_ROWCOUNT().getText());
             treeBuilder.pushStatement(ca);
         }
-        return ca;
+        return ca;*/
     }
 
     @Override
@@ -484,7 +509,12 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitBinary_expression_alias(PlsqlParser.Binary_expression_aliasContext ctx) {
         ExpressionBean expressionBean = new ExpressionBean();
         ExpressionStatement es = new ExpressionStatement(expressionBean);
-        expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
+        if (ctx.op.getText().equalsIgnoreCase("mod")) {
+            // MOD is different in ORACLE, need transform operator
+            expressionBean.setOperatorSign(OperatorSign.getOpator("%"));
+        } else {
+            expressionBean.setOperatorSign(OperatorSign.getOpator(ctx.op.getText()));
+        }
         List<PlsqlParser.ExpressionContext> exprList = ctx.expression();
         if (exprList.size() != 2) {
             // TODO exception
@@ -575,7 +605,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return es;
     }
 
-    /*@Override
+    @Override
     public Object visitLogical_or_expression(PlsqlParser.Logical_or_expressionContext ctx) {
         LogicNode orNode = new LogicNode(TreeNode.Type.OR);
         List<PlsqlParser.Logical_and_expressionContext> andList = ctx.logical_and_expression();
@@ -599,7 +629,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         treeBuilder.pushStatement(orNode);
         return orNode;
-    }*/
+    }
+
     @Override
     public Object visitLogical_and_expression(PlsqlParser.Logical_and_expressionContext ctx) {
         LogicNode andNode = new LogicNode(TreeNode.Type.AND);
@@ -666,7 +697,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitRelational_expression(PlsqlParser.Relational_expressionContext ctx) {
         PredicateNode predicateNode = new PredicateNode(TreeNode.Type.PREDICATE);
-        if (ctx.sub_expression() != null) {
+        if (ctx.IN() != null || ctx.BETWEEN() != null || ctx.like_type() != null) {
             // in || between || like
             if (ctx.NOT() != null)
                 predicateNode.setNotComp();
@@ -679,13 +710,56 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
         }
-        if (ctx.expression() != null) {
+        if (ctx.logical_or_expression() != null) {
             // bracket
-            visit(ctx.expression());
+            visit(ctx.logical_or_expression());
             LogicNode innerNode = (LogicNode) treeBuilder.popStatement();
             innerNode.setPriority();
             treeBuilder.pushStatement(innerNode);
             return innerNode;
+        }
+        if (ctx.TRUE() != null || ctx.FALSE() != null) {
+            // boolean constant
+            String boolStr = ctx.TRUE() != null ? "true" : "false";
+            ExpressionStatement es = genExpression("condition", Boolean.valueOf(boolStr), Var.DataType.BOOLEAN);
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.id_expression().size() > 0) {
+            // boolean variable
+            ExpressionStatement es = genId_expression(ctx.id_expression());
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.cursor_name() != null) {
+            // cursor attribute
+            String cursorStatus = "INIT_STATUS";
+            if (ctx.PERCENT_FOUND() != null)
+                cursorStatus = ctx.PERCENT_FOUND().getText();
+            else if (ctx.PERCENT_NOTFOUND() != null)
+                cursorStatus = ctx.PERCENT_NOTFOUND().getText();
+            else if (ctx.PERCENT_ISOPEN() != null)
+                cursorStatus = ctx.PERCENT_ISOPEN().getText();
+            ExpressionStatement es = genCursorAttribute(ctx.cursor_name().getText(), cursorStatus);
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.NULL() != null) {
+            // is null
+            visit(ctx.sub_expression());
+            TreeNode es = treeBuilder.popStatement();
+            predicateNode.addNode(es);
+            predicateNode.setEvalType(PredicateNode.CompType.IS);
+            if (ctx.NOT() != null)
+                predicateNode.setNotComp();
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
         }
         // expression compare expression
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
@@ -899,14 +973,32 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             leftPredicateNode.addNode(indexExprNode);
             visit(ctx.lower_bound());
             ExpressionStatement lowerStmt = (ExpressionStatement) treeBuilder.popStatement();
+            castToInteger(lowerStmt.getExpressionBean().getVar());
             leftPredicateNode.addNode(lowerStmt);
             visit(ctx.upper_bound());
             ExpressionStatement upperStmt = (ExpressionStatement) treeBuilder.popStatement();
+            castToInteger(upperStmt.getExpressionBean().getVar());
             rightPredicateNode.addNode(indexExprNode);
             rightPredicateNode.addNode(upperStmt);
             genLoopIndex(andNode, indexExprNode, lowerStmt, upperStmt, ctx.REVERSE() != null);
         } else if (ctx.record_name() != null) {
-            // cursor seq
+            if (ctx.cursor_name() != null) {
+                // cursor loop
+                LoopCursorConditionStmt cursorConditionStmt = new LoopCursorConditionStmt();
+                cursorConditionStmt.setIndexName(ctx.record_name().getText());
+                cursorConditionStmt.setCursorName(ctx.cursor_name().getText());
+                treeBuilder.pushStatement(cursorConditionStmt);
+                return cursorConditionStmt;
+            } else if (ctx.select_statement() != null) {
+                // TODO select loop, implicit cursor
+                LoopAnonyCursorCodition anonyCursorCodition = new LoopAnonyCursorCodition();
+                anonyCursorCodition.setIndexName(ctx.record_name().getText());
+                visit(ctx.select_statement());
+                TreeNode dmlStmt = treeBuilder.popStatement();
+                anonyCursorCodition.setDmlNode(dmlStmt);
+                treeBuilder.pushStatement(anonyCursorCodition);
+                return anonyCursorCodition;
+            }
         } else {
             // non exists
         }
@@ -927,6 +1019,20 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
                 indexIterator.setReverse();
         } catch (Exception e) {
             // TODO add exception
+            e.printStackTrace();
+        }
+    }
+
+    private void castToInteger(Var var) {
+        if (var.getDataType() == Var.DataType.INTEGER || var.getDataType() == Var.DataType.INT) {
+            return;
+        }
+        try {
+            float n = (float) var.getVarValue();
+            var.setVarValue(Math.round(n));
+            var.setDataType(Var.DataType.INT);
+        } catch (Exception e) {
+            // nothing
             e.printStackTrace();
         }
     }
@@ -970,7 +1076,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         procedure.setSqlClauses(treeBuilder.popStatement());
         procedure.setLeastArguments();
         CreateProcedureStatement.Action action = null == ctx.REPLACE() ?
-                CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.ALTER;
+                CreateProcedureStatement.Action.CREATE : CreateProcedureStatement.Action.REPLACE;
         CreateProcedureStatement statement = new CreateProcedureStatement(procedure, action, 2);
         treeBuilder.pushStatement(statement);
         return statement;
@@ -1068,8 +1174,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitReturn_statement(PlsqlParser.Return_statementContext ctx) {
         OracleReturnStatement returnStatement = new OracleReturnStatement();
-        if (ctx.condition() != null) {
-            visit(ctx.condition());
+        if (ctx.expression() != null) {
+            visit(ctx.expression());
             returnStatement.setExpr(treeBuilder.popStatement());
         }
         treeBuilder.pushStatement(returnStatement);
@@ -1175,13 +1281,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitNumeric(PlsqlParser.NumericContext ctx) {
         Var val = new Var();
+        String valueStr = ctx.getText();
         if (ctx.UNSIGNED_INTEGER() != null) {
             // integer
-            val.setVarValue(ctx.getText());
+            val.setVarValue(valueStr);
             val.setDataType(Var.DataType.INT);
         } else {
             // float
-            val.setVarValue(ctx.getText());
+            val.setVarValue(valueStr);
             val.setDataType(Var.DataType.FLOAT);
         }
         return val;
@@ -2418,7 +2525,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      */
     @Override
     public ExpressionStatement visitCondition(PlsqlParser.ConditionContext ctx) {
-        visit(ctx.expression());
+        visit(ctx.logical_or_expression());
         ExpressionStatement expressionStatement = (ExpressionStatement) treeBuilder.popStatement();
         treeBuilder.pushStatement(expressionStatement);
         return expressionStatement;
@@ -3280,8 +3387,15 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitCase_else_part(PlsqlParser.Case_else_partContext ctx) {
         CaseElsePartStatement elseStatement = new CaseElsePartStatement();
-        visit(ctx.seq_of_statements());
-        treeBuilder.addNode(elseStatement);
+        elseStatement.setNodeType(TreeNode.Type.ELSE);
+        if(ctx.seq_of_statements() != null){
+            visit(ctx.seq_of_statements());
+            treeBuilder.addNode(elseStatement);
+        }
+        if(ctx.expression() != null){
+            visit(ctx.expression());
+            treeBuilder.addNode(elseStatement);
+        }
         treeBuilder.pushStatement(elseStatement);
         return elseStatement;
     }
@@ -3297,12 +3411,19 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitSimple_case_when_part(PlsqlParser.Simple_case_when_partContext ctx) {
         CaseWhenPartStatement whenStatement = new CaseWhenPartStatement(true);
+        whenStatement.setNodeType(TreeNode.Type.WHEN);
         PlsqlParser.ExpressionContext expression = ctx.expression().get(0);
         visit(expression);
         TreeNode condition = treeBuilder.popStatement();
         whenStatement.setCondtion(condition);
-        visit(ctx.seq_of_statements());
-        treeBuilder.addNode(whenStatement);
+        if(ctx.seq_of_statements() != null){
+            visit(ctx.seq_of_statements());
+            treeBuilder.addNode(whenStatement);
+        }
+        if(ctx.expression().size() == 2){
+            visit(ctx.expression().get(1));
+            treeBuilder.addNode(whenStatement);
+        }
         treeBuilder.pushStatement(whenStatement);
         return whenStatement;
     }
@@ -3317,8 +3438,10 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      */
     @Override
     public Object visitSimple_case_statement(PlsqlParser.Simple_case_statementContext ctx) {
-        CaseStatement caseStatement = new CaseStatement(true);
-        caseStatement.setSwitchVar(ctx.atom().getText().toUpperCase());
+        CaseStatement caseStatement = new CaseStatement(true, ctx.CASE().size() == 1);
+        TreeNode sqlStatement = (TreeNode) visit(ctx.expression());
+        sqlStatement.setNodeType(TreeNode.Type.CASE_INPUT);
+        treeBuilder.addNode(caseStatement);
         List<PlsqlParser.Simple_case_when_partContext> whens = ctx.simple_case_when_part();
         for (PlsqlParser.Simple_case_when_partContext whenc : whens) {
             visit(whenc);
@@ -3326,13 +3449,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         List<TreeNode> whenParts = caseStatement.getChildrenNodes();
         if (whenParts.size() > 0) {
-            if (whenParts.get(0) instanceof CaseWhenPartStatement) {
-                ((CaseWhenPartStatement) whenParts.get(0)).setFirst();
-            }
-        }
-        for (TreeNode node : whenParts) {
-            if (node instanceof CaseWhenPartStatement) {
-                ((CaseWhenPartStatement) node).setSwitchVar(caseStatement.getSwitchVar());
+            if (whenParts.get(1) instanceof CaseWhenPartStatement) {
+                ((CaseWhenPartStatement) whenParts.get(1)).setFirst();
             }
         }
 
@@ -3356,12 +3474,19 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitSearched_case_when_part(PlsqlParser.Searched_case_when_partContext ctx) {
         CaseWhenPartStatement whenStatement = new CaseWhenPartStatement(false);
+        whenStatement.setNodeType(TreeNode.Type.WHEN);
         PlsqlParser.ExpressionContext expression = ctx.expression().get(0);
         visit(expression);
         TreeNode condition = treeBuilder.popStatement();
         whenStatement.setCondtion(condition);
-        visit(ctx.seq_of_statements());
-        treeBuilder.addNode(whenStatement);
+        if(ctx.seq_of_statements() != null){
+            visit(ctx.seq_of_statements());
+            treeBuilder.addNode(whenStatement);
+        }
+        if(ctx.expression().size() == 2){
+            visit(ctx.expression().get(1));
+            treeBuilder.addNode(whenStatement);
+        }
         treeBuilder.pushStatement(whenStatement);
         return whenStatement;
     }
@@ -3376,7 +3501,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      */
     @Override
     public Object visitSearched_case_statement(PlsqlParser.Searched_case_statementContext ctx) {
-        CaseStatement caseStatement = new CaseStatement(false);
+        CaseStatement caseStatement = new CaseStatement(false, ctx.CASE().size() == 1);
         List<PlsqlParser.Searched_case_when_partContext> whens = ctx.searched_case_when_part();
         for (PlsqlParser.Searched_case_when_partContext whenc : whens) {
             visit(whenc);

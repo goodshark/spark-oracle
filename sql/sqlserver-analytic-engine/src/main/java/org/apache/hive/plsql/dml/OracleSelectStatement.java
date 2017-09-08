@@ -66,7 +66,7 @@ public class OracleSelectStatement extends SqlStatement {
         ResultSet rs = commitStatement(finalSql);
         setRs(rs);
         if (null != intoClause)
-            updateResultVar((SparkResultSet) rs,commonVariableNames);
+            updateResultVar((SparkResultSet) rs, commonVariableNames);
         /*for (int i = 0; i < commonVariableNames.size(); i++) {
             String valuse = rs.getString(i);
             //TODO 设置变量的值
@@ -75,10 +75,13 @@ public class OracleSelectStatement extends SqlStatement {
         return 0;
     }
 
-    public void updateResultVar(SparkResultSet resultSet,List<String> commonVariableNames) throws Exception {
+    public void updateResultVar(SparkResultSet resultSet, List<String> commonVariableNames) throws Exception {
         List<String> filedNames = resultSet.getFiledName();
         if (commonVariableNames.size() != filedNames.size()) {
             throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
+        }
+        if (resultSet.getRsCount() > 1) {
+            throw new Exception("exact fetch returns more than requested number of rows");
         }
         Row row = null;
         while (resultSet.next()) {

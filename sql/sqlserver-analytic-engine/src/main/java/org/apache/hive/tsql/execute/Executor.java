@@ -147,6 +147,7 @@ public class Executor {
         } else if (engine.equalsIgnoreCase("oracle")) {
             OracleRaiseStatement raiseStatement = new OracleRaiseStatement(TreeNode.Type.ORACLE_RAISE);
             raiseStatement.setRunTimeException();
+            raiseStatement.setExceptionInfo(exception.toString());
             oracleRaiseExecute(raiseStatement);
         } else {
             LOG.warn("executor get unknown engine " + engine + ", ignore it");
@@ -293,11 +294,12 @@ public class Executor {
             }
         }
         if (initLoop) {
+            enterBlock(node);
             stack.push(new BlockBorder(node));
             TreeNode conditionNode = ((WhileStatement) node).getCondtionNode();
+            conditionNode.setExecSession(session);
             if (conditionNode instanceof LogicNode)
                 ((LogicNode) conditionNode).initIndex();
-            enterBlock(node);
         }
 
         WhileStatement whileStmt = (WhileStatement) node;
@@ -534,6 +536,7 @@ public class Executor {
     }
 
     public void oracleRaiseExecute(TreeNode exceptionNode) throws Exception {
+        boolean nonExceptionHandler = true;
         OracleRaiseStatement raiseStatement = (OracleRaiseStatement) exceptionNode;
         String exceptionName = "";
         if (!raiseStatement.isRunTimeException()) {
@@ -554,6 +557,7 @@ public class Executor {
                         // exception block still in anonymous block, when finish handling error then leave block
                         stack.push(node);
                         stack.push(exceptionBlock);
+                        nonExceptionHandler = false;
                         break;
                     }
                 } else {
@@ -561,6 +565,9 @@ public class Executor {
                 }
             }
         }
+
+        if (nonExceptionHandler)
+            throw new Exception(raiseStatement.getExceptionInfo());
     }
 
     public void plFunctionExecute(TreeNode node) throws Exception {

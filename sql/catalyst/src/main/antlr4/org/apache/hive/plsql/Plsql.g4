@@ -245,7 +245,7 @@ comments
     ;
 
 drop_table
-    : DROP TABLE tableview_name ';'
+    : DROP TABLE tableview_name ';'?
     ;
 
 create_view
@@ -253,11 +253,11 @@ create_view
     ;
 
 drop_view
-    : DROP VIEW tableview_name ';'
+    : DROP VIEW tableview_name ';'?
     ;
 
 truncate_table
-    : TRUNCATE TABLE tableview_name ';'
+    : TRUNCATE TABLE tableview_name ';'?
     ;
 
 column_constraint
@@ -841,7 +841,7 @@ raise_statement
     ;
 
 return_statement
-    : RETURN condition?
+    : RETURN expression?
     ;
 
 function_call
@@ -1428,25 +1428,28 @@ expression_list
     ;
 
 condition
-    : expression
+//    : expression
+    : logical_or_expression
     ;
+
 
 expression
     : cursor_expression                                     #cursor_expression_alias
     | id_expression ('.' id_expression)*                    #id_expression_alias
+    | logical_or_expression                                 #complex_expression_alias
+    | '(' expression ')'                                    #expression_nested_alias
     | constant                                              #constant_alias
     | function_call                                         #function_call_alias
     | case_statement                                        #case_statement_alias
-    | '(' expression ')'                                    #expression_nested_alias
-    | expression op=('*' | '/' | '%') expression            #binary_expression_alias
+    | expression op=('*' | '/' | '%' | '**') expression            #binary_expression_alias
     | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
     | expression op=('+' | '-') expression                  #binary_expression_alias
+    | expression op=(MOD | REMAINDER) expression            #binary_expression_alias
 //    | concatenation
     | logical_and_expression (OR logical_and_expression)*   #bool_condition_alias
     | negated_expression (AND negated_expression)*          #bool_condition_alias
     | expression op=('||' | '|') expression                 #binary_expression_alias
-    | logical_or_expression                                 #complex_expression_alias
     ;
 
 // only for logic condition (avoid nested left-recursive)
@@ -1484,7 +1487,7 @@ top_expression
 
 equality_expression
     : multiset_expression (IS NOT?
-      (NULL | NAN | PRESENT | INFINITE | A_LETTER SET | EMPTY | OF TYPE? '(' ONLY? type_spec (',' type_spec)* ')'))*
+      (NAN | PRESENT | INFINITE | A_LETTER SET | EMPTY | OF TYPE? '(' ONLY? type_spec (',' type_spec)* ')'))*
     ;
 
 multiset_expression
@@ -1501,8 +1504,12 @@ relational_expression
     : compound_expression relational_operator compound_expression
     | sub_expression NOT? (IN in_elements | BETWEEN between_elements | like_type expression like_escape_part?)
     // only for ( bool_compare )
-    | '(' expression ')'
-//    | compound_expression
+    | '(' logical_or_expression ')'
+    | (TRUE | FALSE)
+//    | sub_expression
+    | id_expression ('.' id_expression)?
+    | cursor_name ( PERCENT_ISOPEN | PERCENT_FOUND | PERCENT_NOTFOUND )
+    | sub_expression IS NOT? NULL
     ;
 
 compound_expression
@@ -1614,7 +1621,7 @@ TODO scope    {
 // $<CASE - Specific Clauses
 
 simple_case_statement
-    : label_name? ck1=CASE atom simple_case_when_part+  case_else_part? END CASE? label_name?
+    : label_name? ck1=CASE expression simple_case_when_part+  case_else_part? END CASE? label_name?
     ;
 
 simple_case_when_part
@@ -2181,9 +2188,14 @@ constant
     ;
 
 numeric
-    : UNSIGNED_INTEGER
-    | SIGNED_INEGER
-    | APPROXIMATE_NUM_LIT
+    : sign? UNSIGNED_INTEGER
+//    | SIGNED_INEGER
+    | sign? APPROXIMATE_NUM_LIT
+    ;
+
+sign
+    : '+'
+    | '-'
     ;
 
 numeric_negative
@@ -2936,6 +2948,7 @@ MINUS:                        M I N U S;
 MINUTE:                       M I N U T E;
 MINVALUE:                     M I N V A L U E;
 MLSLABEL:                     M L S L A B E L;
+MOD:                          M O D;
 MODE:                         M O D E;
 MODEL:                        M O D E L;
 MODIFY:                       M O D I F Y;
@@ -3023,6 +3036,7 @@ REFERENCE:                    R E F E R E N C E;
 REFERENCING:                  R E F E R E N C I N G;
 REJECT:                       R E J E C T;
 RELIES_ON:                    R E L I E S '_' O N;
+REMAINDER:                    R E M A I N D E R;
 RENAME:                       R E N A M E;
 REPLACE:                      R E P L A C E;
 RESPECT:                      R E S P E C T;
@@ -3250,8 +3264,9 @@ PERIOD:        '.';
     ;*/
 
 UNSIGNED_INTEGER: UNSIGNED_INTEGER_FRAGMENT;
-SIGNED_INEGER: SINGNED_INTEGER_FRAGMENT;
+//SIGNED_INEGER: SINGNED_INTEGER_FRAGMENT;
 APPROXIMATE_NUM_LIT: FLOAT_FRAGMENT (('e'|'E') ('+'|'-')? (FLOAT_FRAGMENT | UNSIGNED_INTEGER_FRAGMENT))? (D | F)?;
+//APPROXIMATE_NUM_LIT: ('e'|'E')? ('+'|'-')? (FLOAT_FRAGMENT | UNSIGNED_INTEGER_FRAGMENT) (D | F)?;
 
 // Rule #--- <CHAR_STRING> is a base for Rule #065 <char_string_lit> , it incorporates <character_representation>
 // and a superfluous subtoken typecasting of the "QUOTE"
@@ -3343,7 +3358,8 @@ SIMPLE_LETTER
 //{ Rule #615 <UNSIGNED_INTEGER> - subtoken typecast in <EXACT_NUM_LIT>
 fragment
 UNSIGNED_INTEGER_FRAGMENT: ('0'..'9')+ ;
-SINGNED_INTEGER_FRAGMENT: '-'('0'..'9')+;
+//SINGNED_INTEGER_FRAGMENT: ('+'|'-')? ('0'..'9')+;
+//SINGNED_INTEGER_FRAGMENT: '-'? ('0'..'9')+;
 
 fragment
 FLOAT_FRAGMENT

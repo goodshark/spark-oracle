@@ -140,6 +140,7 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                             break;
                         case NOT_EQUAL:
                         case NOT_EQUAL_ANOTHER:
+                        case NOT_EQUAL_V3:
                             boolean bl = leftChildrenVar.equals(rightChildrenVar);
                             var = bl ? Var.FalseVal : Var.TrueVal;
                             break;
@@ -166,6 +167,12 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                             break;
                         case CONCAT:
                             var = leftChildrenVar.operatorConcat(rightChildrenVar);
+                            break;
+                        case REMAINDER:
+                            var = leftChildrenVar.operatorRemainder(rightChildrenVar);
+                            break;
+                        case POWER:
+                            var = leftChildrenVar.operatorPower(rightChildrenVar);
                             break;
                     }
                     return var;
@@ -406,7 +413,7 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
             if(getChildrenNodes().get(0) instanceof BaseStatement && getChildrenNodes().get(1) instanceof BaseStatement){
                 BaseStatement bs0 = (BaseStatement)getChildrenNodes().get(0);
                 sb.append(bs0.doCodegen(variables, childPlfuncs, current, returnType));
-                sb.append(op.getOperator());
+                sb.append(op.toJavaOpString());
                 BaseStatement bs1 = (BaseStatement)getChildrenNodes().get(1);
                 sb.append(bs1.doCodegen(variables, childPlfuncs, current, returnType));
             }

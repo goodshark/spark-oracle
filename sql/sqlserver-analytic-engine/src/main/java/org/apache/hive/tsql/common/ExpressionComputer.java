@@ -36,6 +36,28 @@ public class ExpressionComputer {
         return var;
     }
 
+    public Var operatorRemainder(Var v1, Var v2) throws Exception {
+        if (v1.getVarValue() == null || v2.getVarValue() == null) {
+            return Var.Null;
+        } else if (checkVarIsNumber(v1, v2)) {
+            Number number = new Number();
+            number = number.operator(paserVarToNuber(v1), paserVarToNuber(v2), Number.Operator.REMAINDER);
+            return paserNumberToVar(number);
+        }
+        return null;
+    }
+
+    public Var operatorPower(Var v1, Var v2) throws Exception {
+        if (v1.getVarValue() == null || v2.getVarValue() == null) {
+            return Var.Null;
+        } else if (checkVarIsNumber(v1, v2)) {
+            Number number = new Number();
+            number = number.operator(paserVarToNuber(v1), paserVarToNuber(v2), Number.Operator.POWER);
+            return paserNumberToVar(number);
+        }
+        return null;
+    }
+
     /**
      *
      * @param v1
@@ -45,10 +67,12 @@ public class ExpressionComputer {
      */
     public Var operatorConcat(Var v1, Var v2) throws Exception {
         StringBuilder sb = new StringBuilder();
-        if (v1 != null)
-            sb.append(v1.getVarValue().toString());
-        if (v2 != null)
-            sb.append(v2.getVarValue().toString());
+        if (v1 != null) {
+            sb.append(v1.getVarValue() == null ? "" : v1.getVarValue().toString());
+        }
+        if (v2 != null) {
+            sb.append(v2.getVarValue() == null ? "" : v2.getVarValue().toString());
+        }
         Var var = new Var();
         var.setDataType(Var.DataType.STRING);
         var.setVarValue(sb.toString());
@@ -254,6 +278,8 @@ public class ExpressionComputer {
             } else if (v < 0d) {
                 return -1;
             }
+        } else if (var1.getDataType() == Var.DataType.BOOLEAN && var2.getDataType() == Var.DataType.BOOLEAN) {
+            return Boolean.compare((boolean)var1.getVarValue(), (boolean)var2.getVarValue());
         }
         return -1;
     }
