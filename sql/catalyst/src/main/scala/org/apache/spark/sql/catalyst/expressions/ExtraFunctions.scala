@@ -6,7 +6,7 @@ import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.util.DateFormatTrans
+import org.apache.spark.sql.util.{CharacterFunctionUtils, DateFormatTrans}
 import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
 
 
@@ -635,6 +635,598 @@ case class ToYMInterval(formatExpr: Expression)
          ${ev.value} = CalendarInterval.fromYearMonthString(
          org.apache.spark.sql.util.DateFormatTrans.oracleYMIntervalToSparkInterval(
          ${eval1.value}.toString()));
+         """)
+  }
+}
+
+
+/**
+  *  create a time interval depending on the string that representing
+  * (year,month) time interval
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, substring, position, occurrence) - search the occurrence number of " +
+    "the substring start from the position of string, return the start position of result",
+  extended = """
+    Examples:
+      > select instr2('CORPORATE FLOOR','OR', 3, 2) result;
+         14
+      > select instr2('CORPORATE FLOOR','OR', -3, 2) result;
+         2
+      > select instr2('CORPORATE FLOOR','OR', 3) result;
+         5
+      > select instr2('CORPORATE FLOOR','OR') result;
+         2
+  """)
+case class Instr2(stringExpr: Expression, substringExpr: Expression,
+                  positionExpr: Expression, occurExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression, substring: Expression) {
+    this(string, substring, Literal(1), Literal(1))
+  }
+
+  def this(string: Expression, substring: Expression, position: Expression) {
+    this(string, substring, position, Literal(1))
+  }
+
+  override def children: Seq[Expression] =
+    Seq(stringExpr, substringExpr, positionExpr, occurExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType, IntegerType, IntegerType)
+  override def dataType: DataType = IntegerType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && substringExpr.dataType == StringType
+      && positionExpr.dataType == IntegerType && occurExpr.dataType == IntegerType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val substring = substringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val position = positionExpr.eval(input).asInstanceOf[Int]
+    val occurrence = occurExpr.eval(input).asInstanceOf[Int]
+
+    return CharacterFunctionUtils.stringInstr(string, substring, position, occurrence)
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = substringExpr.genCode(ctx)
+    val eval3 = positionExpr.genCode(ctx)
+    val eval4 = occurExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(IntegerType)} ${ev.value} = ${ctx.defaultValue(IntegerType)};
+         ${ev.value} = org.apache.spark.sql.util.CharacterFunctionUtils.stringInstr(
+            ${eval1.value}.toString(),${eval2.value}.toString(), ${eval3.value}, ${eval4.value});
+         """)
+  }
+}
+
+/**
+  *search the count of the occurrence that the pattern matched start from the position of string,
+  * and matchPara can indicate how to match.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, pattern, position, matchPara) - search the count of the occurrence that" +
+    "the regex matched start from the position of string,and matchPara can indicate how to match.",
+  extended = """
+    Examples:
+      > select regexp_count('123123123123', '123', 3, 'i') result;
+         3
+      > select regexp_count('xia.XIA.xia.XIA x i a x i a', 'xia\\.', 1, 'ix') result;
+         3
+  """)
+case class RegExpCount(stringExpr: Expression, patternExpr: Expression,
+                       positionExpr: Expression, matchParaExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression, regex: Expression) {
+    this(string, regex, Literal(1), Literal("c"))
+  }
+
+  def this(string: Expression, regex: Expression, position: Expression) {
+    this(string, regex, position, Literal("c"))
+  }
+
+  override def children: Seq[Expression] =
+    Seq(stringExpr, patternExpr, positionExpr, matchParaExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType, IntegerType, StringType)
+  override def dataType: DataType = IntegerType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && patternExpr.dataType == StringType
+      && positionExpr.dataType == IntegerType && matchParaExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val regex = patternExpr.eval(input).asInstanceOf[UTF8String].toString
+    val position = positionExpr.eval(input).asInstanceOf[Int]
+    val matchPara = matchParaExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    return CharacterFunctionUtils.regExpCount(string, regex, position, matchPara)
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = patternExpr.genCode(ctx)
+    val eval3 = positionExpr.genCode(ctx)
+    val eval4 = matchParaExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(IntegerType)} ${ev.value} = ${ctx.defaultValue(IntegerType)};
+         ${ev.value} = org.apache.spark.sql.util.CharacterFunctionUtils.regExpCount(
+            ${eval1.value}.toString(),${eval2.value}.toString(),
+            ${eval3.value}, ${eval4.value}.toString());
+         """)
+  }
+}
+
+/**
+  * search the position of the occurrence that the regex matched start from the position of string,
+  * and matchPara can indicate how to match, while returnOpt indicate how to return.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, pattern, position, occurrence, returnOpt, matchPara, subExpr) - search" +
+    "the position of the occurrence that the regex matched start from the position of string,and" +
+    "matchPara can indicate how to match, while returnOpt indicate how to return",
+  extended = """
+    Examples:
+      > select REGEXP_INSTR('500 Oracle Parkway, Redwood Shores, CA','[^ ]+', 1, 6) result;
+         37
+      > select REGEXP_INSTR('500 Oracle Parkway, Redwood Shores,CA','[s|r|p][a-z]{6}', 3, 2, 1, 'ix') result;
+         28
+  """)
+case class RegExpInstr(stringExpr: Expression, patternExpr: Expression,
+                       positionExpr: Expression, occurExpr: Expression,
+                       returnOptExpr: Expression, matchParaExpr: Expression,
+                       subExprExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression, regex: Expression) {
+    this(string, regex, Literal(1), Literal(1), Literal(0), Literal("c"), Literal(0))
+  }
+
+  def this(string: Expression, regex: Expression, position: Expression) {
+    this(string, regex, position, Literal(1), Literal(0), Literal("c"), Literal(0))
+  }
+
+  def this(string: Expression, regex: Expression, position: Expression, occurrence: Expression) {
+    this(string, regex, position, occurrence, Literal(0), Literal("c"), Literal(0))
+  }
+
+  def this(string: Expression, regex: Expression, position: Expression, occurrence: Expression,
+           returnOpt: Expression) {
+    this(string, regex, position, occurrence, returnOpt, Literal("c"), Literal(0))
+  }
+
+  def this(string: Expression, regex: Expression, position: Expression, occurrence: Expression,
+           returnOpt: Expression, matchPara: Expression) {
+    this(string, regex, position, occurrence, returnOpt, matchPara, Literal(0))
+  }
+
+  override def children: Seq[Expression] = Seq(stringExpr, patternExpr,
+    positionExpr, occurExpr, returnOptExpr, matchParaExpr, subExprExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType,
+    IntegerType, IntegerType, IntegerType, StringType, IntegerType)
+  override def dataType: DataType = IntegerType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && patternExpr.dataType == StringType
+      && positionExpr.dataType == IntegerType && matchParaExpr.dataType == StringType
+      && occurExpr.dataType== IntegerType && returnOptExpr.dataType== IntegerType
+      && subExprExpr.dataType== IntegerType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val regex = patternExpr.eval(input).asInstanceOf[UTF8String].toString
+    val position = positionExpr.eval(input).asInstanceOf[Int]
+    val occurrence = occurExpr.eval(input).asInstanceOf[Int]
+    val returnOpt = returnOptExpr.eval(input).asInstanceOf[Int]
+    val matchPara = matchParaExpr.eval(input).asInstanceOf[UTF8String].toString
+    val subExpr = subExprExpr.eval(input).asInstanceOf[Int]
+
+    return CharacterFunctionUtils.regExpInstr(string, regex, position,
+      occurrence, returnOpt, matchPara, subExpr)
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = patternExpr.genCode(ctx)
+    val eval3 = positionExpr.genCode(ctx)
+    val eval4 = occurExpr.genCode(ctx)
+    val eval5 = returnOptExpr.genCode(ctx)
+    val eval6 = matchParaExpr.genCode(ctx)
+    val eval7 = subExprExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      eval5.code + eval6.code + eval7.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(IntegerType)} ${ev.value} = ${ctx.defaultValue(IntegerType)};
+         ${ev.value} = org.apache.spark.sql.util.CharacterFunctionUtils.regExpInstr(
+            ${eval1.value}.toString(),${eval2.value}.toString(),${eval3.value}, ${eval4.value},
+            ${eval5.value},${eval6.value}.toString(), ${eval7.value});
+         """)
+  }
+}
+
+/**
+  * removes from the left end of string all of
+  * the characters contained in set
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, set) - removes from the left end of string" +
+    "             all of the characters contained in set",
+  extended = """
+    Examples:
+      > select ltrim2('<=====>BROWNING<=====>', '<>=') result;
+         BROWNING<=====>
+  """)
+case class StringTrimLeft2(stringExpr: Expression, setExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression) {
+    this(string, Literal(" "))
+  }
+
+  override def children: Seq[Expression] = Seq(stringExpr, setExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && setExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val set = setExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    return CharacterFunctionUtils.stringTrim(string, set, "left")
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = setExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         ${ev.value} = UTF8String.fromString(org.apache.spark.sql.util.CharacterFunctionUtils.
+         stringTrim(${eval1.value}.toString(),${eval2.value}.toString(),"left"));
+         """)
+  }
+}
+
+/**
+  * removes from the right end of string all of
+  * the characters contained in set
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, set) - removes from the right end of string" +
+    "             all of the characters contained in set",
+  extended = """
+    Examples:
+      > select rtrim2('<=====>BROWNING<=====>', '<>=') result;
+         <=====>BROWNING
+  """)
+case class StringTrimRight2(stringExpr: Expression, setExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression) {
+    this(string, Literal(" "))
+  }
+
+  override def children: Seq[Expression] = Seq(stringExpr, setExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && setExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val set = setExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    return CharacterFunctionUtils.stringTrim(string, set, "right")
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = setExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         ${ev.value} = UTF8String.fromString(org.apache.spark.sql.util.CharacterFunctionUtils.
+         stringTrim(${eval1.value}.toString(),${eval2.value}.toString(),"right"));
+         """)
+  }
+}
+
+/**
+  * returns string with every occurrence of searchStr replaced with replaceStr.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, searchStr, replaceStr) - returns string with every" +
+    "occurrence of searchStr replaced with replaceStr.",
+  extended = """
+    Examples:
+      > select replace2('JACK and JUE','J','BL') result;
+         BLACK and BLUE
+      > select replace2('JACK and JUE','J') result;
+         ACK and UE
+  """)
+case class StringReplace(stringExpr: Expression, searchStrExpr: Expression,
+                         replaceStrExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression, searchStr: Expression) {
+    this(string, searchStr, Literal(""))
+  }
+
+  override def children: Seq[Expression] = Seq(stringExpr, searchStrExpr, replaceStrExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && searchStrExpr.dataType == StringType
+      && replaceStrExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val searchStr = searchStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val replaceStr = replaceStrExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    if(searchStr == null || searchStr.length == 0) {
+      return string
+    }
+    return string.replace(searchStr, replaceStr)
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = searchStrExpr.genCode(ctx)
+    val eval3 = replaceStrExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         if(${eval2.value}.toString()== null|${eval2.value}.toString().length()== 0) {
+             ${ev.value} = ${eval1.value};
+         }else{
+             ${ev.value} = UTF8String.fromString(${eval1.value}.toString().replace(
+                         ${eval2.value}.toString(), ${eval3.value}.toString()));
+         }
+         """)
+  }
+}
+
+/**
+  * search the subString of the occurrence that the regex matched start from the position of string,
+  * and matchPara can indicate how to match.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, pattern, position, occurrence, matchPara, subExpr) - search" +
+    "the subString of the occurrence that the regex matched start from the position of string,and" +
+    "matchPara can indicate how to match.",
+  extended = """
+    Examples:
+      > select REGEXP_SUBSTR2('500 Oracle Parkway, Redwood Shores, CA','[^ ]+', 1, 6) result;
+          CA
+  """)
+case class RegExpSubStr(stringExpr: Expression, patternExpr: Expression,
+                        positionExpr: Expression, occurExpr: Expression,
+                        matchParaExpr: Expression, subExprExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression, regex: Expression) {
+    this(string, regex, Literal(1), Literal(1), Literal("c"), Literal(0))
+  }
+
+  def this(string: Expression, regex: Expression, position: Expression) {
+    this(string, regex, position, Literal(1), Literal("c"), Literal(0))
+  }
+
+  def this(string: Expression, regex: Expression, position: Expression, occurrence: Expression) {
+    this(string, regex, position, occurrence, Literal("c"), Literal(0))
+  }
+
+
+  def this(string: Expression, regex: Expression, position: Expression, occurrence: Expression,
+           matchPara: Expression) {
+    this(string, regex, position, occurrence, matchPara, Literal(0))
+  }
+
+  override def children: Seq[Expression] = Seq(stringExpr, patternExpr,
+    positionExpr, occurExpr, matchParaExpr, subExprExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType,
+    IntegerType, IntegerType, StringType, IntegerType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && patternExpr.dataType == StringType
+      && positionExpr.dataType == IntegerType && matchParaExpr.dataType == StringType
+      && occurExpr.dataType== IntegerType && subExprExpr.dataType== IntegerType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val regex = patternExpr.eval(input).asInstanceOf[UTF8String].toString
+    val position = positionExpr.eval(input).asInstanceOf[Int]
+    val occurrence = occurExpr.eval(input).asInstanceOf[Int]
+    val matchPara = matchParaExpr.eval(input).asInstanceOf[UTF8String].toString
+    val subExpr = subExprExpr.eval(input).asInstanceOf[Int]
+
+    return UTF8String.fromString(CharacterFunctionUtils.regExpSubStr(string, regex, position,
+      occurrence, matchPara, subExpr))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = patternExpr.genCode(ctx)
+    val eval3 = positionExpr.genCode(ctx)
+    val eval4 = occurExpr.genCode(ctx)
+    val eval5 = matchParaExpr.genCode(ctx)
+    val eval6 = subExprExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      eval5.code + eval6.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         ${ev.value} = UTF8String.fromString(org.apache.spark.sql.util.CharacterFunctionUtils.
+         regExpSubStr(${eval1.value}.toString(),${eval2.value}.toString(),${eval3.value},
+          ${eval4.value},${eval5.value}.toString(), ${eval6.value}));
+         """)
+  }
+}
+
+/**
+  * search the occurrence of the regex start from the position of string and replace it,
+  * and matchPara can indicate how to match, and return the string that replaced.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string, pattern, replace, position, occurrence, matchPara) - search the" +
+    "occurrence of the regex start from the position of string and replace it, and matchPara" +
+    "can indicate how to match, and return the string that replaced.",
+  extended = """
+    Examples:
+      > select REGEXP_REPLACE2('500Oracle     Parkway,    Redw0O0Od  Shores, CA','(0O)', '-', 1,2,'i') result;
+          500Oracle     Parkway,    Redw-0Od  Shores, CA
+  """)
+case class RegExpReplace2(stringExpr: Expression, patternExpr: Expression,
+                          replaceExpr: Expression, positionExpr: Expression,
+                          occurExpr: Expression, matchParaExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(string: Expression, regex: Expression) {
+    this(string, regex, Literal(""), Literal(1), Literal(0), Literal("c"))
+  }
+
+  def this(string: Expression, regex: Expression, replace: Expression) {
+    this(string, regex, replace, Literal(1), Literal(0), Literal("c"))
+  }
+
+  def this(string: Expression, regex: Expression, replace: Expression, position: Expression) {
+    this(string, regex, replace, position, Literal(0), Literal("c"))
+  }
+
+  def this(string: Expression, regex: Expression, replace: Expression, position: Expression,
+           occurrence: Expression) {
+    this(string, regex, replace, position, occurrence, Literal("c"))
+  }
+
+
+  override def children: Seq[Expression] = Seq(stringExpr, patternExpr,
+    replaceExpr, positionExpr, occurExpr, matchParaExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType,
+    StringType, IntegerType, IntegerType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && patternExpr.dataType == StringType
+      && positionExpr.dataType == IntegerType && matchParaExpr.dataType == StringType
+      && occurExpr.dataType== IntegerType && replaceExpr.dataType== StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    val regex = patternExpr.eval(input).asInstanceOf[UTF8String].toString
+    val position = positionExpr.eval(input).asInstanceOf[Int]
+    val occurrence = occurExpr.eval(input).asInstanceOf[Int]
+    val replace = replaceExpr.eval(input).asInstanceOf[UTF8String].toString
+    val matchPara = matchParaExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    return UTF8String.fromString(CharacterFunctionUtils.regExpReplace(string, regex, replace,
+      position, occurrence, matchPara))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+    val eval2 = patternExpr.genCode(ctx)
+    val eval3 = replaceExpr.genCode(ctx)
+    val eval4 = positionExpr.genCode(ctx)
+    val eval5 = occurExpr.genCode(ctx)
+    val eval6 = matchParaExpr.genCode(ctx)
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      eval5.code + eval6.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         ${ev.value} = UTF8String.fromString(org.apache.spark.sql.util.CharacterFunctionUtils.
+              regExpReplace(${eval1.value}.toString(),${eval2.value}.toString(),
+             ${eval3.value}.toString(), ${eval4.value},${eval5.value},${eval6.value}.toString()));
          """)
   }
 }
