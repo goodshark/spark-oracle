@@ -479,7 +479,17 @@ object FunctionRegistry {
     expression[NumToDSInterval]("numtodsinterval"),
     expression[NumToYMInterval]("numtoyminterval"),
     expression[ToDSInterval]("to_dsinterval"),
-    expression[ToYMInterval]("to_yminterval")
+    expression[ToYMInterval]("to_yminterval"),
+
+    expression[Instr2]("instr2"),
+    expression[RegExpCount]("regexp_count"),
+    expression[RegExpInstr]("regexp_instr"),
+
+    expression[StringTrimLeft2]("ltrim2"),
+    expression[StringTrimRight2]("rtrim2"),
+    expression[StringReplace]("replace2"),
+    expression[RegExpSubStr]("regexp_substr2"),
+    expression[RegExpReplace2]("regexp_replace2")
 
   )
 
