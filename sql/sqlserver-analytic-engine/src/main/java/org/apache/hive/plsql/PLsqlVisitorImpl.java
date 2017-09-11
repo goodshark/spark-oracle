@@ -506,6 +506,19 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     }
 
     @Override
+    public Object visitExponent_expression_alias(PlsqlParser.Exponent_expression_aliasContext ctx) {
+        ExpressionBean expressionBean = new ExpressionBean();
+        ExpressionStatement es = new ExpressionStatement(expressionBean);
+        expressionBean.setOperatorSign(OperatorSign.getOpator("**"));
+        for (PlsqlParser.ExpressionContext expr : ctx.expression()) {
+            visit(expr);
+            treeBuilder.addNode(es);
+        }
+        treeBuilder.pushStatement(es);
+        return es;
+    }
+
+    @Override
     public Object visitBinary_expression_alias(PlsqlParser.Binary_expression_aliasContext ctx) {
         ExpressionBean expressionBean = new ExpressionBean();
         ExpressionStatement es = new ExpressionStatement(expressionBean);

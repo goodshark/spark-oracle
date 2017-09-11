@@ -1441,7 +1441,8 @@ expression
     | constant                                              #constant_alias
     | function_call                                         #function_call_alias
     | case_statement                                        #case_statement_alias
-    | expression op=('*' | '/' | '%' | '**') expression            #binary_expression_alias
+    | expression '**' expression                            #exponent_expression_alias
+    | expression op=('*' | '/' | '%') expression            #binary_expression_alias
     | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
     | expression op=('+' | '-') expression                  #binary_expression_alias
