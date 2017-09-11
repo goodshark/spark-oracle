@@ -728,7 +728,7 @@ table_indexed_by_part
     ;
 
 varray_type_def
-    : (VARRAY | VARYING ARRAY) '(' expression ')' OF type_spec (NOT NULL)?
+    : (VARRAY | VARYING ARRAY) '(' numeric ')' OF type_spec (NOT NULL)?
     ;
 
 table_var_dec
