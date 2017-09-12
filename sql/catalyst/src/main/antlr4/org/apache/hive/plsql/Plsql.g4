@@ -771,7 +771,11 @@ statement
     ;
 
 assignment_statement
-    : (general_element | bind_variable) ASSIGN_OP expression
+    : (general_element | bind_variable | varray_var) ASSIGN_OP expression
+    ;
+
+varray_var
+    : id_expression '(' expression ')' ('(' expression ')')*
     ;
 
 continue_statement
@@ -1436,6 +1440,7 @@ condition
 expression
     : cursor_expression                                     #cursor_expression_alias
     | id_expression ('.' id_expression)*                    #id_expression_alias
+    | id_expression '('expression')' ('('expression')')*    #subscript_alias
     | logical_or_expression                                 #complex_expression_alias
     | '(' expression ')'                                    #expression_nested_alias
     | constant                                              #constant_alias
