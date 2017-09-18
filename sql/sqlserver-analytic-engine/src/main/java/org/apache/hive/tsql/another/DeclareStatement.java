@@ -1,14 +1,10 @@
 package org.apache.hive.tsql.another;
 
-import org.apache.hive.plsql.cursor.OracleCursor;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TmpTableNameUtils;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.ddl.CreateFunctionStatement;
-import org.apache.spark.sql.catalog.Column;
-import org.apache.spark.sql.catalog.Table;
-import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.ArrayList;
@@ -35,16 +31,16 @@ public class DeclareStatement extends BaseStatement {
 //            if (null != findVar(var.getVarName())) {
 //                throw new AlreadyDeclaredException(var.getVarName());
 //            }
-            if (var.getDataType() == Var.DataType.REF) {
-                resolveRefVar(var);
+            if (var.getDataType() == Var.DataType.REF_SINGLE) {
+                resolveRefSingle(var);
 //                findRefType(var);
-                // REF has no default value
+                // REF_SINGLE has no default value
 //                continue;
             }
-            if (var.getDataType() == Var.DataType.COMPLEX) {
-                resolveComplexVar(var);
+            if (var.getDataType() == Var.DataType.REF_COMPOSITE) {
+                resolveRefComposite(var);
 //                findComplexType(var);
-                // COMPLEX has no default value
+                // REF_COMPOSITE has no default value
 //                continue;
             }
             if (var.getDataType() == Var.DataType.CUSTOM) {
@@ -72,7 +68,10 @@ public class DeclareStatement extends BaseStatement {
                         break;
                     }
                     statement.execute();
-                    var.setVarValue(((Var) statement.getRs().getObject(0)).getVarValue());
+                    // support multiple assign include: a := 1, a := b   -- b is the composite var
+//                    var.setVarValue(((Var) statement.getRs().getObject(0)).getVarValue());
+//                    assignVar(var, (Var)statement.getRs().getObject(0));
+                    Var.assign(var, (Var)statement.getRs().getObject(0));
                     var.setExecuted(true);
                     break;
                 default:
@@ -92,7 +91,7 @@ public class DeclareStatement extends BaseStatement {
             // refType reference table column
             String[] strs = refTypeName.split("\\.");
             if (strs.length < 2)
-                throw new Exception("REF %Type is unknown Type: " + var.getRefTypeName());
+                throw new Exception("REF_SINGLE %Type is unknown Type: " + var.getRefTypeName());
             String tblName = strs[0];
             String colName = strs[1];
             Dataset<Column> cols = getExecSession().getSparkSession().catalog().listColumns(tblName);

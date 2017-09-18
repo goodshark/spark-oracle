@@ -6,11 +6,6 @@ import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
-import org.apache.hive.tsql.cursor.Cursor;
-import org.apache.hive.tsql.dml.SelectStatement;
-import org.apache.hive.tsql.func.Procedure;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -293,7 +288,7 @@ public class VariableContainer {
                 }
             } else {
                 if (curVar != null) {
-                    if (tagNames[i].equalsIgnoreCase("count") && curVar.getDataType() == Var.DataType.ARRAY) {
+                    if (tagNames[i].equalsIgnoreCase("count") && curVar.getDataType() == Var.DataType.NESTED_TABLE) {
                         return new Var("", curVar.getArraySize(), Var.DataType.INTEGER);
                     }
                     curVar = curVar.getInnerVar(tagNames[i].toUpperCase());
