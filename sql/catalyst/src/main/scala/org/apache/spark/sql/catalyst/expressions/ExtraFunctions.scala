@@ -187,8 +187,7 @@ case class HexToRaw(inputString: Expression)
   */
 @ExpressionDescription(
   usage = "_FUNC_(input,format) - Convert the input of string or datetime or number into string," +
-    "when the input is datetime(date or timestamp),the string format can be specified," +
-    "if not, defualt is used.",
+    "when the input is datetime(date or timestamp),the string format can be specified,if not, defualt is used.",
   extended = """
     Examples:
       > select to_char('xiayongzhao')
@@ -789,8 +788,7 @@ case class RegExpCount(stringExpr: Expression, patternExpr: Expression,
   */
 @ExpressionDescription(
   usage = "_FUNC_(string, pattern, position, occurrence, returnOpt, matchPara, subExpr) - search" +
-    "the position of the occurrence that the regex matched start from the position of string,and" +
-    "matchPara can indicate how to match, while returnOpt indicate how to return",
+    "the position of the occurrence that the regex matched start from the position of string,and matchPara can indicate how to match, while returnOpt indicate how to return",
   extended = """
     Examples:
       > select REGEXP_INSTR('500 Oracle Parkway, Redwood Shores, CA','[^ ]+', 1, 6) result;
@@ -1062,9 +1060,8 @@ case class StringReplace(stringExpr: Expression, searchStrExpr: Expression,
   * and matchPara can indicate how to match.
   */
 @ExpressionDescription(
-  usage = "_FUNC_(string, pattern, position, occurrence, matchPara, subExpr) - search" +
-    "the subString of the occurrence that the regex matched start from the position of string,and" +
-    "matchPara can indicate how to match.",
+  usage = "_FUNC_(string, pattern, position, occurrence, matchPara, subExpr) - search the subString" +
+    "of the occurrence that the regex matched start from the position of string,and matchPara can indicate how to match.",
   extended = """
     Examples:
       > select REGEXP_SUBSTR2('500 Oracle Parkway, Redwood Shores, CA','[^ ]+', 1, 6) result;
@@ -1149,9 +1146,8 @@ case class RegExpSubStr(stringExpr: Expression, patternExpr: Expression,
   * and matchPara can indicate how to match, and return the string that replaced.
   */
 @ExpressionDescription(
-  usage = "_FUNC_(string, pattern, replace, position, occurrence, matchPara) - search the" +
-    "occurrence of the regex start from the position of string and replace it, and matchPara" +
-    "can indicate how to match, and return the string that replaced.",
+  usage = "_FUNC_(string, pattern, replace, position, occurrence, matchPara) - search the occurrence of the" +
+    "regex start from the position of string and replace it, and matchPara can indicate how to match, and return the string that replaced.",
   extended = """
     Examples:
       > select REGEXP_REPLACE2('500Oracle     Parkway,    Redw0O0Od  Shores, CA','(0O)', '-', 1,2,'i') result;
