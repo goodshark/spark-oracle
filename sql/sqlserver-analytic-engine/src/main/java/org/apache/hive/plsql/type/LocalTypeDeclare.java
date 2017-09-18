@@ -11,22 +11,30 @@ import java.util.Map;
  */
 public abstract class LocalTypeDeclare extends BaseStatement {
     private static final String STATEMENT_NAME = "_LOCAL_TYPE_DECLARE_";
+    // COMPOSITE | VARRAY | ASSOC_ARRAY | NESTED_TABLE
+    private Var.DataType type = null;
+
     public enum Type {
         RECORD, TABLE
     }
     private Type declareType = Type.RECORD;
     private String typeName = "";
     protected Map<String, Var> typeVarMap = new HashMap<>();
-    protected Var arrayVar = null;
+    protected Var tableTypeVar = null;
     private boolean resolved = false;
 
     public LocalTypeDeclare() {
         super(STATEMENT_NAME);
     }
 
-    public LocalTypeDeclare(Type t) {
+    /*public LocalTypeDeclare(Type t) {
         super(STATEMENT_NAME);
         declareType = t;
+    }*/
+
+    public LocalTypeDeclare(Var.DataType t) {
+        super(STATEMENT_NAME);
+        type = t;
     }
 
     public void setTypeName(String t) {
@@ -37,8 +45,8 @@ public abstract class LocalTypeDeclare extends BaseStatement {
         return typeName;
     }
 
-    public Type getDeclareType() {
-        return declareType;
+    public Var.DataType getDeclareType() {
+        return type;
     }
 
     public void addTypeVar(String fieldName, Var v) {
@@ -49,12 +57,12 @@ public abstract class LocalTypeDeclare extends BaseStatement {
         return new HashMap<String, Var>(typeVarMap);
     }
 
-    public void setArrayVar(Var v) {
-        arrayVar = v;
+    public void setTableTypeVar(Var v) {
+        tableTypeVar = v;
     }
 
-    public Var getArrayVar() {
-        return arrayVar.clone();
+    public Var getTableTypeVar() {
+        return tableTypeVar.clone();
     }
 
     @Override
@@ -75,9 +83,9 @@ public abstract class LocalTypeDeclare extends BaseStatement {
         // TODO resolve all types
         for (String varName: typeVarMap.keySet()) {
             Var typeVar = typeVarMap.get(varName);
-            if (typeVar.getDataType() == Var.DataType.REF)
+            if (typeVar.getDataType() == Var.DataType.REF_SINGLE)
                 return -1;
-            if (typeVar.getDataType() == Var.DataType.COMPLEX)
+            if (typeVar.getDataType() == Var.DataType.REF_COMPOSITE)
                 return -1;
             if (typeVar.getDataType() == Var.DataType.CUSTOM)
                 return -1;

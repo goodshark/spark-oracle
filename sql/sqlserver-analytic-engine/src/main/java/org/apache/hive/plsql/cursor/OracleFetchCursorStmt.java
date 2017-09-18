@@ -50,9 +50,9 @@ public class OracleFetchCursorStmt extends BaseStatement {
         for (String varName: vars.keySet()) {
             Var var = findVar(varName);
             if (var != null) {
-                if (var.getDataType() == Var.DataType.COMPLEX && !var.isCompoundResolved())
+                if (var.getDataType() == Var.DataType.REF_COMPOSITE && !var.isCompoundResolved())
                     bindComplexVar(var);
-                if (var.getDataType() == Var.DataType.ARRAY) {
+                if (var.getDataType() == Var.DataType.NESTED_TABLE) {
                     Var arrayTypeVar = var.getArrayVar(0);
                     if (!arrayTypeVar.isCompoundResolved())
                         bindComplexVar(arrayTypeVar);
@@ -69,7 +69,7 @@ public class OracleFetchCursorStmt extends BaseStatement {
         if (!bulkCollect) {
             resultSet.next();
             Row row = resultSet.fetchRow();
-            if (varArray.length == 1 && varArray[0].getDataType() == Var.DataType.COMPLEX) {
+            if (varArray.length == 1 && varArray[0].getDataType() == Var.DataType.REF_COMPOSITE) {
                 // fetch into complex Type
                 Var complexVar = varArray[0];
                 List<Column> schema = cursor.getSchema();
@@ -97,7 +97,7 @@ public class OracleFetchCursorStmt extends BaseStatement {
             if (varArray.length != 1)
                 throw new RuntimeException("cursor fetch into variable number wrong: " + varArray.length);
             Var tableVar = varArray[0];
-            if (tableVar.getDataType() != Var.DataType.ARRAY)
+            if (tableVar.getDataType() != Var.DataType.NESTED_TABLE)
                 throw new RuntimeException("cursor fetch into variable is not table: " + tableVar.getVarName());
             List<Column> schema = cursor.getSchema();
             Var typeVar = tableVar.getArrayVar(0);
@@ -115,6 +115,8 @@ public class OracleFetchCursorStmt extends BaseStatement {
                         throw new RuntimeException("col name " + colName + " Type " + col.getDataType() + " not match array");
                     colVar.setVarValue(colVal);
                 }
+                tableVar.addNestedTableValue(rowVar);
+                // TODO old implement
                 tableVar.addArrayVar(rowVar);
             }
         }
@@ -145,8 +147,8 @@ public class OracleFetchCursorStmt extends BaseStatement {
             return;
         }
         cursor.getSchema();
-        /*if (varSize == 1 && (varArray[0].getDataType() == Var.DataType.COMPLEX ||
-                varArray[0].getDataType() == Var.DataType.ARRAY)) {
+        /*if (varSize == 1 && (varArray[0].getDataType() == Var.DataType.REF_COMPOSITE ||
+                varArray[0].getDataType() == Var.DataType.NESTED_TABLE)) {
             if (resultSet.getColumnSize() != varArray[0].getRecordSize())
                 throw new RuntimeException("Cursor fetch results more than record size: " + cursorName);
         } else {
@@ -154,9 +156,9 @@ public class OracleFetchCursorStmt extends BaseStatement {
                 throw new RuntimeException("Cursor fetch results more than variables: " + cursorName);
         }*/
         if (varSize == 1) {
-            if (varArray[0].getDataType() == Var.DataType.COMPLEX && resultSet.getColumnSize() != varArray[0].getRecordSize())
+            if (varArray[0].getDataType() == Var.DataType.REF_COMPOSITE && resultSet.getColumnSize() != varArray[0].getRecordSize())
                 throw new RuntimeException("Cursor fetch results more than record size: " + cursorName);
-            if (varArray[0].getDataType() == Var.DataType.ARRAY) {
+            if (varArray[0].getDataType() == Var.DataType.NESTED_TABLE) {
                 Var typeVar = varArray[0].getArrayVar(0);
                 if (typeVar.getRecordSize() != resultSet.getColumnSize())
                     throw new RuntimeException("Cursor fetch results more than array record size: " + cursorName);
