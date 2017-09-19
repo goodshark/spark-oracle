@@ -1,6 +1,7 @@
 package org.apache.hive.tsql.arg;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.plsql.expression.MultiMemberExpr;
 import org.apache.hive.tsql.common.ExpressionComputer;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
@@ -71,6 +72,14 @@ public class Var implements Serializable {
 
 
     // TODO new custom type start
+    // for SetStatement
+    private MultiMemberExpr leftExpr = null;
+    public void setLeftExpr(MultiMemberExpr expr) {
+        leftExpr = expr;
+    }
+    public MultiMemberExpr getLeftExpr() {
+        return leftExpr;
+    }
     // var can be assigned value when initialized, for varray and nested-table
     private boolean initialized = false;
     public void setInitialized() {

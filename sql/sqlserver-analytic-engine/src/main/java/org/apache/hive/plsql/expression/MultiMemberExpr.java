@@ -75,7 +75,8 @@ public class MultiMemberExpr extends ExpressionStatement {
             }
         }
 
-        setRs(new SparkResultSet().addRow(new Object[] {new Var("bool result", curVar, curVar.getDataType())}));
+//        setRs(new SparkResultSet().addRow(new Object[] {new Var("multiMemberVar", curVar, curVar.getDataType())}));
+        setRs(new SparkResultSet().addRow(new Object[] {curVar}));
         return 0;
     }
 

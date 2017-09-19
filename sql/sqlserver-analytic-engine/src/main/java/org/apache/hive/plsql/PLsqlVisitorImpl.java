@@ -143,6 +143,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitAssignment_statement(PlsqlParser.Assignment_statementContext ctx) {
         SetStatement setStatement = new SetStatement();
         String varName = "";
+        Var var = new Var();
         // TODO assignment in g4 has been modified: general_element -> id_expression | member_var ...
         // TODO implement member_var support complex var like: a(1)(2), a.b.c, a(1).b, a.b(1).c
         /*if (ctx.general_element() != null) {
@@ -151,11 +152,17 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         if (ctx.id_expression() != null) {
             varName = ctx.id_expression().getText();
         } else if (ctx.member_var() != null) {
-            varName = ctx.member_var().getText();
+            // in SetStatement, findVar can NOT support varName like "a.b(1).c.d(2).e"
+//            varName = ctx.member_var().getText();
+            visit(ctx.member_var());
+            MultiMemberExpr leftExpr = (MultiMemberExpr) treeBuilder.popStatement();
+            var.setLeftExpr(leftExpr);
         }
         visit(ctx.expression());
         TreeNode expr = treeBuilder.popStatement();
-        Var var = new Var(varName, expr);
+        var.setVarName(varName);
+        var.setExpr(expr);
+//        Var var = new Var(varName, expr);
         var.setValueType(Var.ValueType.EXPRESSION);
         setStatement.setVar(var);
         treeBuilder.pushStatement(setStatement);
