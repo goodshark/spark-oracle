@@ -1,7 +1,9 @@
 package org.apache.hive.tsql.common;
 
 import org.apache.hive.plsql.cursor.OracleCursor;
+import org.apache.hive.plsql.type.AssocArrayTypeDeclare;
 import org.apache.hive.plsql.type.LocalTypeDeclare;
+import org.apache.hive.plsql.type.VarrayTypeDeclare;
 import org.apache.hive.tsql.arg.SystemVName;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.GotoStatement;
@@ -194,14 +196,17 @@ public abstract class BaseStatement extends TreeNode {
         return labelSet;
     }
 
-    protected void resolveRefVar(Var var) throws Exception {
+    private void subsititueType(Var curVar, Var refVar) {
+    }
+
+    protected void resolveRefSingle(Var var) throws Exception {
         String refTypeName = var.getRefTypeName();
         Var refVar = findVar(refTypeName);
         if (refVar == null) {
             // refType reference table column
             String[] strs = refTypeName.split("\\.");
             if (strs.length < 2)
-                throw new Exception("REF %Type is unknown Type: " + var.getRefTypeName());
+                throw new Exception("REF_SINGLE %Type is unknown Type: " + var.getRefTypeName());
             String tblName = strs[0];
             String colName = strs[1];
             Dataset<org.apache.spark.sql.catalog.Column> cols = getExecSession().getSparkSession().catalog().listColumns(tblName);
@@ -216,10 +221,11 @@ public abstract class BaseStatement extends TreeNode {
             // refType reference pre-exists var Type
             var.setDataType(refVar.getDataType());
             // TODO data type is complex, need add inner var
+            subsititueType(var, refVar);
         }
     }
 
-    protected void resolveComplexVar(Var var) throws Exception {
+    protected void resolveRefComposite(Var var) throws Exception {
         String complexRefName= var.getRefTypeName();
         OracleCursor cursor = (OracleCursor) findCursor(complexRefName);
         if (cursor == null) {
@@ -245,8 +251,8 @@ public abstract class BaseStatement extends TreeNode {
         LocalTypeDeclare typeDeclare = findType(var.getRefTypeName());
         if (typeDeclare == null)
             throw new Exception("type " + var.getRefTypeName() + " not exist");
-        if (typeDeclare.getDeclareType() == LocalTypeDeclare.Type.RECORD) {
-            var.setDataType(Var.DataType.COMPLEX);
+        if (typeDeclare.getDeclareType() == Var.DataType.COMPOSITE) {
+            var.setDataType(Var.DataType.REF_COMPOSITE);
             if (typeDeclare.isResolved())
                 var.setCompoundResolved();
             Map<String, Var> typeVars = typeDeclare.getTypeVars();
@@ -254,9 +260,20 @@ public abstract class BaseStatement extends TreeNode {
                 Var typeVar = typeVars.get(fieldName);
                 var.addInnerVar(typeVar.typeClone());
             }
+        } else if (typeDeclare.getDeclareType() == Var.DataType.VARRAY) {
+            var.setDataType(Var.DataType.VARRAY);
+            var.addVarrayTypeVar(((VarrayTypeDeclare)typeDeclare).getTypeVar());
+        } else if (typeDeclare.getDeclareType() == Var.DataType.NESTED_TABLE) {
+            var.setDataType(Var.DataType.NESTED_TABLE);
+            var.addNestedTableTypeVar(typeDeclare.getTableTypeVar());
+            // TODO compatible old ARRAY
+            var.addArrayVar(typeDeclare.getTableTypeVar().typeClone());
+        } else if (typeDeclare.getDeclareType() == Var.DataType.ASSOC_ARRAY) {
+            var.setDataType(Var.DataType.ASSOC_ARRAY);
+            var.setAssocTypeVar(((AssocArrayTypeDeclare)typeDeclare).getIndexTypeVar());
         } else {
-            var.setDataType(Var.DataType.ARRAY);
-            Var typeVar = typeDeclare.getArrayVar();
+            var.setDataType(Var.DataType.NESTED_TABLE);
+            Var typeVar = typeDeclare.getTableTypeVar();
             var.addArrayVar(typeVar.typeClone());
         }
     }

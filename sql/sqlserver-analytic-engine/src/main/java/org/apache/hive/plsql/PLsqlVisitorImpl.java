@@ -48,17 +48,14 @@ import org.apache.hive.plsql.dml.fragment.updateFragment.OracleUpdateStatement;
 import org.apache.hive.plsql.dml.fragment.updateFragment.StaticReturningClauseFm;
 import org.apache.hive.plsql.dml.fragment.updateFragment.UpdateSetClauseFm;
 import org.apache.hive.plsql.expression.GeneralExpression;
+import org.apache.hive.plsql.expression.MultiMemberExpr;
 import org.apache.hive.plsql.expression.RelationUnaryExpression;
 import org.apache.hive.plsql.function.FakeFunction;
 import org.apache.hive.plsql.function.Function;
 import org.apache.hive.plsql.function.ProcedureCall;
-import org.apache.hive.plsql.type.LocalTypeDeclare;
-import org.apache.hive.plsql.type.RecordTypeDeclare;
-import org.apache.hive.plsql.type.TableTypeDeclare;
-import org.apache.hive.tsql.TSqlParser;
+import org.apache.hive.plsql.type.*;
 import org.apache.hive.tsql.another.DeclareStatement;
 import org.apache.hive.tsql.another.SetStatement;
-import org.apache.hive.tsql.another.UseStatement;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.cfl.*;
 import org.apache.hive.tsql.common.*;
@@ -76,9 +73,6 @@ import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.FunctionIdentifier;
-import org.apache.spark.sql.catalyst.expressions.Expression;
-import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -149,12 +143,26 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitAssignment_statement(PlsqlParser.Assignment_statementContext ctx) {
         SetStatement setStatement = new SetStatement();
         String varName = "";
-        if (ctx.general_element() != null) {
+        Var var = new Var();
+        // TODO assignment in g4 has been modified: general_element -> id_expression | member_var ...
+        // TODO implement member_var support complex var like: a(1)(2), a.b.c, a(1).b, a.b(1).c
+        /*if (ctx.general_element() != null) {
             varName = ctx.general_element().getText();
+        }*/
+        if (ctx.id_expression() != null) {
+            varName = ctx.id_expression().getText();
+        } else if (ctx.member_var() != null) {
+            // in SetStatement, findVar can NOT support varName like "a.b(1).c.d(2).e"
+//            varName = ctx.member_var().getText();
+            visit(ctx.member_var());
+            MultiMemberExpr leftExpr = (MultiMemberExpr) treeBuilder.popStatement();
+            var.setLeftExpr(leftExpr);
         }
         visit(ctx.expression());
         TreeNode expr = treeBuilder.popStatement();
-        Var var = new Var(varName, expr);
+        var.setVarName(varName);
+        var.setExpr(expr);
+//        Var var = new Var(varName, expr);
         var.setValueType(Var.ValueType.EXPRESSION);
         setStatement.setVar(var);
         treeBuilder.pushStatement(setStatement);
@@ -269,7 +277,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         var.setVarName(varName);
         Var.DataType dataType = (Var.DataType) visit(type_specCtx);
         var.setDataType(dataType);
-        if (dataType == Var.DataType.REF || dataType == Var.DataType.COMPLEX || dataType == Var.DataType.CUSTOM) {
+        if (dataType == Var.DataType.REF_SINGLE || dataType == Var.DataType.REF_COMPOSITE || dataType == Var.DataType.CUSTOM) {
             var.setRefTypeName(type_specCtx.type_name().getText());
         }
         return var;
@@ -322,9 +330,9 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         // complex Type
         if (ctx.type_name() != null) {
             if (ctx.PERCENT_ROWTYPE() != null)
-                return Var.DataType.COMPLEX;
+                return Var.DataType.REF_COMPOSITE;
             if (ctx.PERCENT_TYPE() != null)
-                return Var.DataType.REF;
+                return Var.DataType.REF_SINGLE;
             // local type declare
             return Var.DataType.CUSTOM;
         }
@@ -336,6 +344,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         return ctx.getText();
     }
 
+    // TODO g4 has been modified
     @Override
     public Object visitGeneral_element_part(PlsqlParser.General_element_partContext ctx) {
         GeneralExpression generalExpression = new GeneralExpression();
@@ -3542,6 +3551,11 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         for (PlsqlParser.Field_specContext fieldCtx : ctx.field_spec()) {
             String fieldVarName = fieldCtx.column_name().getText();
             Var fieldVar = genVarBasedTypeSpec(fieldVarName, fieldCtx.type_spec());
+            if (fieldCtx.default_value_part() != null) {
+                visit(fieldCtx.default_value_part());
+                fieldVar.setExpr(treeBuilder.popStatement());
+                fieldVar.setValueType(Var.ValueType.EXPRESSION);
+            }
             typeDeclare.addTypeVar(fieldVarName, fieldVar);
         }
         treeBuilder.pushStatement(typeDeclare);
@@ -3550,12 +3564,55 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitTable_type_dec(PlsqlParser.Table_type_decContext ctx) {
-        LocalTypeDeclare typeDeclare = new TableTypeDeclare();
-        typeDeclare.setTypeName(ctx.type_name().getText());
-        Var arrayTypeVar = genVarBasedTypeSpec("", ctx.type_spec());
-        typeDeclare.setArrayVar(arrayTypeVar);
+        // TODO table index by and varray
+        LocalTypeDeclare typeDeclare;
+        if (ctx.varray_type_def() != null) {
+            // varray
+            typeDeclare = new VarrayTypeDeclare();
+            typeDeclare.setTypeName(ctx.type_name().getText());
+            Var sizeVar = (Var) visit(ctx.varray_type_def().numeric());
+            ((VarrayTypeDeclare) typeDeclare).setSize(sizeVar);
+            Var typeVar = genVarBasedTypeSpec("", ctx.varray_type_def().type_spec());
+            ((VarrayTypeDeclare) typeDeclare).setTypeVar(typeVar);
+        } else {
+            if (ctx.table_indexed_by_part() == null) {
+                // nested table
+                typeDeclare = new NestedTableTypeDeclare();
+                typeDeclare.setTypeName(ctx.type_name().getText());
+                Var arrayTypeVar = genVarBasedTypeSpec("", ctx.type_spec());
+                typeDeclare.setTableTypeVar(arrayTypeVar);
+            } else {
+                // assoc table
+                typeDeclare = new AssocArrayTypeDeclare();
+                typeDeclare.setTypeName(ctx.type_name().getText());
+                Var typeVar = genVarBasedTypeSpec("", ctx.type_spec());
+                typeDeclare.setTableTypeVar(typeVar);
+                Var indexTypeVar = genVarBasedTypeSpec("", ctx.table_indexed_by_part().type_spec());
+                ((AssocArrayTypeDeclare) typeDeclare).setIndexTypeVar(indexTypeVar);
+            }
+        }
         treeBuilder.pushStatement(typeDeclare);
         return typeDeclare;
+    }
+
+    @Override
+    public Object visitMember_var(PlsqlParser.Member_varContext ctx) {
+        MultiMemberExpr memberExpr = new MultiMemberExpr();
+        for (PlsqlParser.SegContext segCtx: ctx.seg()) {
+            if (segCtx.expression() != null) {
+                // index like a(1)
+                memberExpr.mark(true);
+            } else {
+                // member like a.b
+                memberExpr.mark(false);
+            }
+//            ExpressionStatement es = (ExpressionStatement) visit(segCtx);
+            visit(segCtx);
+            ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
+            memberExpr.addExpr(es);
+        }
+        treeBuilder.pushStatement(memberExpr);
+        return memberExpr;
     }
 
 

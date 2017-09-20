@@ -1,5 +1,6 @@
 package org.apache.hive.tsql.another;
 
+import org.apache.hive.plsql.expression.MultiMemberExpr;
 import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.common.AssignmentOp;
 import org.apache.hive.tsql.common.BaseStatement;
@@ -49,6 +50,15 @@ public class SetStatement extends BaseStatement {
         switch (var.getValueType()) {
             case EXPRESSION:
                 Var v = findVar(var.getVarName());
+                if (v == null) {
+                    // for a(1)(2) | a.b(1), varName is ""
+                    MultiMemberExpr leftExpr = var.getLeftExpr();
+                    if (leftExpr == null)
+                        throw new NotDeclaredException(var.getVarName());
+                    leftExpr.setExecSession(getExecSession());
+                    leftExpr.execute();
+                    v = leftExpr.getExpressionValue();
+                }
                 if (v.isReadonly())
                     throw new Exception("expression " + var.getVarName() + " cannot be used as an assignment target");
                 if (v == null) {

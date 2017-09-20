@@ -43,7 +43,7 @@ public class LoopCursorConditionStmt extends LogicNode {
         // create complex var with cursor & add var into scope
         indexVar = new Var();
         indexVar.setVarName(indexName);
-        indexVar.setDataType(Var.DataType.COMPLEX);
+        indexVar.setDataType(Var.DataType.REF_COMPOSITE);
 
         List<Column> cols = cursor.getSchema();
         for (Column col: cols) {
@@ -82,7 +82,7 @@ public class LoopCursorConditionStmt extends LogicNode {
     private void bindVar() throws Exception {
         indexVar = new Var();
         indexVar.setVarName(indexName);
-        indexVar.setDataType(Var.DataType.COMPLEX);
+        indexVar.setDataType(Var.DataType.REF_COMPOSITE);
 
         List<Column> cols = cursor.getSchema();
         for (Column col: cols) {

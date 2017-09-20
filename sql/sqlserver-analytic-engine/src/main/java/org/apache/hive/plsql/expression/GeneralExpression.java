@@ -47,9 +47,9 @@ public class GeneralExpression extends ExpressionStatement {
                 generalExprs.get(i).setExecSession(getExecSession());
                 generalExprs.get(i).execute();
                 var = (Var) generalExprs.get(i).getRs().getObject(0);
-                if (var.getDataType() == Var.DataType.COMPLEX) {
+                if (var.getDataType() == Var.DataType.REF_COMPOSITE) {
                     // do nothing
-                } else if (var.getDataType() == Var.DataType.ARRAY) {
+                } else if (var.getDataType() == Var.DataType.NESTED_TABLE) {
                     i++;
                     if (!indexSafe(i)) throw new Exception("general element expression array need a index");
                     var = getArrayVar(i, var);
@@ -61,7 +61,7 @@ public class GeneralExpression extends ExpressionStatement {
                 var = var.getInnerVar(innerVarName);
                 if (var == null)
                     throw new Exception("general element expression need complex or array type");
-                if (var.getDataType() == Var.DataType.ARRAY) {
+                if (var.getDataType() == Var.DataType.NESTED_TABLE) {
                     i++;
                     if (!indexSafe(i)) throw new Exception("general element expression array need a index");
                     var = getArrayVar(i, var);

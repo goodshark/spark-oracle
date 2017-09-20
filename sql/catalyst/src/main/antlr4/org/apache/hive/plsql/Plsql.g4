@@ -728,7 +728,7 @@ table_indexed_by_part
     ;
 
 varray_type_def
-    : (VARRAY | VARYING ARRAY) '(' expression ')' OF type_spec (NOT NULL)?
+    : (VARRAY | VARYING ARRAY) '(' numeric ')' OF type_spec (NOT NULL)?
     ;
 
 table_var_dec
@@ -771,7 +771,16 @@ statement
     ;
 
 assignment_statement
-    : (general_element | bind_variable) ASSIGN_OP expression
+    : (id_expression | member_var | bind_variable ) ASSIGN_OP expression
+    ;
+
+member_var
+    : seg*
+    ;
+
+seg
+    : ('.')? id_expression
+    | '(' expression ')'
     ;
 
 continue_statement
@@ -1436,6 +1445,7 @@ condition
 expression
     : cursor_expression                                     #cursor_expression_alias
     | id_expression ('.' id_expression)*                    #id_expression_alias
+//    | id_expression '('expression')' ('('expression')')*    #subscript_alias
     | logical_or_expression                                 #complex_expression_alias
     | '(' expression ')'                                    #expression_nested_alias
     | constant                                              #constant_alias
@@ -1443,6 +1453,7 @@ expression
     | case_statement                                        #case_statement_alias
     | expression '**' expression                            #exponent_expression_alias
     | expression op=('*' | '/' | '%') expression            #binary_expression_alias
+    | member_var                                            #member_var_alias
     | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
     | expression op=('+' | '-') expression                  #binary_expression_alias

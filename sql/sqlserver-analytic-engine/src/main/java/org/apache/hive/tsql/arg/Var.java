@@ -1,6 +1,7 @@
 package org.apache.hive.tsql.arg;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.plsql.expression.MultiMemberExpr;
 import org.apache.hive.tsql.common.ExpressionComputer;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
@@ -20,10 +21,19 @@ public class Var implements Serializable {
     private static final long serialVersionUID = -1631515791432293303L;
 
 
+    /**
+     * REF_SINGLE:      a b%TYPE;
+     * REF_COMPOSITE:   a b%ROWTYPE;
+     * CUSTOM:          a b;
+     * COMPOSITE:       TYPE RECORD is ...
+     * VARRAY:          TYPE VARRAY(2) is ...
+     * ASSOC_ARRAY:     TYPE TABLE is ... INDEX BY ...
+     * NESTED_TABLE:    TYPE TABLE is ...
+     */
     public enum DataType {
         STRING, VARCHAR, LONG, DOUBLE, FLOAT, INT, INTEGER, DATE, DATETIME, DATETIME2, TIME, LIST, TIMESTAMP,
         BINARY, BIT, TABLE, CURSOR, NULL, VAR, DEFAULT, BOOLEAN, COMMON, FUNCTION, BYTE, DECIMAL, EXCEPTION,
-        SHORT, REF, COMPLEX, CUSTOM, ARRAY
+        SHORT, NESTED_TABLE, REF_SINGLE, REF_COMPOSITE, CUSTOM, COMPOSITE, VARRAY, ASSOC_ARRAY, NESTED_TABLE2
     }
 
     public enum ValueType {
@@ -49,7 +59,7 @@ public class Var implements Serializable {
     private String mapOutName = null;
 
 
-    // REF, COMPLEX
+    // REF_SINGLE, REF_COMPOSITE
     private String refTypeName = "";
     // compound Type, like (int, string, string)
     private Map<String, Var> compoundVarMap = new HashMap<>();
@@ -59,6 +69,66 @@ public class Var implements Serializable {
     private List<Var> arrayVars = new ArrayList<>();
     // only for general_element_part x(1).y
     private Var searchIndex = null;
+
+
+    // TODO new custom type start
+    // for SetStatement
+    private MultiMemberExpr leftExpr = null;
+    public void setLeftExpr(MultiMemberExpr expr) {
+        leftExpr = expr;
+    }
+    public MultiMemberExpr getLeftExpr() {
+        return leftExpr;
+    }
+    // var can be assigned value when initialized, for varray and nested-table
+    private boolean initialized = false;
+    public void setInitialized() {
+        initialized = true;
+    }
+
+    private List<Var> varrayList = new ArrayList<>();
+
+    public void addVarrayTypeVar(Var v) throws Exception {
+        if (varrayList.size() != 0)
+            throw new Exception("varray has already the type var");
+        varrayList.add(0, v);
+    }
+
+    public void addVarrayValue(Var v) {
+        varrayList.add(v);
+    }
+
+    public Var getVarrayInnerVar(int i) {
+        return varrayList.get(i);
+    }
+
+    private List<Var> nestedTableList = new ArrayList<>();
+
+    public void addNestedTableTypeVar(Var v) throws Exception {
+        if (nestedTableList.size() != 0)
+            throw new Exception("nested-table has already the type var");
+        nestedTableList.add(0, v);
+    }
+
+    public void addNestedTableValue(Var v) {
+        nestedTableList.add(v);
+    }
+
+    public Var getNestedTableInnerVar(int i) {
+        return nestedTableList.get(i);
+    }
+
+    private Map<String, Var> assocArray = new HashMap<>();
+    private Var assocTypeVar;
+
+    public void setAssocTypeVar(Var v) {
+        assocTypeVar = v;
+    }
+
+    public void addAssocArrayValue(String key, Var val) {
+        assocArray.put(key, val);
+    }
+    // TODO new custom type end
 
 
     public Var(String varName, Object varValue, DataType dataType) {
@@ -99,6 +169,28 @@ public class Var implements Serializable {
     public Var() {
     }
 
+    public static void assign(Var leftVar, Var rightVar) throws Exception {
+        // maybe float <- int
+        /*if (leftVar.getDataType() != rightVar.getDataType())
+            throw new Exception("left var and right var is not same type");*/
+        switch (leftVar.getDataType()) {
+            case COMPOSITE:
+                break;
+            case VARRAY:
+                leftVar.initialized = rightVar.initialized;
+                leftVar.varrayList = new ArrayList<>(rightVar.varrayList);
+                break;
+            case NESTED_TABLE:
+                leftVar.initialized = rightVar.initialized;
+                leftVar.nestedTableList = new ArrayList<>(rightVar.nestedTableList);
+                break;
+            case ASSOC_ARRAY:
+                break;
+            default:
+                leftVar.setVarValue(rightVar.getVarValue());
+        }
+    }
+
 
     // TODO deep copy all inner vars
     public Var clone() {
@@ -110,15 +202,19 @@ public class Var implements Serializable {
         v.setExpr(this.expr);
         v.refTypeName = refTypeName;
         v.compoundResolved = compoundResolved;
-        if (dataType == DataType.COMPLEX) {
+        if (dataType == DataType.REF_COMPOSITE) {
             for (String innerVarName: compoundVarMap.keySet()) {
                 Var innerVar = compoundVarMap.get(innerVarName).typeClone();
                 v.addInnerVar(innerVar);
             }
         }
-        if (dataType == DataType.ARRAY) {
+        if (dataType == DataType.NESTED_TABLE) {
+            // TODO compatible old implement
             for (Var arrayVar: arrayVars) {
                 v.addArrayVar(arrayVar);
+            }
+            for (Var nestedTableInnerVar: nestedTableList) {
+                v.addNestedTableValue(nestedTableInnerVar);
             }
         }
         return v;
@@ -129,15 +225,19 @@ public class Var implements Serializable {
         v.setAliasName(aliasName);
         v.setVarType(varType);
         v.setExecuted(isExecuted);
-        if (dataType == DataType.COMPLEX) {
+        if (dataType == DataType.REF_COMPOSITE) {
             for (String innerVarName: compoundVarMap.keySet()) {
                 Var innerVar = compoundVarMap.get(innerVarName).typeClone();
                 v.addInnerVar(innerVar);
             }
         }
-        if (dataType == DataType.ARRAY) {
+        if (dataType == DataType.NESTED_TABLE) {
+            // TODO compatible old implement
             for (Var arrayVar: arrayVars) {
                 v.addArrayVar(arrayVar);
+            }
+            for (Var nestedTableInnerVar: nestedTableList) {
+                v.addNestedTableValue(nestedTableInnerVar);
             }
         }
         return v;
@@ -638,6 +738,8 @@ public class Var implements Serializable {
         }
         return flag;
     }
+
+    // composite || varray || table
 }
 
 
