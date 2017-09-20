@@ -125,6 +125,15 @@ public class Var implements Serializable {
         assocTypeVar = v;
     }
 
+    public Var getAssocArrayValue(String index) {
+        return assocArray.get(index);
+    }
+
+    public Var getAssocArrayValue(String index, Var val) {
+        assocArray.put(index, new Var());
+        return assocArray.get(index);
+    }
+
     public void addAssocArrayValue(String key, Var val) {
         assocArray.put(key, val);
     }
