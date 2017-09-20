@@ -55,8 +55,10 @@ public class SetStatement extends BaseStatement {
                     MultiMemberExpr leftExpr = var.getLeftExpr();
                     if (leftExpr == null)
                         throw new NotDeclaredException(var.getVarName());
+                    leftExpr.setAssignment(true);
                     leftExpr.setExecSession(getExecSession());
                     leftExpr.execute();
+                    leftExpr.setAssignment(false);
                     v = leftExpr.getExpressionValue();
                 }
                 if (v.isReadonly())
