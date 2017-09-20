@@ -79,23 +79,28 @@ case class WidthBucket2(fieldExpr: Expression,
     val eval4 = numExpr.genCode(ctx)
     val numDouble = eval4.value.toDouble
 
+    val field = ctx.freshName("valueField")
+    val min = ctx.freshName("valueMin")
+    val max = ctx.freshName("valueMax")
+    val interval = ctx.freshName("valueInterval")
+
     val initial =
-      s""" ${ctx.javaType(fieldExpr.dataType)} valueField = ${eval1.value};
-        ${ctx.javaType(fieldExpr.dataType)} valueMin = ${eval2.value};
-        ${ctx.javaType(fieldExpr.dataType)} valueMax = ${eval3.value};
-        ${ctx.javaType(DoubleType)} interval = (valueMax - valueMin) / ${numDouble};
+      s""" long ${field} = ${eval1.value};
+        long ${min} = ${eval2.value};
+        long ${max} = ${eval3.value};
+        double ${interval} = (${max} - ${min}) / ${numDouble};
         ${ctx.javaType(IntegerType)} ${ev.value} = ${ctx.defaultValue(IntegerType)};
         boolean ${ev.isNull} = ${eval1.isNull};
         """
 
     val endpoint =
-      s"""if(valueField== valueMax) {
+      s"""if(${field}== ${max}) {
             ${ev.value}= (${eval4.value}+ 1);
           }"""
 
     val other =
       s"""for(int i = 0; i< ${eval4.value}; i++) {
-              if(valueField>= (valueMin+ (i- 1)* interval) && valueField< (valueMin+ i* interval)){
+              if(${field}>= (${min}+ (i- 1)* ${interval}) && ${field}< (${min}+ i* ${interval})){
                   ${ev.value} = i;
                   break;
               }
@@ -157,17 +162,21 @@ case class HexToRaw(inputString: Expression)
 
     val eval1 = inputString.genCode(ctx)
 
+    val str = ctx.freshName("resultStr")
+    val input = ctx.freshName("inputStr")
+    val a = ctx.freshName("tempA")
+
     val other =
       s"""
-         StringBuilder str = new StringBuilder();
-         String input = ${eval1.value}.toString();
-         if(input.length()%2 == 1) {
-             input = "0" + input;
+         StringBuilder ${str} = new StringBuilder();
+         String ${input} = ${eval1.value}.toString();
+         if(${input}.length()%2 == 1) {
+             ${input} = "0" + ${input};
          }
-         int a=0;
-         for(int i = 0; i< input.length()/2; i++) {
-            a= Integer.valueOf(input.substring(i*2,i*2 + 2),16);
-            str.append((char)a);
+         int ${a}=0;
+         for(int i = 0; i< ${input}.length()/2; i++) {
+            ${a}= Integer.valueOf(${input}.substring(i*2,i*2 + 2),16);
+            ${str}.append((char)${a});
          }
        """
 
@@ -175,7 +184,7 @@ case class HexToRaw(inputString: Expression)
       s"""boolean ${ev.isNull} = ${eval1.isNull};
          ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
          ${other};
-         ${ev.value} = UTF8String.fromString(str.toString());""")
+         ${ev.value} = UTF8String.fromString(${str}.toString());""")
   }
 
 }
@@ -261,24 +270,25 @@ case class ToChar(inputExpr: Expression, formatExpr: Expression)
 
     val eval1 = inputExpr.genCode(ctx)
     val dtu = DateTimeUtils.getClass.getName.stripSuffix("$")
+
+    val result = ctx.freshName("resultStr")
+
     val other = inputExpr.dataType match {
       case DateType =>
-        s"""result= UTF8String.fromString(
-         org.apache.spark.sql.util.DateFormatTrans.sparkDateToSpecifiedDate(
-         $dtu.dateToString(${eval1.value}), "${constFormat}"));"""
+        s"""${result}= org.apache.spark.sql.util.DateFormatTrans.sparkDateToSpecifiedDate(
+         $dtu.dateToString(${eval1.value}), "${constFormat}");"""
       case TimestampType =>
-        s"""result= UTF8String.fromString(
-          org.apache.spark.sql.util.DateFormatTrans.sparkTimestampToSpecifiedDate(
-        $dtu.timestampToString(${eval1.value}), "${constFormat}"));"""
-      case _ => s"""result= UTF8String.fromString(${eval1.value} + "");"""
+        s"""${result}= org.apache.spark.sql.util.DateFormatTrans.sparkTimestampToSpecifiedDate(
+        $dtu.timestampToString(${eval1.value}), "${constFormat}");"""
+      case _ => s"""${result}= UTF8String.fromString(${eval1.value}+ "").toString() ;"""
     }
 
     ev.copy(code = eval1.code +
       s"""boolean ${ev.isNull} = ${eval1.isNull};
          ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
-         ${ctx.javaType(StringType)} result= UTF8String.fromString("");
+         String ${result}= "";
          ${other}
-         ${ev.value} = result;""")
+         ${ev.value} = UTF8String.fromString(${result});""")
   }
 }
 
@@ -453,14 +463,16 @@ case class NumToDSInterval(numberExpr: Expression, unitExpr: Expression)
     val eval1 = numberExpr.genCode(ctx)
     val eval2 = unitExpr.genCode(ctx)
 
+    val unit = ctx.freshName("timeUnit")
+
     ev.copy(code = eval1.code + eval2.code +
       s"""boolean ${ev.isNull} = ${eval1.isNull};
          ${ctx.javaType(CalendarIntervalType)} ${ev.value} =
          ${ctx.defaultValue(CalendarIntervalType)};
-         String unit = ${eval2.value}.toString();
-         if(unit.equals("day")|unit.equals("hour")|unit.equals("minute")|unit.equals("second")) {
+         String ${unit} = ${eval2.value}.toString();
+         if(${unit}.equals("day")|${unit}.equals("hour")|${unit}.equals("minute")|${unit}.equals("second")) {
             ${ev.value} = org.apache.spark.unsafe.types.CalendarInterval.fromSingleUnitString(
-            unit, String.valueOf(${eval1.value}));
+         ${unit}, String.valueOf(${eval1.value}));
          }else{
             ${ev.value} = null;
          }
@@ -513,14 +525,16 @@ case class NumToYMInterval(numberExpr: Expression, unitExpr: Expression)
     val eval1 = numberExpr.genCode(ctx)
     val eval2 = unitExpr.genCode(ctx)
 
+    val unit = ctx.freshName("timeUnit")
+
     ev.copy(code = eval1.code + eval2.code +
       s"""boolean ${ev.isNull} = ${eval1.isNull};
          ${ctx.javaType(CalendarIntervalType)} ${ev.value} =
          ${ctx.defaultValue(CalendarIntervalType)};
-         String unit = ${eval2.value}.toString().toLowerCase();
-         if(unit.equals("year")|unit.equals("month")) {
+         String ${unit} = ${eval2.value}.toString().toLowerCase();
+         if(${unit}.equals("year")|${unit}.equals("month")) {
             ${ev.value} = org.apache.spark.unsafe.types.CalendarInterval.fromSingleUnitString(
-            unit, String.valueOf(${eval1.value}));
+         |${unit}, String.valueOf(${eval1.value}));
          }else{
             ${ev.value} = null;
          }
