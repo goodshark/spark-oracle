@@ -489,7 +489,21 @@ object FunctionRegistry {
     expression[StringTrimRight2]("rtrim2"),
     expression[StringReplace]("replace2"),
     expression[RegExpSubStr]("regexp_substr2"),
-    expression[RegExpReplace2]("regexp_replace2")
+    expression[RegExpReplace2]("regexp_replace2"),
+
+    expression[DateTimeExtract]("extract2"),
+    expression[CurrentTimestamp]("localtimestamp"),
+    expression[NewTime]("new_time"),
+    expression[DateRound]("round2"),
+    expression[CurrentDate]("sysdate"),
+    expression[CurrentTimestamp]("systimestamp"),
+
+    expression[AppendChildXml]("appendchildxml"),
+    expression[DeleteXml]("deletexml"),
+    expression[ExistsXmlNode]("existsnode"),
+    expression[XmlExtract]("extract3"),
+    expression[ExtractXmlValue]("extractvalue"),
+    expression[InsertChildXml]("insertchildxml")
 
   )
 
