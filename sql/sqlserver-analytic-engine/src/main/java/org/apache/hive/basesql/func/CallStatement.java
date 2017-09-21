@@ -216,7 +216,7 @@ public abstract class CallStatement extends ExpressionStatement {
                 setRs(new SparkResultSet().addRow(new Object[] {var.getNestedTableInnerVar(index)}));
                 return true;
             } else if (var.getDataType() == Var.DataType.ASSOC_ARRAY) {
-                // TODO check assoc-array's index type is same with subscript
+                setRs(new SparkResultSet().addRow(new Object[] {var.getAssocArrayValue(getValueFromVar(arguments.get(0)).toString())}));
                 return true;
             } else {
                 throw new Exception("var " + funcName.getFuncName() + " subscript is error" );

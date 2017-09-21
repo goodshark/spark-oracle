@@ -15,6 +15,8 @@ public class MultiMemberExpr extends ExpressionStatement {
     private List<Boolean> markList = new ArrayList<>();
     private List<ExpressionStatement> exprs = new ArrayList<>();
 
+    private boolean assignment = false;
+
     /**
      * a.b, a.b.c, a.b.c.d ... as normal var, is NOT parsed as MultiMemberExpr
      * a(1), a(x) ... as function call, is NOT parsed as MultiMemberExpr
@@ -29,6 +31,10 @@ public class MultiMemberExpr extends ExpressionStatement {
 
     public void addExpr(ExpressionStatement expr) {
         exprs.add(expr);
+    }
+
+    public void setAssignment(boolean status) {
+        assignment = status;
     }
 
     /**
@@ -62,10 +68,14 @@ public class MultiMemberExpr extends ExpressionStatement {
                 exprs.get(index).setExecSession(getExecSession());
                 exprs.get(index).execute();
                 Var memberVar = (Var) exprs.get(index).getRs().getObject(0);
-                int memberIndex = (int) memberVar.getVarValue();
-                curVar = getCollectionIndex(curVar, memberIndex);
+                if (curVar.getDataType() == Var.DataType.ASSOC_ARRAY)
+                    curVar = getAssocArrayIndex(curVar, memberVar.getVarValue().toString());
+                else {
+                    int memberIndex = (int) memberVar.getVarValue();
+                    curVar = getCollectionIndex(curVar, memberIndex);
+                }
                 if (curVar == null)
-                    throw new Exception("MultiMemberExpr can not find index: " + memberIndex);
+                    throw new Exception("MultiMemberExpr can not find index");
             } else {
                 // a.b
                 String memberName = exprs.get(index).getExpressionBean().getVar().getVarName();
@@ -81,15 +91,24 @@ public class MultiMemberExpr extends ExpressionStatement {
     }
 
     /**
-     * VARRAY, ASSOC_ARRAY, NESTED_TABLE
+     * ASSOC_ARRAY
+     */
+    private Var getAssocArrayIndex(Var curVar, String index) throws Exception {
+        if (assignment) {
+            // need add a new index or overwrite old index
+            return curVar.getAssocArrayValue(index, null);
+        }
+        return curVar.getAssocArrayValue(index);
+    }
+
+    /**
+     * VARRAY, NESTED_TABLE
      */
     private Var getCollectionIndex(Var curVar, int index) throws Exception {
         if (curVar.getDataType() == Var.DataType.VARRAY) {
             return curVar.getVarrayInnerVar(index);
         } else if (curVar.getDataType() == Var.DataType.NESTED_TABLE) {
             return curVar.getNestedTableInnerVar(index);
-        } else if (curVar.getDataType() == Var.DataType.ASSOC_ARRAY) {
-            return null;
         } else {
             throw new Exception("get collection index type error: " + curVar.getDataType());
         }
