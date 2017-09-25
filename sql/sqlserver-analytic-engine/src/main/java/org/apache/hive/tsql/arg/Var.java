@@ -110,6 +110,12 @@ public class Var implements Serializable {
         nestedTableList.add(0, v);
     }
 
+    public Var getNestedTableTypeVar() throws Exception {
+        if (nestedTableList.size() < 1)
+            throw new Exception("nested-table has non type var");
+        return nestedTableList.get(0);
+    }
+
     public void addNestedTableValue(Var v) {
         nestedTableList.add(v);
     }
