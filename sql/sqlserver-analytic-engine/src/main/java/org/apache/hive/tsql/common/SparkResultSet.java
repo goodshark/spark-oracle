@@ -276,6 +276,8 @@ public class SparkResultSet extends BaseResultSet {
 
     boolean alreadyGetLast = false;
     public boolean hasMoreRows() {
+        if (data.size() == 0)
+            return false;
         return !alreadyGetLast;
     }
 }
