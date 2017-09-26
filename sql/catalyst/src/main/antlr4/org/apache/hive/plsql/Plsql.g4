@@ -768,6 +768,7 @@ statement
     | case_statement/*[true]*/
     | sql_statement
     | function_call
+    | member_var
     ;
 
 assignment_statement
@@ -775,12 +776,13 @@ assignment_statement
     ;
 
 member_var
-    : seg*
+    : id_expression seg+
     ;
 
 seg
-    : ('.')? id_expression
-    | '(' expression ')'
+    : '.' id_expression
+    | '(' expression (',' expression)* ')'
+    | '(' ')'
     ;
 
 continue_statement
@@ -2268,7 +2270,7 @@ regular_id
     //| AND
     //| ANY
     | ARRAY
-    // | AS
+    | AS
     //| ASC
     | ASSOCIATE
     | AT
@@ -2358,7 +2360,8 @@ regular_id
     | DEFAULTS
     | DEFERRED
     | DEFINER
-    // | DELETE
+    // TODO multimember need it
+     | DELETE
     // | DEPTH
     //| DESC
     | DETERMINISTIC
