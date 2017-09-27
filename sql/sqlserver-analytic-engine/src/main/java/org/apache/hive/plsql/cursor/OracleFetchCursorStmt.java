@@ -195,7 +195,7 @@ public class OracleFetchCursorStmt extends BaseStatement {
         Var[] varArray = new Var[vars.size()];
         varArray = vars.values().toArray(varArray);
         int varSize = varArray.length;
-        if (resultSet == null || resultSet.getColumnSize() == 0) {
+        if (resultSet == null || resultSet.getColumnSize() == 0 || !resultSet.hasMoreRows()) {
             hasNoData = true;
             return;
         }
