@@ -278,8 +278,9 @@ public class VariableContainer {
 
     }
 
-    private Var searchDotVar(Var rootVar, String[] tagNames) {
+    private Var searchDotVar(Var rootVar, String[] tagNames, Object ...args) {
         Var curVar = rootVar;
+        Var methodVar = null;
         for (int i = 0; i < tagNames.length; i++) {
             if (i == 0 && rootVar == null) {
                 curVar = getVarInBlocks(tagNames[i].toUpperCase());
@@ -288,10 +289,18 @@ public class VariableContainer {
                 }
             } else {
                 if (curVar != null) {
-                    if (tagNames[i].equalsIgnoreCase("count") && curVar.getDataType() == Var.DataType.NESTED_TABLE) {
+                    /*if (tagNames[i].equalsIgnoreCase("count") && curVar.getDataType() == Var.DataType.NESTED_TABLE) {
                         return new Var("", curVar.getArraySize(), Var.DataType.INTEGER);
+                    }*/
+                    try {
+                        methodVar = Var.callCollectionMethod(curVar, tagNames[i], args);
+                    } catch (Exception e) {
+                        // do nothing
                     }
-                    curVar = curVar.getInnerVar(tagNames[i].toUpperCase());
+                    if (methodVar == null)
+                        curVar = curVar.getInnerVar(tagNames[i].toUpperCase());
+                    else
+                        return methodVar;
                 } else {
                     return null;
                 }
@@ -317,7 +326,7 @@ public class VariableContainer {
     }
 
     // need "." more than 1 for x.y.z, the first tag maybe scope-name
-    public Var findVar(String varName) {
+    public Var findVar(String varName, Object ...args) {
         /*String scopeName = "";
         if (varName.contains(".")) {
             String[] fullVarArray = varName.split("\\.");
@@ -354,7 +363,7 @@ public class VariableContainer {
         String scopeName = "";
 
         String[] fullVarArray = varName.split("\\.");
-        Var targetVar = searchDotVar(null, fullVarArray);
+        Var targetVar = searchDotVar(null, fullVarArray, args);
         if (targetVar != null)
             return targetVar;
 

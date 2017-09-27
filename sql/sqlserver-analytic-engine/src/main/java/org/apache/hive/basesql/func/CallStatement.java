@@ -201,7 +201,13 @@ public abstract class CallStatement extends ExpressionStatement {
     }
 
     private boolean findVarSubscript() throws Exception {
-        Var var = findVar(funcName.getFuncName());
+        // like a.delete(1), a.delete(1, 2), a.count()...
+        Object[] args = getAllArgs();
+        Var var = findVar(funcName.getFuncName(), args);
+        if (var != null && var.isCollectionResult()) {
+            setRs(new SparkResultSet().addRow(new Object[] {var}));
+            return true;
+        }
         if (var != null) {
             if (var.getDataType() == Var.DataType.VARRAY) {
                 if (arguments.size() != 1)
@@ -223,6 +229,14 @@ public abstract class CallStatement extends ExpressionStatement {
             }
         }
         return false;
+    }
+
+    private Object[] getAllArgs() throws Exception {
+        Object[] args = new Object[arguments.size()];
+        for (int i = 0; i < arguments.size(); i++) {
+            args[i] = getValueFromVar(arguments.get(i));
+        }
+        return args;
     }
 
     protected void preExecute() throws Exception {

@@ -197,8 +197,8 @@ public abstract class TreeNode implements Serializable {
         this.execSession.getVariableContainer().addVar(var);
     }
 
-    public Var findVar(String varName) {
-        return this.execSession.getVariableContainer().findVar(varName);
+    public Var findVar(String varName, Object ...args) {
+        return this.execSession.getVariableContainer().findVar(varName, args);
     }
 
     public Var updateVarValue(String name, Object val) {

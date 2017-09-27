@@ -7,6 +7,7 @@ import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.hive.tsql.util.DateUtil;
 import org.apache.hive.tsql.util.StrUtils;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 
 import java.io.Serializable;
 import java.text.ParseException;
@@ -110,11 +111,19 @@ public class Var implements Serializable {
         nestedTableList.add(0, v);
     }
 
+    public Var getNestedTableTypeVar() throws Exception {
+        if (nestedTableList.size() < 1)
+            throw new Exception("nested-table has non type var");
+        return nestedTableList.get(0);
+    }
+
     public void addNestedTableValue(Var v) {
         nestedTableList.add(v);
     }
 
-    public Var getNestedTableInnerVar(int i) {
+    public Var getNestedTableInnerVar(int i) throws Exception {
+        if (nestedTableList.get(i) == null)
+            throw new Exception("nested-table has no data");
         return nestedTableList.get(i);
     }
 
@@ -136,6 +145,130 @@ public class Var implements Serializable {
 
     public void addAssocArrayValue(String key, Var val) {
         assocArray.put(key, val);
+    }
+
+    // collection method
+    private final static String collectionVarName = "COLLECTION-RESULT";
+
+    public boolean isCollectionResult() {
+        return varName.equals(collectionVarName);
+    }
+
+    public static boolean isCollectionMethod(String name) {
+        MethodName[] methodNames = MethodName.values();
+        for (MethodName methodName: methodNames) {
+            if (methodName.name().equalsIgnoreCase(name))
+                return true;
+        }
+        return false;
+    }
+
+    private enum MethodName {
+        COUNT, DELETE, EXISTS, EXTEND, FIRST, LAST, LIMIT, NEXT, PRIOR, TRIM
+    }
+    public static Var callCollectionMethod(Var var, String method, Object...args) throws Exception {
+        if (var.getDataType() != DataType.VARRAY && var.getDataType() != DataType.NESTED_TABLE
+            && var.getDataType() != DataType.ASSOC_ARRAY)
+            return null;
+        Var resultVar = new Var();
+        resultVar.setVarName(collectionVarName);
+        switch (MethodName.valueOf(method.toUpperCase())) {
+            case COUNT:
+                int cnt = var.getCollectionCount();
+                resultVar.setVarValue(cnt);
+                resultVar.setDataType(DataType.INT);
+                return resultVar;
+            case DELETE:
+                var.deleteCollection(args);
+                return resultVar;
+            case EXISTS:
+                boolean exist = var.existsIndex(args);
+                resultVar.setVarValue(exist);
+                resultVar.setDataType(DataType.BOOLEAN);
+                return resultVar;
+            // do not exists default, just return null;
+        }
+        return null;
+    }
+
+    private int getCollectionCount() throws Exception {
+        // TODO do not count null placeholder
+        switch (getDataType()) {
+            case VARRAY:
+                return varrayList.size() - 1;
+            case NESTED_TABLE:
+                // null placeholder
+                int cnt = 0;
+                for (int i = 1; i < nestedTableList.size(); i++) {
+                    if (nestedTableList.get(i) != null)
+                        cnt++;
+                }
+                return cnt;
+            case ASSOC_ARRAY:
+                return assocArray.size();
+            default:
+                throw new Exception("var " + getVarName() + " can not support count method");
+        }
+    }
+
+    private void deleteCollection(Object ...args) throws Exception {
+        switch (getDataType()) {
+            case VARRAY:
+                if (args.length > 0)
+                    throw new Exception("varray type not support delete with arg");
+                varrayList.clear();
+                break;
+            case NESTED_TABLE:
+                if (args.length == 0)
+                    nestedTableList = nestedTableList.subList(0,1);
+                else if (args.length == 1) {
+                    int index = (int) args[0];
+                    if (index < nestedTableList.size()) {
+                        nestedTableList.remove(index);
+                        nestedTableList.add(index, null);
+                    }
+                } else {
+                    int fromIndex = (int) args[0];
+                    int toIndex = (int) args[1];
+                    if (fromIndex > toIndex || fromIndex < 1 || toIndex >= nestedTableList.size())
+                        return;
+                    List<Var> tmp = new ArrayList<>();
+                    tmp.addAll(nestedTableList.subList(0, fromIndex));
+                    for (int i = fromIndex; i <= toIndex; i++)
+                        tmp.add(null);
+                    tmp.addAll(nestedTableList.subList(toIndex+1, nestedTableList.size()));
+                    nestedTableList = tmp;
+                }
+                break;
+            case ASSOC_ARRAY:
+                break;
+            default:
+                throw new Exception("var " + getVarName() + " can not support delete method");
+        }
+    }
+
+    private boolean existsIndex(Object ...args) throws Exception {
+        if (args.length != 1)
+            throw new Exception("multi-member exists args error");
+        switch (getDataType()) {
+            case VARRAY:
+                int vIndex = (int)args[0];
+                if (vIndex < 1 || vIndex > varrayList.size())
+                    return false;
+                else
+                    return true;
+            case NESTED_TABLE:
+                int nIndex = (int)args[0];
+                if (nIndex < 1 || nIndex > nestedTableList.size())
+                    return false;
+                if (nestedTableList.get(nIndex) != null)
+                    return true;
+                else
+                    return false;
+            case ASSOC_ARRAY:
+                break;
+        }
+        return false;
     }
     // TODO new custom type end
 

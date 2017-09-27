@@ -783,6 +783,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
         }
+        if (ctx.member_var() != null) {
+            // for a.exists(x)
+            visit(ctx.member_var());
+            predicateNode.addNode(treeBuilder.popStatement());
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
         // expression compare expression
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
         if (expressCtxList.size() != 2) {
@@ -3598,18 +3606,36 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitMember_var(PlsqlParser.Member_varContext ctx) {
         MultiMemberExpr memberExpr = new MultiMemberExpr();
+        visit(ctx.id_expression());
+        ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
+        memberExpr.setHeadExpr(es);
         for (PlsqlParser.SegContext segCtx: ctx.seg()) {
-            if (segCtx.expression() != null) {
+            if (segCtx.expression().size() != 0) {
                 // index like a(1)
                 memberExpr.mark(true);
-            } else {
+                List<ExpressionStatement> list = new ArrayList<>();
+                for (PlsqlParser.ExpressionContext expressionContext: segCtx.expression()) {
+                    visit(expressionContext);
+                    es = (ExpressionStatement) treeBuilder.popStatement();
+                    list.add(es);
+                }
+                memberExpr.addExpr(list);
+            } else if (segCtx.id_expression() != null) {
                 // member like a.b
                 memberExpr.mark(false);
+                visit(segCtx.id_expression());
+                es = (ExpressionStatement) treeBuilder.popStatement();
+                List<ExpressionStatement> list = new ArrayList<>();
+                list.add(es);
+                memberExpr.addExpr(list);
+            } else {
+                // member like a()
+                memberExpr.mark(true);
+                memberExpr.addExpr(new ArrayList<ExpressionStatement>());
             }
-//            ExpressionStatement es = (ExpressionStatement) visit(segCtx);
-            visit(segCtx);
-            ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
-            memberExpr.addExpr(es);
+            /*visit(segCtx);
+            es = (ExpressionStatement) treeBuilder.popStatement();
+            memberExpr.addExpr(es);*/
         }
         treeBuilder.pushStatement(memberExpr);
         return memberExpr;
