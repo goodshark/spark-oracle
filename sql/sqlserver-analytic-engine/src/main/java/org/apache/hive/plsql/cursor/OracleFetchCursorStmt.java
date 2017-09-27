@@ -104,7 +104,8 @@ public class OracleFetchCursorStmt extends BaseStatement {
                     Row row = resultSet.fetchRow();
                     Var rowVar = typeVar.clone();
                     for (int i = 0; i < row.getColumnSize(); ++i)
-                        rowVar = genRowVar(typeVar, schema, row, i);
+                        genRowVar(typeVar, schema, row, i, rowVar);
+//                        rowVar = genRowVar(typeVar, schema, row, i);
                     tableVar.addNestedTableValue(rowVar);
                     // TODO old implement
                     tableVar.addArrayVar(rowVar);
@@ -155,8 +156,8 @@ public class OracleFetchCursorStmt extends BaseStatement {
         }
     }
 
-    private Var genRowVar(Var typeVar, List<Column> schema, Row row, int index) throws Exception {
-        Var rowVar = typeVar.clone();
+    private Var genRowVar(Var typeVar, List<Column> schema, Row row, int index, Var rowVar) throws Exception {
+//        Var rowVar = typeVar.clone();
         Column col = schema.get(index);
         String colName = col.getColumnName().toUpperCase();
         Object colVal = row.getColumnVal(index);
