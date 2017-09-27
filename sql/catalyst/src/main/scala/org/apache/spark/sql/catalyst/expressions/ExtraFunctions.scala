@@ -1,12 +1,14 @@
 
 package org.apache.spark.sql.catalyst.expressions
 
+import java.util.TimeZone
+
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.util.{CharacterFunctionUtils, DateFormatTrans}
+import org.apache.spark.sql.util.{CharacterFunctionUtils, DateFormatTrans, DateTimeFunctions, XmlFunctionsUtils}
 import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
 
 
@@ -1237,6 +1239,585 @@ case class RegExpReplace2(stringExpr: Expression, patternExpr: Expression,
          ${ev.value} = UTF8String.fromString(org.apache.spark.sql.util.CharacterFunctionUtils.
               regExpReplace(${eval1.value}.toString(),${eval2.value}.toString(),
              ${eval3.value}.toString(), ${eval4.value},${eval5.value},${eval6.value}.toString()));
+         """)
+  }
+}
+
+/*
+  *extracts and returns the value of a specified datetime field from a datetime or interval expression.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(dateTime, unit) - extracts and returns the value of a" +
+    "specified datetime field from a datetime or interval expression",
+  extended = """
+    Examples:
+      > select extract2(to_dsinterval('-P11DT05H06M08.88S'), 'day') result;
+          11
+      > select extract2(to_date('2017-08-11'), 'month') result;
+          8
+      > select extract2(to_timestamp('2017-08-11 10:11:12.1'), 'second') result;
+          12
+  """)
+case class DateTimeExtract(dateTimeExpr: Expression, unitExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] = Seq(dateTimeExpr, unitExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(TypeCollection(DateType,
+    TimestampType, CalendarIntervalType), StringType)
+  override def dataType: DataType = IntegerType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if ((dateTimeExpr.dataType == DateType || dateTimeExpr.dataType == TimestampType
+      || dateTimeExpr.dataType == CalendarIntervalType) && unitExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val unit = unitExpr.eval(input).asInstanceOf[UTF8String].toString.toLowerCase
+
+    val dateTimeFunctions = new DateTimeFunctions()
+
+    dateTimeExpr.dataType match {
+      case DateType => val eval = dateTimeExpr.eval(input).asInstanceOf[Int]
+        return dateTimeFunctions.unitValueOfDateString(DateTimeUtils.dateToString(eval), unit)
+      case TimestampType => val eval = dateTimeExpr.eval(input).asInstanceOf[Long]
+        return dateTimeFunctions.unitValueOfTimestampString(
+          DateTimeUtils.timestampToString(eval), unit)
+      case CalendarIntervalType =>
+        val eval = dateTimeExpr.eval(input).asInstanceOf[CalendarIntervalType].toString
+        return dateTimeFunctions.unitValueOfIntervalString(eval, unit)
+      case _ => return -1
+    }
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = dateTimeExpr.genCode(ctx)
+    val eval2 = unitExpr.genCode(ctx)
+    val dtu = DateTimeUtils.getClass.getName.stripSuffix("$")
+
+    val dateTimeFunc = ctx.freshName("dateTimeFunctions")
+
+    val result = dateTimeExpr.dataType match {
+      case DateType => s"""${ev.value} =${dateTimeFunc}.unitValueOfDateString($dtu.dateToString(
+                     ${eval1.value}),${eval2.value}.toString().toLowerCase());"""
+      case TimestampType => s"""${ev.value} = ${dateTimeFunc}.unitValueOfTimestampString(
+            $dtu.timestampToString(${eval1.value}),${eval2.value}.toString().toLowerCase());"""
+      case CalendarIntervalType => s"""${ev.value} = ${dateTimeFunc}.unitValueOfIntervalString(
+                  ${eval1.value}.toString(),${eval2.value}.toString().toLowerCase());"""
+      case _ => s"""${ev.value} = -1;"""
+    }
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(IntegerType)} ${ev.value} = ${ctx.defaultValue(IntegerType)};
+         org.apache.spark.sql.util.DateTimeFunctions ${dateTimeFunc} =
+         new org.apache.spark.sql.util.DateTimeFunctions();
+         ${result}
+         """)
+  }
+}
+
+/*
+  * returns the datetype time in time zone timezone2 when timestamp in time zone timezone1 are time.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(time, timeZone1, timeZone2) - returns the timestamp in time zone" +
+    "timezone2 when timestamp in time zone timezone1 are time.",
+  extended = """
+    Examples:
+      > SELECT NEW_TIME(to_timestamp('11-10-09 06:23:45', 'MM-DD-RR HH24:MI:SS'), 'ADT', 'PST') result;
+          2009-11-09
+  """)
+case class NewTime(timeExpr: Expression, tz1Expr: Expression, tz2Expr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] = Seq(timeExpr, tz1Expr, tz2Expr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(TimestampType,
+    StringType, StringType)
+  override def dataType: DataType = DateType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (timeExpr.dataType == TimestampType && tz1Expr.dataType == StringType
+      && tz2Expr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val time = timeExpr.eval(input).asInstanceOf[Long]
+    val timeZone1 = tz1Expr.eval(input).asInstanceOf[UTF8String].toString
+    val timeZone2 = tz2Expr.eval(input).asInstanceOf[UTF8String].toString
+
+    return DateTimeUtils.stringToDate(UTF8String.fromString(DateTimeUtils.timestampToString(
+      DateTimeUtils.convertTz(time, TimeZone.getTimeZone(timeZone1),
+        TimeZone.getTimeZone(timeZone2))).substring(0, 10)))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = timeExpr.genCode(ctx)
+    val eval2 = tz1Expr.genCode(ctx)
+    val eval3 = tz2Expr.genCode(ctx)
+    val dtu = DateTimeUtils.getClass.getName.stripSuffix("$")
+
+    val timestampStr = ctx.freshName("timestampString")
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(DateType)} ${ev.value} = ${ctx.defaultValue(DateType)};
+         String ${timestampStr} = $dtu.timestampToString($dtu.convertTz(${eval1.value},
+                java.util.TimeZone.getTimeZone(${eval2.value}.toString()),
+                java.util.TimeZone.getTimeZone(${eval3.value}.toString())));
+
+         if(${dtu}.stringToDate(UTF8String.fromString(${timestampStr}.substring(0, 10))).get()
+                        != null) {
+                ${ev.value} = Integer.parseInt(${dtu}.stringToDate(UTF8String.fromString(
+                ${timestampStr}.substring(0, 10))).get().toString());
+         }
+         """)
+  }
+}
+
+/*
+  * returns date rounded to the unit specified by the format model fmt.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(date, format) - returns date rounded to the unit" +
+    "specified by the format model fmt.",
+  extended = """
+    Examples:
+      > select round2(to_date('2017-09-14'), 'day') result;
+          2017-09-17
+      > select round2(to_date('2017-09-14'), 'month') result;
+          2017-09-01
+      > select round2(to_date('2017-09-14'), 'year') result;
+          2018-01-01
+  """)
+case class DateRound(dateExpr: Expression, formatExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  def this(date: Expression) {
+    this(date, Literal(""))
+  }
+
+  override def children: Seq[Expression] = Seq(dateExpr, formatExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(DateType, StringType)
+  override def dataType: DataType = DateType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (dateExpr.dataType == DateType && formatExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val date = dateExpr.eval(input).asInstanceOf[Int]
+    val format = formatExpr.eval(input).asInstanceOf[UTF8String].toString.toLowerCase
+
+    val dateTimeFunctions = new DateTimeFunctions()
+
+    return DateTimeUtils.stringToDate(UTF8String.fromString(
+      dateTimeFunctions.dateAfterRounded(DateTimeUtils.dateToString(date), format)))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = dateExpr.genCode(ctx)
+    val eval2 = formatExpr.genCode(ctx)
+    val dtu = DateTimeUtils.getClass.getName.stripSuffix("$")
+
+    val dateTimeFunc = ctx.freshName("dateTimeFunctions")
+    val roundedDateStr = ctx.freshName("roundedDateString")
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(DateType)} ${ev.value} = ${ctx.defaultValue(DateType)};
+         org.apache.spark.sql.util.DateTimeFunctions ${dateTimeFunc} =
+                      new org.apache.spark.sql.util.DateTimeFunctions();
+         String ${roundedDateStr} = ${dateTimeFunc}.dateAfterRounded($dtu.dateToString(${eval1.value}),
+          ${eval2.value}.toString().toLowerCase());
+         if(${dtu}.stringToDate(UTF8String.fromString(${roundedDateStr})).get()
+                        != null) {
+                ${ev.value} = Integer.parseInt(${dtu}.stringToDate(UTF8String.fromString(
+                ${roundedDateStr})).get().toString().toLowerCase());
+         }
+         """)
+  }
+}
+
+/*
+  * append one xml into another xml depending on xPath.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath, appendXml) - append one xml into another" +
+    "         xml depending on xPath.",
+  extended = """
+    Examples:
+      > select appendchildxml('<node><to>abc</to><from>xyz</from></node>',
+            'node/to', '<content>hahaha</content>') result;
+          <node><to>abc<content>hahaha</content></to><from>xyz</from></node>
+  """)
+case class AppendChildXml(xmlInstanceExpr: Expression, xPathStrExpr: Expression,
+                          valueExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] = Seq(xmlInstanceExpr, xPathStrExpr, valueExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (xmlInstanceExpr.dataType == StringType && xPathStrExpr.dataType == StringType
+      && valueExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = xmlInstanceExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val value = valueExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.appendChildXml(xmlInstance, xPathString, value))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = xmlInstanceExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+    val eval3 = valueExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                                              new org.apache.spark.sql.util.XmlFunctionsUtils();
+         ${ev.value} = UTF8String.fromString(${xmlUtils}.appendChildXml(${eval1.value}.toString(),
+            ${eval2.value}.toString(), ${eval3.value}.toString()));
+         """)
+  }
+}
+
+/*
+  * delete child xml from source xml depending on xPath.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath) - delete child xml from source" +
+    "         xml depending on xPath.",
+  extended = """
+    Examples:
+      > select deletexml('<node><to>abc</to><from>xyz<to>abc</to></from></node>', '//from/to') result;
+          <node><to>abc</to><from>xyz</from></node>
+  """)
+case class DeleteXml(sourceXmlExpr: Expression, xPathStrExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] = Seq(sourceXmlExpr, xPathStrExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.deleteXml(xmlInstance, xPathString))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                                     new org.apache.spark.sql.util.XmlFunctionsUtils();
+         ${ev.value} = UTF8String.fromString(${xmlUtils}.deleteXml(${eval1.value}.toString(),
+            ${eval2.value}.toString()));
+         """)
+  }
+}
+
+/*
+  * whether traversal of an XML document using a specified path results in any nodes,
+  * return 0 if no nodes remain,else return 1.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath) - whether traversal of an XML document using a" +
+    "specified path results in any nodes,return 0 if no nodes remain,else return 1",
+  extended = """
+    Examples:
+      > select existsnode('<node><to>abc</to><from>xyz</from></node>', 'node/to') result;
+            1
+  """)
+case class ExistsXmlNode(sourceXmlExpr: Expression, xPathStrExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] = Seq(sourceXmlExpr, xPathStrExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType)
+  override def dataType: DataType = IntegerType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return xmlFunctionsUtils.existsNode(xmlInstance, xPathString)
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(IntegerType)} ${ev.value} = ${ctx.defaultValue(IntegerType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                                     new org.apache.spark.sql.util.XmlFunctionsUtils();
+         ${ev.value} = ${xmlUtils}.existsNode(
+                ${eval1.value}.toString(),${eval2.value}.toString());
+         """)
+  }
+}
+
+/*
+  *  returns an XMLType instance containing an XML fragment
+  *  from an source XML depending on specified xml path.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath) - returns an XMLType instance containing an XML fragment" +
+    "from an source XML depending on specified xml path.",
+  extended = """
+    Examples:
+      > select extract3('<node><to>abc<at>dudu</at></to><from>xyz<at>dududu</at></from></node>',
+                          '//at') result;
+            <at>dudu</at><at>dududu</at>
+  """)
+case class XmlExtract(sourceXmlExpr: Expression, xPathStrExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] = Seq(sourceXmlExpr, xPathStrExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.xmlExtract(xmlInstance, xPathString))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                                     new org.apache.spark.sql.util.XmlFunctionsUtils();
+         ${ev.value} = UTF8String.fromString(${xmlUtils}.xmlExtract(${eval1.value}.toString(),
+            ${eval2.value}.toString()));
+         """)
+  }
+}
+
+/*
+  * takes as arguments an XMLType instance and an XPath expression
+  * and returns a scalar value of the resultant node.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath) - takes as arguments an XML and an" +
+    "XPath expression and returns a scalar value of the resultant node.",
+  extended = """
+    Examples:
+      > select extractvalue('<node><to>abc</to><from>xyz</from></node>', 'node/from') result;
+            xyz
+  """)
+case class ExtractXmlValue(sourceXmlExpr: Expression, xPathStrExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] = Seq(sourceXmlExpr, xPathStrExpr)
+  override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.extractXmlValue(xmlInstance, xPathString))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+            new org.apache.spark.sql.util.XmlFunctionsUtils();
+         ${ev.value} = UTF8String.fromString(${xmlUtils}.extractXmlValue(${eval1.value}.toString(),
+            ${eval2.value}.toString()));
+         """)
+  }
+}
+
+/*
+  * insert a user-supplied value from the xml node indicated by child into
+  * the source XML at the node indicated by the XPath expression.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath, child, valueXml) - insert a user-supplied value from the xml" +
+    "node indicated by child into the source XML at the node indicated by the XPath expression.",
+  extended = """
+    Examples:
+      > select insertchildxml('<node><to>abc</to><from>xyz</from></node>',
+              'node/to', 'node2', '<node2><from>xyz</from></node2>') result;
+           <node><to>abc<node2><from>xyz</from></node2></to><from>xyz</from></node>
+  """)
+case class InsertChildXml(sourceXmlExpr: Expression, xPathStrExpr: Expression,
+                          childStrExpr: Expression, valueXmlExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] =
+    Seq(sourceXmlExpr, xPathStrExpr, childStrExpr, valueXmlExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType, StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType &&
+      childStrExpr.dataType == StringType && valueXmlExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val child = childStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val valueXml = valueXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.insertChildXml(xmlInstance, xPathString, child, valueXml))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+    val eval3 = childStrExpr.genCode(ctx)
+    val eval4 = valueXmlExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                            new org.apache.spark.sql.util.XmlFunctionsUtils();
+         ${ev.value} = UTF8String.fromString(${xmlUtils}.insertChildXml(${eval1.value}.toString(),
+          ${eval2.value}.toString(),${eval3.value}.toString(), ${eval4.value}.toString()));
          """)
   }
 }
