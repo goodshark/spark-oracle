@@ -783,6 +783,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
         }
+        if (ctx.member_var() != null) {
+            // for a.exists(x)
+            visit(ctx.member_var());
+            predicateNode.addNode(treeBuilder.popStatement());
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
         // expression compare expression
         List<PlsqlParser.Compound_expressionContext> expressCtxList = ctx.compound_expression();
         if (expressCtxList.size() != 2) {

@@ -181,6 +181,11 @@ public class Var implements Serializable {
             case DELETE:
                 var.deleteCollection(args);
                 return resultVar;
+            case EXISTS:
+                boolean exist = var.existsIndex(args);
+                resultVar.setVarValue(exist);
+                resultVar.setDataType(DataType.BOOLEAN);
+                return resultVar;
             // do not exists default, just return null;
         }
         return null;
@@ -240,6 +245,30 @@ public class Var implements Serializable {
             default:
                 throw new Exception("var " + getVarName() + " can not support delete method");
         }
+    }
+
+    private boolean existsIndex(Object ...args) throws Exception {
+        if (args.length != 1)
+            throw new Exception("multi-member exists args error");
+        switch (getDataType()) {
+            case VARRAY:
+                int vIndex = (int)args[0];
+                if (vIndex < 1 || vIndex > varrayList.size())
+                    return false;
+                else
+                    return true;
+            case NESTED_TABLE:
+                int nIndex = (int)args[0];
+                if (nIndex < 1 || nIndex > nestedTableList.size())
+                    return false;
+                if (nestedTableList.get(nIndex) != null)
+                    return true;
+                else
+                    return false;
+            case ASSOC_ARRAY:
+                break;
+        }
+        return false;
     }
     // TODO new custom type end
 

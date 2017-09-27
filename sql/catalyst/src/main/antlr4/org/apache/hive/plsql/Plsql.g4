@@ -1448,14 +1448,14 @@ expression
     : cursor_expression                                     #cursor_expression_alias
     | id_expression ('.' id_expression)*                    #id_expression_alias
 //    | id_expression '('expression')' ('('expression')')*    #subscript_alias
+    | function_call                                         #function_call_alias
+    | member_var                                            #member_var_alias
     | logical_or_expression                                 #complex_expression_alias
     | '(' expression ')'                                    #expression_nested_alias
     | constant                                              #constant_alias
-    | function_call                                         #function_call_alias
     | case_statement                                        #case_statement_alias
     | expression '**' expression                            #exponent_expression_alias
     | expression op=('*' | '/' | '%') expression            #binary_expression_alias
-    | member_var                                            #member_var_alias
     | unary_expression                                      #unary_expression_alias
 //    | op=('+' | '-') expression
     | expression op=('+' | '-') expression                  #binary_expression_alias
@@ -1524,6 +1524,8 @@ relational_expression
     | id_expression ('.' id_expression)?
     | cursor_name ( PERCENT_ISOPEN | PERCENT_FOUND | PERCENT_NOTFOUND )
     | sub_expression IS NOT? NULL
+    // for a.exists(x)
+    | member_var
     ;
 
 compound_expression
@@ -2392,7 +2394,7 @@ regular_id
     | EXCLUDE
     //| EXCLUSIVE
     | EXECUTE
-    //| EXISTS
+    | EXISTS
 //    | EXIT
     | EXPLAIN
     | EXTERNAL

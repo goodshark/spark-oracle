@@ -95,7 +95,7 @@ public class MultiMemberExpr extends ExpressionStatement {
                     List<ExpressionStatement> argExprs = null;
                     if (index < exprLists.size())
                         argExprs = exprLists.get(index);
-                    if (index < exprLists.size() || argExprs == null || argExprs.size() == 0) {
+                    if (argExprs == null || argExprs.size() == 0) {
                         methodVar = Var.callCollectionMethod(curVar, memberName);
                     } else {
                         Object[] argObjs = new Object[argExprs.size()];
