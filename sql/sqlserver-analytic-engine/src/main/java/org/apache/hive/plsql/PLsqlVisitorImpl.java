@@ -257,7 +257,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         DeclareStatement declareStatement = new DeclareStatement();
         Var var = null;
         String varName = ctx.variable_name().getText();
-        checkDuplicateVariable(varName, ctx);
+        // TODO check same scope same variable
+//        checkDuplicateVariable(varName, ctx);
         var = genVarBasedTypeSpec(varName, ctx.type_spec());
 //        var.setVarName(varName);
 //        Var.DataType varType = (Var.DataType) visit(ctx.type_spec());
