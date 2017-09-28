@@ -17,6 +17,8 @@ import org.apache.hive.plsql.ddl.commonFragment.CrudTableFragment;
 import org.apache.hive.plsql.ddl.fragment.alterTableFragment.*;
 import org.apache.hive.plsql.ddl.fragment.createTableFragment.OracleCreateTableStatement;
 import org.apache.hive.plsql.ddl.fragment.createViewFragment.OracleCreateViewStatment;
+import org.apache.hive.plsql.ddl.fragment.databaeFragment.OracleCreateDatabase;
+import org.apache.hive.plsql.ddl.fragment.databaeFragment.OracleDropDatabase;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropTableStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropViewStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleTruncateTableStatement;
@@ -4080,6 +4082,25 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         sqlStatement.setAddResult(true);
         treeBuilder.pushStatement(sqlStatement);
         return sqlStatement;
+    }
+    @Override
+    public OracleCreateDatabase visitCreate_database(PlsqlParser.Create_databaseContext ctx) {
+        OracleCreateDatabase oracleCreateDatabase = new OracleCreateDatabase();
+        visitId(ctx.id());
+        IdFragment dbName = (IdFragment) treeBuilder.popStatement();
+        oracleCreateDatabase.setDbName(dbName);
+        this.treeBuilder.pushStatement(oracleCreateDatabase);
+        return oracleCreateDatabase;
+    }
+
+    @Override
+    public Object visitDrop_database(PlsqlParser.Drop_databaseContext ctx) {
+        OracleDropDatabase oracleDropDatabase = new OracleDropDatabase();
+        visitId(ctx.id());
+        IdFragment dbName = (IdFragment) treeBuilder.popStatement();
+        oracleDropDatabase.setDbName(dbName);
+        this.treeBuilder.pushStatement(oracleDropDatabase);
+        return oracleDropDatabase;
     }
 
     @Override
