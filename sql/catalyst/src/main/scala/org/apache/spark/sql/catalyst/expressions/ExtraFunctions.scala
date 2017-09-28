@@ -1517,9 +1517,13 @@ case class AppendChildXml(xmlInstanceExpr: Expression, xPathStrExpr: Expression,
       s"""boolean ${ev.isNull} = ${eval1.isNull};
          ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
          org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
-                                              new org.apache.spark.sql.util.XmlFunctionsUtils();
-         ${ev.value} = UTF8String.fromString(${xmlUtils}.appendChildXml(${eval1.value}.toString(),
-            ${eval2.value}.toString(), ${eval3.value}.toString()));
+                                new org.apache.spark.sql.util.XmlFunctionsUtils();
+         try{
+              ${ev.value} = UTF8String.fromString(${xmlUtils}.appendChildXml(
+               ${eval1.value}.toString(),${eval2.value}.toString(),${eval3.value}.toString()));
+         }catch(Exception e){
+                throw new IllegalArgumentException("input xml cannot be parsed");
+         }
          """)
   }
 }
@@ -1532,8 +1536,8 @@ case class AppendChildXml(xmlInstanceExpr: Expression, xPathStrExpr: Expression,
     "         xml depending on xPath.",
   extended = """
     Examples:
-      > select deletexml('<node><to>abc</to><from>xyz<to>abc</to></from></node>', '//from/to') result;
-          <node><to>abc</to><from>xyz</from></node>
+      > select deletexml('<node><to>abc</to><to>def</to><from>xyz</from></node>', 'node/to[1]') result
+          <node><to>def</to><from>xyz</from></node>
   """)
 case class DeleteXml(sourceXmlExpr: Expression, xPathStrExpr: Expression)
   extends Expression with ImplicitCastInputTypes{
@@ -1691,8 +1695,8 @@ case class XmlExtract(sourceXmlExpr: Expression, xPathStrExpr: Expression)
          ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
          org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
                                      new org.apache.spark.sql.util.XmlFunctionsUtils();
-         ${ev.value} = UTF8String.fromString(${xmlUtils}.xmlExtract(${eval1.value}.toString(),
-            ${eval2.value}.toString()));
+         ${ev.value} = UTF8String.fromString(${xmlUtils}.xmlExtract(
+                            ${eval1.value}.toString(),${eval2.value}.toString()));
          """)
   }
 }
@@ -1749,8 +1753,8 @@ case class ExtractXmlValue(sourceXmlExpr: Expression, xPathStrExpr: Expression)
          ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
          org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
             new org.apache.spark.sql.util.XmlFunctionsUtils();
-         ${ev.value} = UTF8String.fromString(${xmlUtils}.extractXmlValue(${eval1.value}.toString(),
-            ${eval2.value}.toString()));
+         ${ev.value} = UTF8String.fromString(${xmlUtils}.extractXmlValue(
+            ${eval1.value}.toString(),${eval2.value}.toString()));
          """)
   }
 }
@@ -1816,8 +1820,299 @@ case class InsertChildXml(sourceXmlExpr: Expression, xPathStrExpr: Expression,
          ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
          org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
                             new org.apache.spark.sql.util.XmlFunctionsUtils();
-         ${ev.value} = UTF8String.fromString(${xmlUtils}.insertChildXml(${eval1.value}.toString(),
-          ${eval2.value}.toString(),${eval3.value}.toString(), ${eval4.value}.toString()));
+         try{
+               ${ev.value} = UTF8String.fromString(${xmlUtils}.insertChildXml(
+                      ${eval1.value}.toString(),${eval2.value}.toString(),
+                      ${eval3.value}.toString(), ${eval4.value}.toString()));
+         }catch(Exception e){
+               throw new IllegalArgumentException("input xml cannot be parsed");
+         }
+         """)
+  }
+}
+
+/*
+  * insert a user-supplied value into the source XML at the node indicated
+  * by the XPath expression and the position in brothers(after).
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath, child, valueXml) - insert a user-supplied value from the xml" +
+    "node indicated by child into the source XML at the node indicated by the XPath expression.",
+  extended = """
+    Examples:
+      > select insertchildxmlafter('<node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con><con>
+          hahaha</con></from></node>','node/from', 'con[1]', '<con>hehehe</con>') result;
+                <node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con>
+                <con>hehehe</con><con>hahaha</con></from></node>
+  """)
+case class InsertChildXmlAfter(sourceXmlExpr: Expression, xPathStrExpr: Expression,
+                               childPosExpr: Expression, valueXmlExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] =
+    Seq(sourceXmlExpr, xPathStrExpr, childPosExpr, valueXmlExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType, StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType &&
+      childPosExpr.dataType == StringType && valueXmlExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val child = childPosExpr.eval(input).asInstanceOf[UTF8String].toString
+    val valueXml = valueXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.insertChildXmlAfter(xmlInstance, xPathString, child, valueXml))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+    val eval3 = childPosExpr.genCode(ctx)
+    val eval4 = valueXmlExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                            new org.apache.spark.sql.util.XmlFunctionsUtils();
+         try{
+           ${ev.value} = UTF8String.fromString(${xmlUtils}.insertChildXmlAfter(
+                  ${eval1.value}.toString(),${eval2.value}.toString(),
+                  ${eval3.value}.toString(), ${eval4.value}.toString()));
+         }catch(org.dom4j.DocumentException e){
+               throw new IllegalArgumentException("input xml cannot be parsed");
+         }
+         """)
+  }
+}
+
+/*
+  * insert a user-supplied value into the source XML at the node indicated
+  * by the XPath expression and the position in brothers(before).
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath, child, valueXml) - insert a user-supplied value from the xml" +
+    "node indicated by child into the source XML at the node indicated by the XPath expression.",
+  extended = """
+    Examples:
+      > select insertchildxmlbefore('<node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con>
+              <con>hahaha</con></from></node>','node/from', 'con[2]', '<con>hehehe</con>') result;
+                <node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con>
+                <con>hehehe</con><con>hahaha</con></from></node>
+  """)
+case class InsertChildXmlBefore(sourceXmlExpr: Expression, xPathStrExpr: Expression,
+                                childPosExpr: Expression, valueXmlExpr: Expression)
+  extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] =
+    Seq(sourceXmlExpr, xPathStrExpr, childPosExpr, valueXmlExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType, StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType &&
+      childPosExpr.dataType == StringType && valueXmlExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val child = childPosExpr.eval(input).asInstanceOf[UTF8String].toString
+    val valueXml = valueXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.insertChildXmlBefore(xmlInstance, xPathString, child, valueXml))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+    val eval3 = childPosExpr.genCode(ctx)
+    val eval4 = valueXmlExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code + eval4.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                            new org.apache.spark.sql.util.XmlFunctionsUtils();
+         try{
+           ${ev.value} = UTF8String.fromString(${xmlUtils}.insertChildXmlBefore(
+                  ${eval1.value}.toString(),${eval2.value}.toString(),
+                  ${eval3.value}.toString(), ${eval4.value}.toString()));
+         }catch(org.dom4j.DocumentException e){
+               throw new IllegalArgumentException("input xml cannot be parsed");
+         }
+         """)
+  }
+}
+
+/*
+  * insert a user-supplied value into the source XML at the node indicated
+  * by the XPath expression(after).
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath, child, valueXml) - insert a user-supplied value from the xml" +
+    "node indicated by child into the source XML at the node indicated by the XPath expression.",
+  extended = """
+    Examples:
+      > select insertxmlafter('<node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con>
+              <con>hahaha</con></from></node>','node/from/con[1]', '<con>hehehe</con>') result;
+                    <node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con><con>hehehe</con>
+                    <con>hahaha</con></from></node>
+  """)
+case class InsertXmlAfter(sourceXmlExpr: Expression, xPathStrExpr: Expression,
+                          valueXmlExpr: Expression) extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] =
+    Seq(sourceXmlExpr, xPathStrExpr, valueXmlExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType &&
+      valueXmlExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val valueXml = valueXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.insertXmlAfter(xmlInstance, xPathString, valueXml))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+    val eval3 = valueXmlExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                            new org.apache.spark.sql.util.XmlFunctionsUtils();
+         try{
+           ${ev.value} = UTF8String.fromString(${xmlUtils}.insertXmlAfter(
+                  ${eval1.value}.toString(),${eval2.value}.toString(),
+                  ${eval3.value}.toString()));
+         }catch(org.dom4j.DocumentException e){
+               throw new IllegalArgumentException("input xml cannot be parsed");
+         }
+         """)
+  }
+}
+
+/*
+  * insert a user-supplied value into the source XML at the node indicated
+  * by the XPath expression(before).
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath, child, valueXml) - insert a user-supplied value from the xml" +
+    "node indicated by child into the source XML at the node indicated by the XPath expression.",
+  extended = """
+    Examples:
+      > select insertxmldefore('<node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con>
+              <con>hahaha</con></from></node>','node/from/con[2]', '<con>hehehe</con>') result;
+                    <node><to>abc</to><from>xyz<to>abc</to><con>hihihi</con><con>hehehe</con>
+                    <con>hahaha</con></from></node>
+  """)
+case class InsertXmlBefore(sourceXmlExpr: Expression, xPathStrExpr: Expression,
+                           valueXmlExpr: Expression) extends Expression with ImplicitCastInputTypes{
+
+  override def children: Seq[Expression] =
+    Seq(sourceXmlExpr, xPathStrExpr, valueXmlExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType && xPathStrExpr.dataType == StringType &&
+      valueXmlExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlInstance = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+    val xPathString = xPathStrExpr.eval(input).asInstanceOf[UTF8String].toString
+    val valueXml = valueXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.insertXmlBefore(xmlInstance, xPathString, valueXml))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+    val eval2 = xPathStrExpr.genCode(ctx)
+    val eval3 = valueXmlExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code + eval2.code + eval3.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                            new org.apache.spark.sql.util.XmlFunctionsUtils();
+         try{
+           ${ev.value} = UTF8String.fromString(${xmlUtils}.insertXmlBefore(
+                  ${eval1.value}.toString(),${eval2.value}.toString(),
+                  ${eval3.value}.toString()));
+         }catch(org.dom4j.DocumentException e){
+               throw new IllegalArgumentException("input xml cannot be parsed");
+         }
          """)
   }
 }
