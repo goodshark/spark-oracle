@@ -80,9 +80,9 @@ public class OracleSelectStatement extends SqlStatement {
         if (commonVariableNames.size() != filedNames.size()) {
             throw new Exception("select statements that assign values to variables cannot be used in conjunction with a data retrieval operation");
         }
-        if (resultSet.getRsCount() > 1) {
+       /* if (resultSet.getRsCount() > 1) {
             throw new Exception("exact fetch returns more than requested number of rows");
-        }
+        }*/
         Row row = null;
         while (resultSet.next()) {
             row = resultSet.fetchRow();
