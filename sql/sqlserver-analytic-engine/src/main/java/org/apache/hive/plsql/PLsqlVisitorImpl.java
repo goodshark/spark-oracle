@@ -17,6 +17,8 @@ import org.apache.hive.plsql.ddl.commonFragment.CrudTableFragment;
 import org.apache.hive.plsql.ddl.fragment.alterTableFragment.*;
 import org.apache.hive.plsql.ddl.fragment.createTableFragment.OracleCreateTableStatement;
 import org.apache.hive.plsql.ddl.fragment.createViewFragment.OracleCreateViewStatment;
+import org.apache.hive.plsql.ddl.fragment.databaeFragment.OracleCreateDatabase;
+import org.apache.hive.plsql.ddl.fragment.databaeFragment.OracleDropDatabase;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropTableStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleDropViewStatement;
 import org.apache.hive.plsql.ddl.fragment.dropTruckTableFm.OracleTruncateTableStatement;
@@ -257,7 +259,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         DeclareStatement declareStatement = new DeclareStatement();
         Var var = null;
         String varName = ctx.variable_name().getText();
-        checkDuplicateVariable(varName, ctx);
+        // TODO check same scope same variable
+//        checkDuplicateVariable(varName, ctx);
         var = genVarBasedTypeSpec(varName, ctx.type_spec());
 //        var.setVarName(varName);
 //        Var.DataType varType = (Var.DataType) visit(ctx.type_spec());
@@ -780,6 +783,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             predicateNode.setEvalType(PredicateNode.CompType.IS);
             if (ctx.NOT() != null)
                 predicateNode.setNotComp();
+            treeBuilder.pushStatement(predicateNode);
+            return predicateNode;
+        }
+        if (ctx.member_var() != null) {
+            // for a.exists(x)
+            visit(ctx.member_var());
+            predicateNode.addNode(treeBuilder.popStatement());
+            predicateNode.setEvalType(PredicateNode.CompType.EVAL);
             treeBuilder.pushStatement(predicateNode);
             return predicateNode;
         }
@@ -3598,18 +3609,36 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitMember_var(PlsqlParser.Member_varContext ctx) {
         MultiMemberExpr memberExpr = new MultiMemberExpr();
+        visit(ctx.id_expression());
+        ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
+        memberExpr.setHeadExpr(es);
         for (PlsqlParser.SegContext segCtx: ctx.seg()) {
-            if (segCtx.expression() != null) {
+            if (segCtx.expression().size() != 0) {
                 // index like a(1)
                 memberExpr.mark(true);
-            } else {
+                List<ExpressionStatement> list = new ArrayList<>();
+                for (PlsqlParser.ExpressionContext expressionContext: segCtx.expression()) {
+                    visit(expressionContext);
+                    es = (ExpressionStatement) treeBuilder.popStatement();
+                    list.add(es);
+                }
+                memberExpr.addExpr(list);
+            } else if (segCtx.id_expression() != null) {
                 // member like a.b
                 memberExpr.mark(false);
+                visit(segCtx.id_expression());
+                es = (ExpressionStatement) treeBuilder.popStatement();
+                List<ExpressionStatement> list = new ArrayList<>();
+                list.add(es);
+                memberExpr.addExpr(list);
+            } else {
+                // member like a()
+                memberExpr.mark(true);
+                memberExpr.addExpr(new ArrayList<ExpressionStatement>());
             }
-//            ExpressionStatement es = (ExpressionStatement) visit(segCtx);
-            visit(segCtx);
-            ExpressionStatement es = (ExpressionStatement) treeBuilder.popStatement();
-            memberExpr.addExpr(es);
+            /*visit(segCtx);
+            es = (ExpressionStatement) treeBuilder.popStatement();
+            memberExpr.addExpr(es);*/
         }
         treeBuilder.pushStatement(memberExpr);
         return memberExpr;
@@ -4053,6 +4082,25 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         sqlStatement.setAddResult(true);
         treeBuilder.pushStatement(sqlStatement);
         return sqlStatement;
+    }
+    @Override
+    public OracleCreateDatabase visitCreate_database(PlsqlParser.Create_databaseContext ctx) {
+        OracleCreateDatabase oracleCreateDatabase = new OracleCreateDatabase();
+        visitId(ctx.id());
+        IdFragment dbName = (IdFragment) treeBuilder.popStatement();
+        oracleCreateDatabase.setDbName(dbName);
+        this.treeBuilder.pushStatement(oracleCreateDatabase);
+        return oracleCreateDatabase;
+    }
+
+    @Override
+    public Object visitDrop_database(PlsqlParser.Drop_databaseContext ctx) {
+        OracleDropDatabase oracleDropDatabase = new OracleDropDatabase();
+        visitId(ctx.id());
+        IdFragment dbName = (IdFragment) treeBuilder.popStatement();
+        oracleDropDatabase.setDbName(dbName);
+        this.treeBuilder.pushStatement(oracleDropDatabase);
+        return oracleDropDatabase;
     }
 
     @Override

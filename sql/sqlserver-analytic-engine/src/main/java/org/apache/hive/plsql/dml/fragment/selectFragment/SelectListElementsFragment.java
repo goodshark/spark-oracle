@@ -4,6 +4,8 @@ import org.apache.hive.plsql.dml.commonFragment.FragMentUtils;
 import org.apache.hive.plsql.dml.commonFragment.TableViewNameFragment;
 import org.apache.hive.tsql.common.SqlStatement;
 import org.apache.hive.tsql.dml.ExpressionStatement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * select_list_elements
@@ -16,19 +18,23 @@ public class SelectListElementsFragment extends SqlStatement {
 
     private ExpressionStatement expression;
     private TableViewNameFragment tableViewNameFragment;
+    private static final Logger LOG = LoggerFactory.getLogger(SelectListElementsFragment.class);
 
 
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
         if (null != tableViewNameFragment) {
-            sql.append(FragMentUtils.appendOriginalSql(tableViewNameFragment,getExecSession()));
+            sql.append(FragMentUtils.appendOriginalSql(tableViewNameFragment, getExecSession()));
             sql.append(".*");
         }
         if (null != expression) {
-            sql.append(FragMentUtils.appendOriginalSql(expression,getExecSession()));
+            try {
+                sql.append(FragMentUtils.appendFinalSql(expression, getExecSession()));
+            } catch (Exception e) {
+                LOG.error("get ExpressionStatement sql error ", e);
+            }
         }
-
         return sql.toString();
     }
 

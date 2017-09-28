@@ -307,7 +307,10 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
         } else if (childs.size() == 2) {
             ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
             ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
-            sql = leftEs.getSql() + " " + sign.getOperator() + " " + rightEs.getSql();
+            if (sign.getOperator().equalsIgnoreCase("||"))
+                sql = " concat( " + leftEs.getSql() + ", " + rightEs.getSql() + " ) ";
+            else
+                sql = leftEs.getSql() + " " + sign.getOperator() + " " + rightEs.getSql();
         }
         super.setSql(sql);
         return sql;
@@ -331,7 +334,10 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
         } else if (childs.size() == 2) {
             ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
             ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
-            sql = leftEs.getOriginalSql() + " " + sign.getOperator() + " " + rightEs.getOriginalSql();
+            if (sign.getOperator().equalsIgnoreCase("||"))
+                sql = " concat( " + leftEs.getOriginalSql() + ", " + rightEs.getOriginalSql() + " ) ";
+            else
+                sql = leftEs.getSql() + " " + sign.getOperator() + " " + rightEs.getSql();
         }
         super.setSql(sql);
         return sql;
@@ -364,7 +370,10 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
         } else if (childs.size() == 2) {
             ExpressionStatement leftEs = (ExpressionStatement) childs.get(0);
             ExpressionStatement rightEs = (ExpressionStatement) childs.get(1);
-            sql = leftEs.getFinalSql() + " " + sign.getOperator() + " " + rightEs.getFinalSql();
+            if (sign.getOperator().equalsIgnoreCase("||"))
+                sql = " concat( " + leftEs.getFinalSql() + ", " + rightEs.getFinalSql() + " ) ";
+            else
+                sql = leftEs.getSql() + " " + sign.getOperator() + " " + rightEs.getSql();
         }
         return sql;
     }

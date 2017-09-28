@@ -27,6 +27,7 @@ public class SingleTableInsertFragment extends SqlStatement {
         sql.append(FragMentUtils.appendOriginalSql(insertIntoClauseFm, execSession));
 
         if (null != valuesClauseFragment) {
+            sql.append(" VALUES ");
             sql.append("(");
             sql.append(FragMentUtils.appendOriginalSql(valuesClauseFragment, execSession));
             sql.append(")");

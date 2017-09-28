@@ -66,13 +66,13 @@ public class OracleFetchCursorStmt extends BaseStatement {
     private void fetchValues() throws Exception {
         Var[] varArray = new Var[vars.size()];
         varArray = vars.values().toArray(varArray);
+        List<Column> schema = cursor.getSchema();
         if (!bulkCollect) {
             resultSet.next();
             Row row = resultSet.fetchRow();
             if (varArray.length == 1 && varArray[0].getDataType() == Var.DataType.REF_COMPOSITE) {
                 // fetch into complex Type
                 Var complexVar = varArray[0];
-                List<Column> schema = cursor.getSchema();
                 if (schema.size() != row.getColumnSize())
                     throw new RuntimeException("schema size not equal col size");
                 for (int i = 0; i < row.getColumnSize(); ++i) {
@@ -94,7 +94,39 @@ public class OracleFetchCursorStmt extends BaseStatement {
                 }
             }
         } else {
-            if (varArray.length != 1)
+            if (varArray.length == 1) {
+                // fetch into one table that has the composite-type
+                Var tableVar = varArray[0];
+                if (tableVar.getDataType() != Var.DataType.NESTED_TABLE)
+                    throw new RuntimeException("cursor fetch into variable is not table: " + tableVar.getVarName());
+                Var typeVar = tableVar.getArrayVar(0);
+                while (resultSet.next()) {
+                    Row row = resultSet.fetchRow();
+                    Var rowVar = typeVar.clone();
+                    for (int i = 0; i < row.getColumnSize(); ++i)
+                        genRowVar(typeVar, schema, row, i, rowVar);
+//                        rowVar = genRowVar(typeVar, schema, row, i);
+                    tableVar.addNestedTableValue(rowVar);
+                    // TODO old implement
+                    tableVar.addArrayVar(rowVar);
+                }
+            } else {
+                // fetch into many tables, each table has the base-type
+                if (schema.size() != varArray.length)
+                    throw new Exception("cursor fetch into var number error");
+                while (resultSet.next()) {
+                    Row row = resultSet.fetchRow();
+                    for (int i = 0; i < row.getColumnSize(); ++i) {
+                        // TODO check type is compatible with var
+                        Object colVal = row.getColumnVal(i);
+                        Var typeVar = varArray[i].getNestedTableTypeVar();
+                        Var colVar = typeVar.clone();
+                        colVar.setVarValue(colVal);
+                        varArray[i].addNestedTableValue(colVar);
+                    }
+                }
+            }
+            /*if (varArray.length != 1)
                 throw new RuntimeException("cursor fetch into variable number wrong: " + varArray.length);
             Var tableVar = varArray[0];
             if (tableVar.getDataType() != Var.DataType.NESTED_TABLE)
@@ -105,7 +137,9 @@ public class OracleFetchCursorStmt extends BaseStatement {
                 Row row = resultSet.fetchRow();
                 Var rowVar = typeVar.clone();
                 for (int i = 0; i < row.getColumnSize(); ++i) {
-                    Column col = schema.get(i);
+                    rowVar = genRowVar(typeVar, schema, row, i);
+
+                    *//*Column col = schema.get(i);
                     String colName = col.getColumnName().toUpperCase();
                     Object colVal = row.getColumnVal(i);
                     Var colVar = rowVar.getInnerVar(colName);
@@ -113,13 +147,33 @@ public class OracleFetchCursorStmt extends BaseStatement {
                         throw new RuntimeException("col name " + colName + " not find in array var");
                     if (!colVar.getDataType().toString().equalsIgnoreCase(col.getDataType().toString()))
                         throw new RuntimeException("col name " + colName + " Type " + col.getDataType() + " not match array");
-                    colVar.setVarValue(colVal);
+                    colVar.setVarValue(colVal);*//*
                 }
                 tableVar.addNestedTableValue(rowVar);
                 // TODO old implement
                 tableVar.addArrayVar(rowVar);
-            }
+            }*/
         }
+    }
+
+    private Var genRowVar(Var typeVar, List<Column> schema, Row row, int index, Var rowVar) throws Exception {
+//        Var rowVar = typeVar.clone();
+        Column col = schema.get(index);
+        String colName = col.getColumnName().toUpperCase();
+        Object colVal = row.getColumnVal(index);
+        if (rowVar.getDataType() == Var.DataType.COMPOSITE || rowVar.getDataType() == Var.DataType.REF_COMPOSITE) {
+            // fetch into composite-type table
+            Var colVar = rowVar.getInnerVar(colName);
+            if (colVar == null)
+                throw new RuntimeException("col name " + colName + " not find in array var");
+            if (!colVar.getDataType().toString().equalsIgnoreCase(col.getDataType().toString()))
+                throw new RuntimeException("col name " + colName + " Type " + col.getDataType() + " not match array");
+            colVar.setVarValue(colVal);
+        } else {
+            // fetch into base-type table
+            rowVar.setVarValue(colVal);
+        }
+        return rowVar;
     }
 
     private void bindComplexVar(Var var) {
@@ -142,7 +196,7 @@ public class OracleFetchCursorStmt extends BaseStatement {
         Var[] varArray = new Var[vars.size()];
         varArray = vars.values().toArray(varArray);
         int varSize = varArray.length;
-        if (resultSet == null || resultSet.getColumnSize() == 0) {
+        if (resultSet == null || resultSet.getColumnSize() == 0 || !resultSet.hasMoreRows()) {
             hasNoData = true;
             return;
         }

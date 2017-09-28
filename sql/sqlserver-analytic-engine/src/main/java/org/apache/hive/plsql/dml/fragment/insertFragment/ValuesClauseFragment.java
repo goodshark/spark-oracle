@@ -18,7 +18,6 @@ public class ValuesClauseFragment extends SqlStatement {
     @Override
     public String getOriginalSql() {
         StringBuffer sql = new StringBuffer();
-        sql.append(" VALUES ");
         sql.append(FragMentUtils.appendOriginalSql(expressionListFragment, getExecSession()));
         return sql.toString();
     }
