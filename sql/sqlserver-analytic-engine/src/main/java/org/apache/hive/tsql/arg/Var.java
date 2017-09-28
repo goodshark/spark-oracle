@@ -127,7 +127,13 @@ public class Var implements Serializable {
         return nestedTableList.get(i);
     }
 
-    private TreeMap<String, Var> assocArray = new TreeMap<>();
+    private static class StringCmp implements Comparator<String> {
+        @Override
+        public int compare(String o1, String o2) {
+            return o1.compareTo(o2);
+        }
+    }
+    private TreeMap<String, Var> assocArray = new TreeMap<>(new StringCmp());
     private Var assocTypeVar;
 
     public void setAssocTypeVar(Var v) {
@@ -375,6 +381,7 @@ public class Var implements Serializable {
                             resultVar.setVarValue(key);
                             // TODO type is string
                             resultVar.setDataType(DataType.STRING);
+                            break;
                         }
                     }
                 } else {
@@ -382,6 +389,7 @@ public class Var implements Serializable {
                         resultVar.setVarValue(key);
                         // TODO type is string
                         resultVar.setDataType(DataType.STRING);
+                        break;
                     }
                 }
                 break;
