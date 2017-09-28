@@ -127,7 +127,7 @@ public class Var implements Serializable {
         return nestedTableList.get(i);
     }
 
-    private Map<String, Var> assocArray = new HashMap<>();
+    private TreeMap<String, Var> assocArray = new TreeMap<>();
     private Var assocTypeVar;
 
     public void setAssocTypeVar(Var v) {
@@ -186,26 +186,44 @@ public class Var implements Serializable {
                 resultVar.setVarValue(exist);
                 resultVar.setDataType(DataType.BOOLEAN);
                 return resultVar;
+            case EXTEND:
+                var.extendSpace(args);
+                return resultVar;
+            case TRIM:
+                var.trimSpace(args);
+                return resultVar;
+            case FIRST:
+            case LAST:
+                return var.getCollectionHeadTail(method.toUpperCase());
+            case PRIOR:
+            case NEXT:
+                return var.traverseCollection(method.toUpperCase(), args);
             // do not exists default, just return null;
         }
         return null;
     }
 
     private int getCollectionCount() throws Exception {
-        // TODO do not count null placeholder
+        // do not count null placeholder
         switch (getDataType()) {
             case VARRAY:
                 return varrayList.size() - 1;
             case NESTED_TABLE:
                 // null placeholder
-                int cnt = 0;
+                int nestedCount = 0;
                 for (int i = 1; i < nestedTableList.size(); i++) {
                     if (nestedTableList.get(i) != null)
-                        cnt++;
+                        nestedCount++;
                 }
-                return cnt;
+                return nestedCount;
             case ASSOC_ARRAY:
-                return assocArray.size();
+                // null placeholder
+                int assocCount = 0;
+                for (String key: assocArray.keySet()) {
+                    if (assocArray.get(key) != null)
+                        assocCount++;
+                }
+                return assocCount;
             default:
                 throw new Exception("var " + getVarName() + " can not support count method");
         }
@@ -241,6 +259,22 @@ public class Var implements Serializable {
                 }
                 break;
             case ASSOC_ARRAY:
+                if (args.length == 0)
+                    assocArray = new TreeMap<>();
+                else if (args.length == 1) {
+                    Object key = args[0];
+                    assocArray.remove(key);
+                } else {
+                    String fromKey = args[0].toString();
+                    String toKey = args[1].toString();
+                    try {
+                        Map<String, Var> subMap = assocArray.subMap(fromKey, toKey);
+                        assocArray = new TreeMap<>(subMap);
+                    } catch (Exception e) {
+                        // do nothing
+                        return;
+                    }
+                }
                 break;
             default:
                 throw new Exception("var " + getVarName() + " can not support delete method");
@@ -269,6 +303,184 @@ public class Var implements Serializable {
                 break;
         }
         return false;
+    }
+
+    private void extendSpace(Object ...args) throws Exception {
+        Var v = new Var(null, DataType.NULL);
+        switch (getDataType()) {
+            case VARRAY:
+                throw new Exception("varray can not extend any more");
+            case NESTED_TABLE:
+                if (args.length == 0) {
+                    nestedTableList.add(v);
+                } else if (args.length == 1) {
+                    int n = (int) args[0];
+                    for (int i = 0; i < n; i++)
+                        nestedTableList.add(v);
+                } else {
+                    int copys = (int) args[0];
+                    int index = (int) args[1];
+                    if (copys <= 0 || index < 1 || index > nestedTableList.size())
+                        return;
+                    for (int i = 0; i < copys; i++) {
+                        Var copyVar = nestedTableList.get(index).clone();
+                        nestedTableList.add(copyVar);
+                    }
+                }
+                break;
+            case ASSOC_ARRAY:
+                throw new Exception("assoc-array can not extend any more");
+        }
+    }
+
+    private void trimSpace(Object ...args) throws Exception {
+        switch (getDataType()) {
+            case VARRAY:
+                if (args.length == 0) {
+                    varrayList = varrayList.subList(0, varrayList.size()-1);
+                } else {
+                    int n = (int) args[0];
+                    varrayList = varrayList.subList(0, varrayList.size()-n);
+                }
+                break;
+            case NESTED_TABLE:
+                break;
+            case ASSOC_ARRAY:
+                throw new Exception("assoc-array is not support trim");
+        }
+    }
+
+    private Var getCollectionHeadTail(String action) throws Exception {
+        Var resultVar = new Var();
+        resultVar.setVarName(collectionVarName);
+        switch (getDataType()) {
+            case VARRAY:
+                if (action.equalsIgnoreCase("FIRST")) {
+                    getHeadUtil(varrayList, resultVar);
+                } else {
+                    getTailUtil(varrayList, resultVar);
+                }
+                break;
+            case NESTED_TABLE:
+                if (action.equalsIgnoreCase("FIRST")) {
+                    getHeadUtil(nestedTableList, resultVar);
+                } else {
+                    getTailUtil(nestedTableList, resultVar);
+                }
+                break;
+            case ASSOC_ARRAY:
+                if (action.equalsIgnoreCase("FIRST")) {
+                    for (String key: assocArray.keySet()) {
+                        if (assocArray.get(key) != null) {
+                            resultVar.setVarValue(key);
+                            // TODO type is string
+                            resultVar.setDataType(DataType.STRING);
+                        }
+                    }
+                } else {
+                    for (String key: assocArray.descendingKeySet()) {
+                        resultVar.setVarValue(key);
+                        // TODO type is string
+                        resultVar.setDataType(DataType.STRING);
+                    }
+                }
+                break;
+        }
+        return resultVar;
+    }
+
+    private void getHeadUtil(List<Var> list, Var v) {
+        for (int i = 1; i < list.size(); i++) {
+            if (list.get(i) != null) {
+                v.setDataType(DataType.INT);
+                v.setVarValue(i);
+                return;
+            }
+        }
+    }
+
+    private void getTailUtil(List<Var> list, Var v) {
+        for (int i = list.size()-1; i > 0; i--) {
+            if (list.get(i) != null) {
+                v.setDataType(DataType.INT);
+                v.setVarValue(i);
+                return;
+            }
+        }
+    }
+
+    private Var traverseCollection(String action, Object ...args) throws Exception {
+        Var resultVar = new Var();
+        resultVar.setVarName(collectionVarName);
+        switch (getDataType()) {
+            case VARRAY:
+                if (action.equalsIgnoreCase("PRIOR")) {
+                    getPrior(varrayList, resultVar, args);
+                } else {
+                    getNext(varrayList, resultVar, args);
+                }
+                break;
+            case NESTED_TABLE:
+                if (action.equalsIgnoreCase("PRIOR")) {
+                    getPrior(nestedTableList, resultVar, args);
+                } else {
+                    getNext(nestedTableList, resultVar, args);
+                }
+                break;
+            case ASSOC_ARRAY:
+                String key = args[0].toString();
+                if (action.equalsIgnoreCase("PRIOR")) {
+                    boolean priorFlag = false;
+                    for (String k: assocArray.descendingKeySet()) {
+                        if (priorFlag) {
+                            resultVar.setDataType(DataType.STRING);
+                            resultVar.setVarValue(k);
+                            break;
+                        }
+                        if (k.equalsIgnoreCase(key))
+                            priorFlag = true;
+                    }
+                } else {
+                    boolean nextFlag = false;
+                    for (String k: assocArray.keySet()) {
+                        if (nextFlag) {
+                            resultVar.setDataType(DataType.STRING);
+                            resultVar.setVarValue(k);
+                            break;
+                        }
+                        if (k.equalsIgnoreCase(key))
+                            nextFlag = true;
+                    }
+                }
+                break;
+        }
+        return resultVar;
+    }
+
+    private void getPrior(List<Var> list, Var v, Object ...args) throws Exception {
+        if (args.length == 0)
+            return;
+        int index = (int) args[0];
+        for (int i = index-1; i > 0; i--) {
+            if (list.get(i) != null) {
+                v.setVarValue(i);
+                v.setDataType(DataType.INT);
+                return;
+            }
+        }
+    }
+
+    private void getNext(List<Var> list, Var v, Object ...args) throws Exception {
+        if (args.length == 0)
+            return;
+        int index = (int) args[0];
+        for (int i = index+1; i < list.size(); i++) {
+            if (list.get(i) != null) {
+                v.setVarValue(i);
+                v.setDataType(DataType.INT);
+                return;
+            }
+        }
     }
     // TODO new custom type end
 
