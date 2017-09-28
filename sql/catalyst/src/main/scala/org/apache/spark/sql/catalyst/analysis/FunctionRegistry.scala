@@ -503,7 +503,11 @@ object FunctionRegistry {
     expression[ExistsXmlNode]("existsnode"),
     expression[XmlExtract]("extract3"),
     expression[ExtractXmlValue]("extractvalue"),
-    expression[InsertChildXml]("insertchildxml")
+    expression[InsertChildXml]("insertchildxml"),
+    expression[InsertChildXmlAfter]("insertchildxmlafter"),
+    expression[InsertChildXmlBefore]("insertchildxmlbefore"),
+    expression[InsertXmlAfter]("insertxmlafter"),
+    expression[InsertXmlBefore]("insertxmlbefore")
 
   )
 
