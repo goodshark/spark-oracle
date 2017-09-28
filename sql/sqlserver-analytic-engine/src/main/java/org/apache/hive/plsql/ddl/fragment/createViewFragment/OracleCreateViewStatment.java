@@ -58,6 +58,10 @@ public class OracleCreateViewStatment extends SqlStatement {
     @Override
     public int execute() throws Exception {
         String sql = getFinalSql();
+        if(replace){
+            String dropViewSql=" DROP VIEW  IF EXISTS  " + tableName;
+            commitStatement(dropViewSql);
+        }
         setRs(commitStatement(sql));
         return 0;
     }
