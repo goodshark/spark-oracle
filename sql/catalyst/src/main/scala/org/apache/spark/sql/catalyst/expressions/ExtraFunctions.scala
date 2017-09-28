@@ -2116,3 +2116,66 @@ case class InsertXmlBefore(sourceXmlExpr: Expression, xPathStrExpr: Expression,
          """)
   }
 }
+
+/*
+  * returns an instance of xml containing input text.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(sourceXml, xPath, child, valueXml) - returns an instance" +
+    "of xml containing input text.",
+  extended = """
+    Examples:
+      > select sys_xmlgen('xyz') result;
+                  <?xml version="1.0" encoding="UTF-8"?>
+                  <ROW>xyz</ROW>|
+  """)
+case class SysXmlGeneration(sourceXmlExpr: Expression)
+  extends Expression with ImplicitCastInputTypes {
+
+  override def children: Seq[Expression] =
+    Seq(sourceXmlExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (sourceXmlExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val xmlText = sourceXmlExpr.eval(input).asInstanceOf[UTF8String].toString
+
+
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+
+    return UTF8String.fromString(
+      xmlFunctionsUtils.sysXmlGeneration(xmlText))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = sourceXmlExpr.genCode(ctx)
+
+    val xmlUtils = ctx.freshName("xmlFunctionsUtils")
+
+    ev.copy(code = eval1.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                            new org.apache.spark.sql.util.XmlFunctionsUtils();
+         try{
+           ${ev.value} = UTF8String.fromString(${xmlUtils}.sysXmlGeneration(
+                  ${eval1.value}.toString()));
+         }catch(org.dom4j.DocumentException e){
+               throw new IllegalArgumentException("input xml cannot be parsed");
+         }
+         """)
+  }
+}

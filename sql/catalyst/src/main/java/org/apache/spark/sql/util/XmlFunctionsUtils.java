@@ -6,7 +6,7 @@ import java.util.*;
 public class XmlFunctionsUtils {
 
     // append one xml into another xml depending on xPath.
-    public String appendChildXml(String sourceXml, String xPath, String waitAppendXml) throws DocumentException {
+    public String appendChildXml(String sourceXml, String xPath, String waitAppendXml) throws DocumentException{
         Document document = DocumentHelper.parseText(sourceXml);
         List list = document.selectNodes(xPath);
         for(int i = 0; i< list.size(); i++){
@@ -113,14 +113,22 @@ public class XmlFunctionsUtils {
     // indicated by the XPath expression and the position in brothers.
     public String insertChildXmlAfter(String sourceXml, String xPath, String child,
                                       String valueXml) throws DocumentException{
-        return insertXmlAfter(sourceXml, xPath+"/"+child, valueXml);
+        StringBuilder result = new StringBuilder();
+        result.append(xPath);
+        result.append("/");
+        result.append(child);
+        return insertXmlAfter(sourceXml, result.toString(), valueXml);
     }
 
     //insert a user-supplied value into the source XML at the node
     // indicated by the XPath expression and the position in brothers(before).
     public String insertChildXmlBefore(String sourceXml, String xPath, String child,
                                        String valueXml) throws DocumentException{
-        return insertXmlBefore(sourceXml, xPath+"/"+child, valueXml);
+        StringBuilder result = new StringBuilder();
+        result.append(xPath);
+        result.append("/");
+        result.append(child);
+        return insertXmlBefore(sourceXml, result.toString(), valueXml);
     }
 
     //insert a user-supplied value into the source XML at the node
@@ -185,4 +193,14 @@ public class XmlFunctionsUtils {
         return document.getRootElement().asXML();
     }
 
+    public String sysXmlGeneration(String xmlText)  throws DocumentException{
+        StringBuilder result = new StringBuilder();
+        result.append("<ROW>");
+        result.append(xmlText);
+        result.append("</ROW>");
+        Document document = DocumentHelper.parseText(result.toString());
+        return document.asXML();
+    }
+
 }
+

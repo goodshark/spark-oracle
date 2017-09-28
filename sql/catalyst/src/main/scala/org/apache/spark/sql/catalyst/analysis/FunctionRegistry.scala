@@ -507,7 +507,8 @@ object FunctionRegistry {
     expression[InsertChildXmlAfter]("insertchildxmlafter"),
     expression[InsertChildXmlBefore]("insertchildxmlbefore"),
     expression[InsertXmlAfter]("insertxmlafter"),
-    expression[InsertXmlBefore]("insertxmlbefore")
+    expression[InsertXmlBefore]("insertxmlbefore"),
+    expression[SysXmlGeneration]("sys_xmlgen")
 
   )
 
