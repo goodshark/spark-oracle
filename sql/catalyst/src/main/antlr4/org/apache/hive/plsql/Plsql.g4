@@ -2561,7 +2561,7 @@ regular_id
     | PRECEDING
     | PRECISION
     | PRESENT
-    //| PRIOR
+    | PRIOR
     //| PROCEDURE
 //    | RAISE
     | RANGE
