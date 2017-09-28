@@ -53,7 +53,8 @@ unit_statement
     | create_sequence
     | create_trigger
     | create_type
-
+    | create_database
+    | drop_database
     | drop_function
     | drop_pl_function
     | drop_package
@@ -72,6 +73,12 @@ unit_statement
     | show_databases
     | show_pl_functions
     | set_oracle_engine
+    ;
+create_database:
+    CREATE DATABASE id ';'?
+   ;
+drop_database:
+    DROP DATABASE id ';'?
     ;
 show_databases:
     SHOW DATABASES ';'?
