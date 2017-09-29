@@ -1795,7 +1795,8 @@ class SparkContext(config: SparkConf) extends Logging {
       }
       if (key != null) {
         val timestamp = System.currentTimeMillis
-        if (addedJars.putIfAbsent(key, timestamp).isEmpty) {
+        val r = addedJars.put(key, timestamp)
+        if (r.isEmpty || r.get != timestamp) {
           logInfo(s"Added JAR $path at $key with timestamp $timestamp")
           postEnvironmentUpdate()
         }
