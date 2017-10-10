@@ -97,6 +97,15 @@ private[spark] class Executor(
   // do this after SparkEnv creation so can access the SecurityManager
   private val urlClassLoader = createClassLoader()
   private val replClassLoader = addReplClassLoaderIfNeeded(urlClassLoader)
+  private val confClassCache = ConfigurationCacheClassUtil.getCacheClassField
+  private val threadUrlLoader = new ThreadLocal[MutableURLClassLoader] {
+    override def remove(): Unit = {
+      if (this.get != null) this.get.close()
+      super.remove()
+    }
+  }
+  private val threadReplLoader = new ThreadLocal[ClassLoader]
+  private val threadCurrentJars = new ThreadLocal[HashMap[String, Long]]
 
   // Set the classloader for serializer
   env.serializer.setDefaultClassLoader(replClassLoader)
@@ -112,6 +121,7 @@ private[spark] class Executor(
 
   // Maintains the list of running tasks.
   private val runningTasks = new ConcurrentHashMap[Long, TaskRunner]
+
 
   // Executor for the heartbeat task.
   private val heartbeater = ThreadUtils.newDaemonSingleThreadScheduledExecutor("driver-heartbeater")
@@ -427,6 +437,7 @@ private[spark] class Executor(
 
       } finally {
         runningTasks.remove(taskId)
+        Thread.currentThread.setContextClassLoader(replClassLoader)
       }
     }
   }
@@ -453,6 +464,40 @@ private[spark] class Executor(
       new ChildFirstURLClassLoader(urls, currentLoader)
     } else {
       new MutableURLClassLoader(urls, currentLoader)
+    }
+  }
+
+  private def createThreadClassLoader(): MutableURLClassLoader = {
+    // Bootstrap the list of jars with the user class path.
+    if (threadCurrentJars.get() == null) {
+      threadCurrentJars.set(new HashMap[String, Long]())
+    }
+    val now = System.currentTimeMillis()
+    userClassPath.foreach { url =>
+      threadCurrentJars.get()(url.getPath().split("/").last) = now
+    }
+
+    val currentLoader = Utils.getContextOrSparkClassLoader
+
+    // For each of the jars in the jarSet, add them to the class loader.
+    // We assume each of the files has already been fetched.
+    val urls = userClassPath.toArray ++ threadCurrentJars.get().keySet.map { uri =>
+      new File(uri.split("/").last).toURI.toURL
+    }
+    if (userClassPathFirst) {
+      new ChildFirstURLClassLoader(urls, currentLoader)
+    } else {
+      new MutableURLClassLoader(urls, currentLoader)
+    }
+  }
+
+  private def initThreadCurrentJars(): Unit = {
+    if (threadCurrentJars.get() == null) {
+      threadCurrentJars.set(new HashMap[String, Long]())
+      val now = System.currentTimeMillis()
+      userClassPath.foreach { url =>
+        threadCurrentJars.get()(url.getPath().split("/").last) = now
+      }
     }
   }
 
@@ -497,23 +542,58 @@ private[spark] class Executor(
           env.securityManager, hadoopConf, timestamp, useCache = !isLocal)
         currentFiles(name) = timestamp
       }
+      initThreadCurrentJars()
+      val urls = new ArrayBuffer[URL]
       for ((name, timestamp) <- newJars) {
         val localName = name.split("/").last
-        val currentTimeStamp = currentJars.get(name)
-          .orElse(currentJars.get(localName))
+        val currentTimeStamp = threadCurrentJars.get().get(name)
+          .orElse(threadCurrentJars.get().get(localName))
           .getOrElse(-1L)
         if (currentTimeStamp < timestamp) {
           logInfo("Fetching " + name + " with timestamp " + timestamp)
           // Fetch file with useCache mode, close cache for local mode.
           Utils.fetchFile(name, new File(SparkFiles.getRootDirectory()), conf,
             env.securityManager, hadoopConf, timestamp, useCache = !isLocal)
-          currentJars(name) = timestamp
+          threadCurrentJars.get()(name) = timestamp
           // Add it to our class loader
           val url = new File(SparkFiles.getRootDirectory(), localName).toURI.toURL
-          if (!urlClassLoader.getURLs().contains(url)) {
-            logInfo("Adding " + url + " to class loader")
-            urlClassLoader.addURL(url)
+          if (threadUrlLoader.get() == null) {
+            logInfo("this is a new thread, threadUrlLoader is null, need create new classloader")
+            urls += url
+          } else {
+            if (!threadUrlLoader.get().getURLs().contains(url)) {
+              logInfo("Adding " + url + " to class loader")
+              threadUrlLoader.get().addURL(url)
+              urls += url;
+            } else {
+              logInfo("Exists " + url + " to class loader")
+              urls += url
+            }
           }
+        }
+      }
+      if (threadReplLoader.get() == null) {
+        logInfo("Create new class loader")
+        if (threadUrlLoader.get() == null) {
+          threadUrlLoader.set(createThreadClassLoader())
+        }
+        urls.foreach(ur => threadUrlLoader.get().addURL(ur))
+        threadReplLoader.set(addReplClassLoaderIfNeeded(threadUrlLoader.get()))
+        Thread.currentThread().setContextClassLoader(threadReplLoader.get())
+      } else {
+        logInfo("this thread threadUrlClassLoader is not null, may be recreate or do nothing")
+        if (urls.size > 0) {
+          logInfo("Recreate class loader")
+          confClassCache.remove(threadReplLoader.get())
+          confClassCache.remove(threadUrlLoader.get())
+          threadReplLoader.remove()
+          threadUrlLoader.remove()
+          threadUrlLoader.set(createThreadClassLoader())
+          threadReplLoader.set(addReplClassLoaderIfNeeded(threadUrlLoader.get()))
+          Thread.currentThread().setContextClassLoader(threadReplLoader.get())
+        } else {
+          logInfo("nothing changed")
+          Thread.currentThread().setContextClassLoader(threadReplLoader.get())
         }
       }
     }
