@@ -507,7 +507,19 @@ object FunctionRegistry {
     expression[InsertChildXmlAfter]("insertchildxmlafter"),
     expression[InsertChildXmlBefore]("insertchildxmlbefore"),
     expression[InsertXmlAfter]("insertxmlafter"),
-    expression[InsertXmlBefore]("insertxmlbefore")
+    expression[InsertXmlBefore]("insertxmlbefore"),
+    expression[SysXmlGeneration]("sys_xmlgen"),
+    expression[XmlAgg2]("sys_xmlagg"),
+    expression[XmlAgg3]("xmlagg2"),
+    expression[UpdateXml]("updatexml"),
+    expression[XmlCData]("xmlcdata"),
+    expression[XmlColattval2]("xmlcolattval2"),
+    expression[XmlComment]("xmlcomment"),
+    expression[XmlConcat]("xmlconcat"),
+    expression[XmlConcat]("xmlforest2"),
+    expression[XmlPI]("xmlpi"),
+
+    expression[Decode2]("decode2")
 
   )
 

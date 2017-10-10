@@ -6,7 +6,7 @@ import java.util.*;
 public class XmlFunctionsUtils {
 
     // append one xml into another xml depending on xPath.
-    public String appendChildXml(String sourceXml, String xPath, String waitAppendXml) throws DocumentException {
+    public String appendChildXml(String sourceXml, String xPath, String waitAppendXml) throws DocumentException{
         Document document = DocumentHelper.parseText(sourceXml);
         List list = document.selectNodes(xPath);
         for(int i = 0; i< list.size(); i++){
@@ -113,14 +113,22 @@ public class XmlFunctionsUtils {
     // indicated by the XPath expression and the position in brothers.
     public String insertChildXmlAfter(String sourceXml, String xPath, String child,
                                       String valueXml) throws DocumentException{
-        return insertXmlAfter(sourceXml, xPath+"/"+child, valueXml);
+        StringBuilder result = new StringBuilder();
+        result.append(xPath);
+        result.append("/");
+        result.append(child);
+        return insertXmlAfter(sourceXml, result.toString(), valueXml);
     }
 
     //insert a user-supplied value into the source XML at the node
     // indicated by the XPath expression and the position in brothers(before).
     public String insertChildXmlBefore(String sourceXml, String xPath, String child,
                                        String valueXml) throws DocumentException{
-        return insertXmlBefore(sourceXml, xPath+"/"+child, valueXml);
+        StringBuilder result = new StringBuilder();
+        result.append(xPath);
+        result.append("/");
+        result.append(child);
+        return insertXmlBefore(sourceXml, result.toString(), valueXml);
     }
 
     //insert a user-supplied value into the source XML at the node
@@ -185,4 +193,99 @@ public class XmlFunctionsUtils {
         return document.getRootElement().asXML();
     }
 
+    // returns an instance of xml containing input text.
+    public String sysXmlGeneration(String xmlText)  throws DocumentException{
+        StringBuilder result = new StringBuilder();
+        result.append("<ROW>");
+        result.append(xmlText);
+        result.append("</ROW>");
+        Document document = DocumentHelper.parseText(result.toString());
+        return document.asXML();
+    }
+
+    // update a source xml, first parameter is source xml, and then are some pairs of xPath and value.
+    public String updateXml(String... inputs) throws DocumentException{
+        String sourceXml = inputs[0];
+        Document document = DocumentHelper.parseText(sourceXml);
+        for(int i = 1; i < inputs.length; i++){
+            updateXml2(document, inputs[i], inputs[i+1]);
+            i++;
+        }
+        return document.getRootElement().asXML();
+    }
+
+    // used in updateXml.
+    private void updateXml2(Document document, String xPathString, String valueToUpdate){
+
+        List<Node> list = document.selectNodes(xPathString);
+        if(list.size() == 0){
+            return;
+        }
+        for(Iterator<Node> iterator = list.iterator(); iterator.hasNext();){
+            Node node = iterator.next();
+            int nodeType = node.getNodeType();
+            switch (nodeType) {
+                case 3:
+                    ((Text) node).setText(valueToUpdate);
+                    break;
+                case 2:
+                    ((Attribute) node).setText(valueToUpdate);
+                    break;
+                case 1:
+                    Document document2;
+                    try {
+                        document2 = DocumentHelper.parseText(valueToUpdate);
+                    } catch (DocumentException de) {
+                        throw new IllegalArgumentException("xml that updated is invalid.");
+                    }
+                    List<Element> childElement = ((Element) node).getParent().elements();
+                    childElement.set(childElement.indexOf((Element) node), document2.getRootElement());
+                    break;
+                default:
+            }
+        }
+    }
+
+    // concatenate two or more xml.
+    public String xmlConcat(String... inputs){
+
+        StringBuilder result = new StringBuilder();
+        for(int i = 0; i< inputs.length; i++){
+            try{
+                Document document = DocumentHelper.parseText(inputs[i]);
+                result.append(document.getRootElement().asXML());
+                if(i != inputs.length - 1)
+                    result.append("\n");
+            } catch (DocumentException de){
+                throw new IllegalArgumentException("number " + (i+ 1) +
+                        " of the input parameters is not a valid xml");
+            }
+        }
+        return result.toString();
+    }
+
+    // compare expr with all search and return corresponding result that equal, if not found, return default.
+    public String decode2(String... inputs){
+        int length = inputs.length;
+        if(length < 3){
+            throw new IllegalArgumentException("there are not enough args.");
+        }
+        String source = inputs[0];
+        HashMap<String, String> keyValues = new HashMap<>();
+        int i = 1;
+        while((length - i) > 1){
+            keyValues.put(inputs[i], inputs[i+1]);
+            i = i + 2;
+        }
+        String defaultValue = null;
+        if((length - i) == 1){
+            defaultValue = inputs[i];
+        }
+        if(keyValues.containsKey(source)){
+            return keyValues.get(source);
+        }
+        return defaultValue;
+    }
+
 }
+
