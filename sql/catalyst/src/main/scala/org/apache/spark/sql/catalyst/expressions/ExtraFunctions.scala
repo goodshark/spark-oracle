@@ -5,11 +5,15 @@ import java.util.TimeZone
 
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
+import org.apache.spark.sql.catalyst.expressions.aggregate.ImperativeAggregate
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.util.{CharacterFunctionUtils, DateFormatTrans, DateTimeFunctions, XmlFunctionsUtils}
 import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
+import org.dom4j.{DocumentException, DocumentHelper}
+
+import scala.collection.mutable.ArrayBuffer
 
 
 /**
@@ -2177,5 +2181,555 @@ case class SysXmlGeneration(sourceXmlExpr: Expression)
                throw new IllegalArgumentException("input xml cannot be parsed");
          }
          """)
+  }
+}
+
+/*
+  * aggregate xmls to a new xml.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(xml) - aggregate xmls to a new xml.",
+  extended = """
+    Examples:
+      > select sys_xmlagg(sys_xmlgen(day)) result;
+
+  """)
+case class XmlAgg2(child: Expression, mutableAggBufferOffset: Int = 0,
+                   inputAggBufferOffset: Int = 0) extends ImperativeAggregate {
+
+  def this(child: Expression) = this(child, 0, 0)
+
+  override def withNewMutableAggBufferOffset(newMutableAggBufferOffset: Int):
+  ImperativeAggregate = copy(mutableAggBufferOffset = newMutableAggBufferOffset)
+
+  override def withNewInputAggBufferOffset(newInputAggBufferOffset: Int):
+  ImperativeAggregate = copy(inputAggBufferOffset = newInputAggBufferOffset)
+
+  override def prettyName: String = "sys_xmlagg"
+
+  private val buffer: ArrayBuffer[String] = ArrayBuffer.empty
+
+  override def initialize(mutableAggBuffer: InternalRow): Unit = {
+    buffer.clear()
+  }
+
+  override def update(mutableAggBuffer: InternalRow, inputRow: InternalRow): Unit = {
+    val value = child.eval(inputRow)
+    if (value == null) {
+      return
+    }
+    try {
+      val valueXml = DocumentHelper.parseText(value.toString)
+      buffer += valueXml.getRootElement.asXML()
+    } catch {
+      case de: DocumentException =>
+        throw new IllegalArgumentException("input is not xml string.")
+    }
+  }
+
+  override def merge(mutableAggBuffer: InternalRow, inputAggBuffer: InternalRow): Unit = {
+    sys.error("median cannot be used in partial aggregations.")
+  }
+
+  override def eval(input: InternalRow): Any = {
+    val result = new StringBuilder()
+    result.append("<ROWSET>")
+    result.append('\n')
+    result.append(buffer.mkString("\n"))
+    result.append('\n')
+    result.append("</ROWSET>")
+    UTF8String.fromString(DocumentHelper.parseText(result.toString()).asXML())
+  }
+
+  override def aggBufferSchema: StructType = StructType.fromAttributes(aggBufferAttributes)
+
+  override def aggBufferAttributes: Seq[AttributeReference] = Nil
+
+  override def inputAggBufferAttributes: Seq[AttributeReference] = Nil
+
+  override def inputTypes: Seq[AbstractDataType] = Seq(AnyDataType)
+
+  override def nullable: Boolean = true
+
+  override def dataType: DataType = StringType
+
+
+  override def children: Seq[Expression] = child :: Nil
+
+  override def supportsPartial: Boolean = false
+
+}
+
+/*
+  * aggregate xmls to a new xml, but not return element tag.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(xml) - aggregate xmls to a new xml.",
+  extended = """
+    Examples:
+      > select sys_xmlagg(sys_xmlgen(day)) result;
+
+  """)
+case class XmlAgg3(child: Expression, mutableAggBufferOffset: Int = 0,
+                   inputAggBufferOffset: Int = 0) extends ImperativeAggregate {
+
+  def this(child: Expression) = this(child, 0, 0)
+
+  override def withNewMutableAggBufferOffset(newMutableAggBufferOffset: Int):
+  ImperativeAggregate = copy(mutableAggBufferOffset = newMutableAggBufferOffset)
+
+  override def withNewInputAggBufferOffset(newInputAggBufferOffset: Int):
+  ImperativeAggregate = copy(inputAggBufferOffset = newInputAggBufferOffset)
+
+  override def prettyName: String = "sys_xmlagg"
+
+  private val buffer: ArrayBuffer[String] = ArrayBuffer.empty
+
+  override def initialize(mutableAggBuffer: InternalRow): Unit = {
+    buffer.clear()
+  }
+
+  override def update(mutableAggBuffer: InternalRow, inputRow: InternalRow): Unit = {
+    val value = child.eval(inputRow)
+    if (value == null) {
+      return
+    }
+    try {
+      val valueXml = DocumentHelper.parseText(value.toString)
+      buffer += valueXml.getRootElement.asXML()
+    } catch {
+      case de: DocumentException =>
+        throw new IllegalArgumentException("input is not xml string.")
+    }
+  }
+
+  override def merge(mutableAggBuffer: InternalRow, inputAggBuffer: InternalRow): Unit = {
+    sys.error("median cannot be used in partial aggregations.")
+  }
+
+  override def eval(input: InternalRow): Any = {
+    val result = new StringBuilder()
+    result.append("<ROWSET>")
+    result.append('\n')
+    result.append(buffer.mkString("\n"))
+    result.append('\n')
+    result.append("</ROWSET>")
+    UTF8String.fromString(DocumentHelper.parseText(result.toString()).getRootElement.asXML())
+  }
+
+  override def aggBufferSchema: StructType = StructType.fromAttributes(aggBufferAttributes)
+
+  override def aggBufferAttributes: Seq[AttributeReference] = Nil
+
+  override def inputAggBufferAttributes: Seq[AttributeReference] = Nil
+
+  override def inputTypes: Seq[AbstractDataType] = Seq(AnyDataType)
+
+  override def nullable: Boolean = true
+
+  override def dataType: DataType = StringType
+
+
+  override def children: Seq[Expression] = child :: Nil
+
+  override def supportsPartial: Boolean = false
+
+}
+
+
+ /**
+  * update a source xml, first parameter is source xml,
+  * and then are some pairs of xPath and value.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(xml, xPath, value, ....) - update a source xml, first parameter" +
+    "is source xml, and then are some pairs of xPath and value.",
+  extended = """
+    Examples:
+      > select updatexml('<node><to>abc</to><from>xyz</from></node>', 'node/to',
+              '<to1>abc</to1>', 'node/from/text()', 'xyz2') result;
+          <node><to1>abc</to1><from>xyz2</from></node>
+  """)
+case class UpdateXml(children: Seq[Expression]) extends Expression with ImplicitCastInputTypes {
+
+  override def inputTypes: Seq[AbstractDataType] = Seq.fill(children.size)(StringType)
+  override def dataType: DataType = StringType
+
+  override def nullable: Boolean = children.exists(_.nullable)
+  override def foldable: Boolean = children.forall(_.foldable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    val inputParameters = children.size
+    if (inputParameters > 1 && (inputParameters % 2 == 1)) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"number of input parameters is not valid.")
+  }
+
+  override def eval(input: InternalRow): Any = {
+
+    val inputs = children.map(_.eval(input).asInstanceOf[UTF8String].toString)
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+    UTF8String.fromString(xmlFunctionsUtils.updateXml(inputs : _*))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val evals = children.map(_.genCode(ctx))
+    val inputs = evals.map { eval =>
+      s"${eval.isNull} ? null : ${eval.value}.toString()"
+    }.mkString(", ")
+    val xmlUtils = ctx.freshName("xmlFunctions")
+    ev.copy(evals.map(_.code).mkString("\n") + s"""
+      boolean ${ev.isNull} = false;
+      org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                                  new org.apache.spark.sql.util.XmlFunctionsUtils();
+      try{
+       ${ev.value} = UTF8String.fromString(${xmlUtils}.updateXml($inputs));
+      }catch(org.dom4j.DocumentException e){
+           throw new IllegalArgumentException("input xml cannot be parsed");
+      }
+    """)
+  }
+}
+
+ /**
+  * return a CData depending on input string.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string) - return a CData depending on input string.",
+  extended = """
+    Examples:
+      >   select xmlcdata('xyz') result;
+              <![CDATA[xyz]]>
+  """)
+case class XmlCData(stringExpr: Expression)
+  extends Expression with ImplicitCastInputTypes {
+
+  override def children: Seq[Expression] =
+    Seq(stringExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val cdata = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    if(cdata.contains("]]>")) {
+      throw new IllegalArgumentException("input cdata contains illegal ]]> .");
+    }
+    UTF8String.fromString("<![CDATA[" + cdata + "]]>")
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+
+    val sb = ctx.freshName("stringBuilder")
+
+    ev.copy(code = eval1.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         if(${eval1.value}.toString().contains("]]>")) {
+             throw new IllegalArgumentException("input cdata contains illegal ]]> .");
+         }
+         StringBuilder ${sb} = new StringBuilder();
+         ${sb}.append("<![CDATA[");
+         ${sb}.append(${eval1.value}.toString());
+         ${sb}.append("]]>");
+         ${ev.value} = UTF8String.fromString(${sb}.toString());
+         """)
+  }
+}
+
+ /**
+  * return a xml fragment that regard some input as text.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string) - return a xml fragment that regard some input as text.",
+  extended = """
+    Examples:
+      >   select xmlcolattval2('xyz', 'abc', 'mmm') result;
+              <column>xyz</column>
+              <column>abc</column>
+              <column>mmm</column>
+  """)
+case class XmlColattval2(children: Seq[Expression]) extends Expression
+  with ImplicitCastInputTypes {
+
+  override def inputTypes: Seq[AbstractDataType] = Seq.fill(children.size)(StringType)
+  override def dataType: DataType = StringType
+
+  override def nullable: Boolean = children.exists(_.nullable)
+  override def foldable: Boolean = children.forall(_.foldable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (children.forall(_.dataType == StringType)) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  override def eval(input: InternalRow): Any = {
+
+    val inputs = children.map(_.eval(input).asInstanceOf[UTF8String].toString)
+    UTF8String.fromString(inputs.map("<column>" + _ + "</column>").mkString("\n"))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val evals = children.map(_.genCode(ctx))
+    val inputs = evals.map { eval =>
+      s"${eval.isNull} ? null : ${eval.value}.toString()"
+    }.mkString(",")
+    val sb = ctx.freshName("stringBuilder");
+    val arrayInput = ctx.freshName("inputSplit");
+    ev.copy(evals.map(_.code).mkString("\n") + s"""
+      boolean ${ev.isNull} = false;
+      StringBuilder ${sb} = new StringBuilder();
+      String[] ${arrayInput} = ${inputs}.split(",");
+      for(int i = 0; i< ${arrayInput}.length; i++) {
+        ${sb}.append("<column>");
+        ${sb}.append(${arrayInput}[i]);
+        ${sb}.append("</column>");
+        if(i != ${arrayInput}.length-1)
+          ${sb}.append("\\n");
+      }
+      UTF8String ${ev.value} = UTF8String.fromString(${sb}.toString());
+    """)
+  }
+}
+
+ /**
+  * return a xml comment depending on input string.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string) - return a xml comment depending on input string.",
+  extended = """
+    Examples:
+      >   select xmlcomment('xyz') result;
+                <!--xyz-->
+  """)
+case class XmlComment(stringExpr: Expression)
+  extends Expression with ImplicitCastInputTypes {
+
+  override def children: Seq[Expression] =
+    Seq(stringExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val comment = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+    if(comment.contains("--")) {
+      throw new IllegalArgumentException("input cdata contains illegal -- .");
+    }
+    UTF8String.fromString("<!--" + comment + "-->")
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = stringExpr.genCode(ctx)
+
+    val sb = ctx.freshName("stringBuilder")
+
+    ev.copy(code = eval1.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         if(${eval1.value}.toString().contains("--")) {
+             throw new IllegalArgumentException("input cdata contains illegal -- .");
+         }
+         StringBuilder ${sb} = new StringBuilder();
+         ${sb}.append("<!--");
+         ${sb}.append(${eval1.value}.toString());
+         ${sb}.append("-->");
+         ${ev.value} = UTF8String.fromString(${sb}.toString());
+         """)
+  }
+}
+
+ /**
+  * concatenate two or more xml.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(string) - concatenate two or more xml.",
+  extended = """
+    Examples:
+      >   select xmlconcat('<to>abc</to>', '<from>xyz</from>') result;
+               <to>abc</to>
+               <from>xyz</from>
+  """)
+case class XmlConcat(children: Seq[Expression]) extends Expression
+  with ImplicitCastInputTypes {
+
+  override def inputTypes: Seq[AbstractDataType] = Seq.fill(children.size)(StringType)
+  override def dataType: DataType = StringType
+
+  override def nullable: Boolean = children.exists(_.nullable)
+  override def foldable: Boolean = children.forall(_.foldable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (children.forall(_.dataType == StringType)) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  override def eval(input: InternalRow): Any = {
+
+    val inputs = children.map(_.eval(input).asInstanceOf[UTF8String].toString)
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+    UTF8String.fromString(xmlFunctionsUtils.xmlConcat(inputs : _*))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val evals = children.map(_.genCode(ctx))
+    val inputs = evals.map { eval =>
+      s"${eval.isNull} ? null : ${eval.value}.toString()"
+    }.mkString(", ")
+    val xmlUtils = ctx.freshName("xmlFunctions")
+    ev.copy(evals.map(_.code).mkString("\n") + s"""
+      boolean ${ev.isNull} = false;
+      org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                                  new org.apache.spark.sql.util.XmlFunctionsUtils();
+      UTF8String ${ev.value} = UTF8String.fromString(${xmlUtils}.xmlConcat($inputs));
+    """)
+  }
+}
+
+ /**
+  * create a XML processing instruction using name and optionally string.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(name, string) - create a XML processing instruction" +
+    "using name and optionally string.",
+  extended = """
+    Examples:
+      >   select xmlpi('xyz', 'hehe') result;
+               <?xyz hehe?>
+  """)
+case class XmlPI(nameExpr: Expression, stringExpr: Expression)
+  extends Expression with ImplicitCastInputTypes {
+
+  def this(input: Expression) {
+    this(input, Literal(""))
+  }
+
+  override def children: Seq[Expression] =
+    Seq(stringExpr, stringExpr)
+  override def inputTypes: Seq[AbstractDataType] =
+    Seq(StringType, StringType)
+  override def dataType: DataType = StringType
+  override def nullable: Boolean = children.exists(_.nullable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (stringExpr.dataType == StringType && nameExpr.dataType == StringType) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  def eval(input: InternalRow): Any = {
+
+    val name = nameExpr.eval(input).asInstanceOf[UTF8String].toString
+    val string = stringExpr.eval(input).asInstanceOf[UTF8String].toString
+
+    UTF8String.fromString("<?" + name + " " + string + "?>")
+  }
+
+  override protected def doGenCode(ctx: CodegenContext,
+                                   ev: ExprCode): ExprCode = {
+
+    val eval1 = nameExpr.genCode(ctx)
+    val eval2 = stringExpr.genCode(ctx)
+
+    val sb = ctx.freshName("stringBuilder")
+
+    ev.copy(code = eval1.code + eval2.code +
+      s"""boolean ${ev.isNull} = ${eval1.isNull};
+         ${ctx.javaType(StringType)} ${ev.value} = ${ctx.defaultValue(StringType)};
+         StringBuilder ${sb} = new StringBuilder();
+         ${sb}.append("<?");
+         ${sb}.append(${eval1.value}.toString());
+         ${sb}.append(" ");
+         ${sb}.append(${eval2.value}.toString());
+         ${sb}.append("?>");
+         ${ev.value} = UTF8String.fromString(${sb}.toString());
+         """)
+  }
+}
+
+ /**
+  * compare expr with all search and return corresponding result
+  * that equal, if not found, return default.
+  */
+@ExpressionDescription(
+  usage = "_FUNC_(expr, search1, result1, search2, result2...., default) - compare expr with" +
+    "all search and return corresponding result that equal, if not found, return default.",
+  extended = """
+    Examples:
+      > select decode2(3, 1, 'Southlake', 2, 'San Francisco', 3, 'New Jersey',
+                    4, 'Seattle', 'Non domestic') result;
+                              New Jersey
+  """)
+case class Decode2(children: Seq[Expression]) extends Expression
+  with ImplicitCastInputTypes {
+
+  override def inputTypes: Seq[AbstractDataType] = Seq.fill(children.size)(StringType)
+  override def dataType: DataType = StringType
+
+  override def nullable: Boolean = children.exists(_.nullable)
+  override def foldable: Boolean = children.forall(_.foldable)
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+
+    if (children.forall(_.dataType == StringType)) {
+      return TypeCheckResult.TypeCheckSuccess
+    }
+    return TypeCheckResult.TypeCheckFailure(s"type of the input is not valid")
+  }
+
+  override def eval(input: InternalRow): Any = {
+
+    val inputs = children.map(_.eval(input).asInstanceOf[UTF8String].toString)
+    val xmlFunctionsUtils = new XmlFunctionsUtils()
+    UTF8String.fromString(xmlFunctionsUtils.decode2(inputs : _*))
+  }
+
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val evals = children.map(_.genCode(ctx))
+    val inputs = evals.map { eval =>
+      s"${eval.isNull} ? null : ${eval.value}.toString()"
+    }.mkString(", ")
+    val xmlUtils = ctx.freshName("xmlFunctions")
+    ev.copy(evals.map(_.code).mkString("\n") + s"""
+      boolean ${ev.isNull} = false;
+      org.apache.spark.sql.util.XmlFunctionsUtils ${xmlUtils} =
+                                  new org.apache.spark.sql.util.XmlFunctionsUtils();
+      UTF8String ${ev.value} = UTF8String.fromString(${xmlUtils}.decode2($inputs));
+    """)
   }
 }
