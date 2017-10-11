@@ -212,13 +212,16 @@ public abstract class CallStatement extends ExpressionStatement {
             if (var.getDataType() == Var.DataType.VARRAY) {
                 if (arguments.size() != 1)
                     throw new Exception("var index is more than 1 in VARRAY type");
-                int index = (int) getValueFromVar(arguments.get(0));
+//                int index = (int) getValueFromVar(arguments.get(0));
+                int index = (int) Double.parseDouble(getValueFromVar(arguments.get(0)).toString());
                 setRs(new SparkResultSet().addRow(new Object[] {var.getVarrayInnerVar(index)}));
                 return true;
             } else if (var.getDataType() == Var.DataType.NESTED_TABLE) {
                 if (arguments.size() != 1)
                     throw new Exception("var index is more than 1 in NESTED_TABLE type");
-                int index = (int) getValueFromVar(arguments.get(0));
+                // may be object-value from var is not integer, like float, double
+//                int index = (int) getValueFromVar(arguments.get(0));
+                int index = (int) Double.parseDouble(getValueFromVar(arguments.get(0)).toString());
                 setRs(new SparkResultSet().addRow(new Object[] {var.getNestedTableInnerVar(index)}));
                 return true;
             } else if (var.getDataType() == Var.DataType.ASSOC_ARRAY) {
