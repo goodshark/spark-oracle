@@ -488,7 +488,8 @@ public class PredicateNode extends LogicNode {
         ResultSet exprRes = expr.getRs();
         try {
             Var val = (Var) exprRes.getObject(0);
-            if (null == val || val.getVarValue() == null || val.getDataType() == Var.DataType.NULL)
+//            if (null == val || val.getVarValue() == null || val.getDataType() == Var.DataType.NULL)
+            if (null == val || Var.isNull(val) || val.getDataType() == Var.DataType.NULL)
                 return notComp ? false : true;
             else
                 return notComp ? true : false;

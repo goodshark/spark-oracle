@@ -531,6 +531,32 @@ public class Var implements Serializable {
     public Var() {
     }
 
+    public static boolean isNull(Var v) throws Exception {
+        switch ((v.getDataType())) {
+            case COMPOSITE:
+                // TODO may be need check value
+                if (v.compoundVarMap.size() == 0)
+                    return true;
+                break;
+            case VARRAY:
+                if (v.varrayList.size() <= 1)
+                    return true;
+                break;
+            case NESTED_TABLE:
+                if (v.nestedTableList.size() <= 1)
+                    return true;
+                break;
+            case ASSOC_ARRAY:
+                if (v.assocArray.size() == 0)
+                    return true;
+                break;
+            default:
+                if (v.getVarValue() == null)
+                    return true;
+        }
+        return false;
+    }
+
     public static void assign(Var leftVar, Var rightVar) throws Exception {
         // maybe float <- int
         /*if (leftVar.getDataType() != rightVar.getDataType())
