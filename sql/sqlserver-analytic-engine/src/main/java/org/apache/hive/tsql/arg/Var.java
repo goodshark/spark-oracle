@@ -468,7 +468,7 @@ public class Var implements Serializable {
     private void getPrior(List<Var> list, Var v, Object ...args) throws Exception {
         if (args.length == 0)
             return;
-        int index = (int) args[0];
+        int index = (int)Double.parseDouble(args[0].toString());
         for (int i = index-1; i > 0; i--) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
@@ -481,7 +481,7 @@ public class Var implements Serializable {
     private void getNext(List<Var> list, Var v, Object ...args) throws Exception {
         if (args.length == 0)
             return;
-        int index = (int) args[0];
+        int index = (int)Double.parseDouble(args[0].toString());
         for (int i = index+1; i < list.size(); i++) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
