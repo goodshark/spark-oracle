@@ -1225,7 +1225,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     @Override
     public Object visitFunction_call(PlsqlParser.Function_callContext ctx) {
         String name = ctx.routine_name().getText().toLowerCase();
-        if (name.startsWith("print") || name.startsWith("dbms_output.put_line")) {
+        if (name.equals("print") || name.startsWith("dbms_output.put_line")) {
             FakeFunction function = new FakeFunction();
             visit(ctx.routine_name());
             treeBuilder.popAll();
@@ -2653,6 +2653,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitOpen_for_statement(PlsqlParser.Open_for_statementContext ctx) {
+        // TODO open for cursor is the custom type
         OracleOpenCursorStmt openCursorStmt = new OracleOpenCursorStmt();
         treeBuilder.pushStatement(openCursorStmt);
         return openCursorStmt;
@@ -3557,6 +3558,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitRecord_type_dec(PlsqlParser.Record_type_decContext ctx) {
+        // TODO implement REF cursor
         LocalTypeDeclare typeDeclare = new RecordTypeDeclare();
         typeDeclare.setTypeName(ctx.type_name().getText());
         for (PlsqlParser.Field_specContext fieldCtx : ctx.field_spec()) {
