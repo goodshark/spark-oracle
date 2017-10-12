@@ -17,7 +17,9 @@ public class LogicNode extends ExpressionStatement {
 
     public static class IndexIterator {
         private Var indexVar = null;
+        private Var originalLower = null;
         private Var lower = null;
+        private Var originalUpper = null;
         private Var upper = null;
         private Var curIndex = new Var();
         private boolean reverse = false;
@@ -28,7 +30,8 @@ public class LogicNode extends ExpressionStatement {
         }
 
         public void setLower(Var left) {
-            lower = left;
+            originalLower = left.clone();
+            lower = left.clone();
         }
 
         public Var getLower() {
@@ -36,7 +39,8 @@ public class LogicNode extends ExpressionStatement {
         }
 
         public void setUpper(Var right) {
-            upper = right;
+            originalUpper = right.clone();
+            upper = right.clone();
         }
 
         public Var getUpper() {
@@ -92,6 +96,14 @@ public class LogicNode extends ExpressionStatement {
             curIndex.setVarValue(nextIndex);
             indexVar.setReadonly(true);
             return indexVar;
+        }
+    }
+
+    public void resetInit() {
+        if (indexIter != null) {
+            indexIter.initExecute = true;
+            indexIter.lower = indexIter.originalLower.clone();
+            indexIter.upper = indexIter.originalUpper.clone();
         }
     }
 

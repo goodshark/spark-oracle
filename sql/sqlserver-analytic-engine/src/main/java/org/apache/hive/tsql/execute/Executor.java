@@ -311,6 +311,9 @@ public class Executor {
             stack.push(node);
             stack.push(whileBlock);
         }
+        /*// when enter into the same while-block more than twice, need re-init conditionNode
+        // like FOR i IN names.FIRST .. names.LAST LOOP, when names has been changed before go into the second while-block
+        whileStmt.refreshConditionNode();*/
     }
 
     public void breakExecute(TreeNode node) throws Exception {
@@ -531,7 +534,17 @@ public class Executor {
         pushChild(node);
     }
 
-    public void borderExecute() {
+    public void preLeaveBlock() throws Exception {
+        // when enter into the same while-block more than twice, need re-init conditionNode
+        // like FOR i IN names.FIRST .. names.LAST LOOP, when names has been changed before go into the second while-block
+        TreeNode block = session.getCurrentScope();
+        if (block != null && block instanceof WhileStatement) {
+                ((WhileStatement)block).refreshConditionNode();
+        }
+    }
+
+    public void borderExecute() throws Exception {
+        preLeaveBlock();
         leaveBlock();
     }
 
