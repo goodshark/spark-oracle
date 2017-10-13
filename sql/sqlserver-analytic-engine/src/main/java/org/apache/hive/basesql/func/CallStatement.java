@@ -156,8 +156,26 @@ public abstract class CallStatement extends ExpressionStatement {
         }
     }
 
+    protected Var getVarFromArg(Var argVar) throws Exception {
+        if (argVar.getValueType() == Var.ValueType.EXPRESSION) {
+            TreeNode base = argVar.getExpr();
+            // compatible with sqlserver
+            if (base == null) {
+                Var realVar = findVar(argVar.getVarValue().toString());
+                if (realVar == null)
+                    throw new NotDeclaredException(argVar.getVarValue().toString());
+                return realVar;
+            }
+            base.setExecSession(getExecSession());
+            base.execute();
+            Var baseVar = (Var) base.getRs().getObject(0);
+            return baseVar;
+        } else {
+            return argVar;
+        }
+    }
+
     private boolean findTypeConstructor() throws Exception {
-        // TODO only support base type
         LocalTypeDeclare typeDeclare = findType(funcName.getFuncName());
         if (typeDeclare != null) {
             Var resultVar = new Var();
@@ -170,11 +188,13 @@ public abstract class CallStatement extends ExpressionStatement {
                 Var typeVar = ((VarrayTypeDeclare)typeDeclare).getTypeVar();
                 resultVar.addVarrayTypeVar(typeVar);
                 for (Var arg: arguments) {
-                    Var.DataType varrayValueType = ((VarrayTypeDeclare)typeDeclare).getVarrayValueType();
+                    /*Var.DataType varrayValueType = ((VarrayTypeDeclare)typeDeclare).getVarrayValueType();
                     Var varrayVar = new Var();
                     Object val = getValueFromVar(arg);
                     varrayVar.setDataType(varrayValueType);
-                    varrayVar.setVarValue(val);
+                    varrayVar.setVarValue(val);*/
+                    // support complex arg
+                    Var varrayVar = getVarFromArg(arg);
                     resultVar.addVarrayValue(varrayVar);
                 }
             } else if (type == Var.DataType.NESTED_TABLE) {
@@ -184,7 +204,7 @@ public abstract class CallStatement extends ExpressionStatement {
                     Var.DataType nestedTableValueType = ((NestedTableTypeDeclare)typeDeclare).getNestedTableValueType();
                     Var tableVar = new Var();
                     tableVar.setDataType(nestedTableValueType);
-                    // TODO support collection type
+                    // support collection type
                     assignmentValue(resultVar, tableVar, arg);
                     /*Object val = getValueFromVar(arg);
                     tableVar.setVarValue(val);
