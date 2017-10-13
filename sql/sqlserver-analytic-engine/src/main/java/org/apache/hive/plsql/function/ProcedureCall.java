@@ -126,7 +126,7 @@ public class ProcedureCall extends CallStatement {
         }
     }*/
 
-    private Var getVarFromArg(Var argVar) throws Exception {
+    /*private Var getVarFromArg(Var argVar) throws Exception {
         if (argVar.getValueType() == Var.ValueType.EXPRESSION) {
             TreeNode base = argVar.getExpr();
             // compatible with sqlserver
@@ -143,7 +143,7 @@ public class ProcedureCall extends CallStatement {
         } else {
             return argVar;
         }
-    }
+    }*/
 
     private void assignToFunc(Var argument, Var funcVar) throws Exception {
 //        Object val = getValueFromVar(argument);
