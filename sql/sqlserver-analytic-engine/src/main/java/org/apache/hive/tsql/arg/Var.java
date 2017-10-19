@@ -317,6 +317,7 @@ public class Var implements Serializable {
             case VARRAY:
                 throw new Exception("varray can not extend any more");
             case NESTED_TABLE:
+                v.setDataType(getNestedTableTypeVar().getDataType());
                 if (args.length == 0) {
                     nestedTableList.add(v);
                 } else if (args.length == 1) {
