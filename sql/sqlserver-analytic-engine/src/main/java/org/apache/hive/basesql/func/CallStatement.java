@@ -1,6 +1,7 @@
 package org.apache.hive.basesql.func;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.plsql.OracleEngine;
 import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.plsql.type.NestedTableTypeDeclare;
 import org.apache.hive.plsql.type.VarrayTypeDeclare;
@@ -14,9 +15,13 @@ import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.exception.FunctionNotFound;
 import org.apache.hive.tsql.exception.NotDeclaredException;
 import org.apache.hive.tsql.func.FuncName;
-import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.util.StrUtils;
-import org.apache.spark.sql.catalyst.plans.logical.Except;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.FunctionIdentifier;
+import org.apache.spark.sql.catalyst.expressions.ExpressionInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +30,7 @@ import java.util.List;
  * Created by dengrb1 on 5/24 0024.
  */
 public abstract class CallStatement extends ExpressionStatement {
+    private static final Logger LOG = LoggerFactory.getLogger(CallStatement.class);
     protected List<Var> arguments = new ArrayList<>();
     protected FuncName funcName;
     protected String realFuncName;
@@ -281,11 +287,37 @@ public abstract class CallStatement extends ExpressionStatement {
         boolean findVar = findVarSubscript();
         if (findVar)
             return 0;
+        if(findSysFunctionInSpark()){
+            setSysFunctionVales();
+            return  0;
+        }
         preExecute();
         call();
         postExecute();
         return 0;
     }
+
+    private  boolean findSysFunctionInSpark(){
+        SparkSession sparkSession = getExecSession().getSparkSession();
+        ExpressionInfo expressionInfo = sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName()));
+        String classname = expressionInfo.getClassName();
+        if(classname == null || "".equals(classname) || sparkSession.getSessionState().catalog().lookupFunctionBuilder(new FunctionIdentifier(funcName.getFuncName())) == null){
+            return  false;
+        }else {
+            return  true;
+        }
+    }
+
+    private void setSysFunctionVales(){
+        String sql = "select "+ this.getOriginalSql();
+        LOG.info("function name "+ funcName + ", exec sql in spark is "+ sql);
+        SparkSession sparkSession = getExecSession().getSparkSession();
+        Dataset dataset = sparkSession.sql(sql);
+        SparkResultSet rs = new SparkResultSet(dataset);
+        setRs(rs);
+    }
+
+
 
     public abstract void call() throws Exception;
 }
