@@ -134,10 +134,17 @@ public class Var implements Serializable {
         }
     }
     private TreeMap<String, Var> assocArray = new TreeMap<>(new StringCmp());
+    // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means VARCHAR(100)
     private Var assocTypeVar;
+    // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means INTEGER
+    private Var assocValueTypeVar;
 
     public void setAssocTypeVar(Var v) {
         assocTypeVar = v;
+    }
+
+    public void setAssocValueTypeVar(Var v) {
+        assocValueTypeVar = v;
     }
 
     public Var getAssocArrayValue(String index) {
@@ -145,7 +152,7 @@ public class Var implements Serializable {
     }
 
     public Var getAssocArrayValue(String index, Var val) {
-        assocArray.put(index, new Var());
+        assocArray.put(index, assocValueTypeVar.clone());
         return assocArray.get(index);
     }
 
@@ -317,6 +324,7 @@ public class Var implements Serializable {
             case VARRAY:
                 throw new Exception("varray can not extend any more");
             case NESTED_TABLE:
+                v.setDataType(getNestedTableTypeVar().getDataType());
                 if (args.length == 0) {
                     nestedTableList.add(v);
                 } else if (args.length == 1) {
@@ -573,6 +581,10 @@ public class Var implements Serializable {
                 leftVar.nestedTableList = new ArrayList<>(rightVar.nestedTableList);
                 break;
             case ASSOC_ARRAY:
+                leftVar.initialized = rightVar.initialized;
+                leftVar.assocArray = new TreeMap<>(rightVar.assocArray);
+                leftVar.assocValueTypeVar = rightVar.assocValueTypeVar.clone();
+                leftVar.assocTypeVar = rightVar.assocTypeVar.clone();
                 break;
             default:
                 leftVar.setVarValue(rightVar.getVarValue());
@@ -605,6 +617,11 @@ public class Var implements Serializable {
                 v.addNestedTableValue(nestedTableInnerVar);
             }
         }
+        // assoc-array
+        if (assocTypeVar != null)
+            v.assocTypeVar = assocTypeVar.clone();
+        if (assocValueTypeVar != null)
+            v.assocValueTypeVar = assocValueTypeVar.clone();
         return v;
     }
 

@@ -115,7 +115,7 @@ public abstract class CallStatement extends ExpressionStatement {
 
     private void assignmentValue(Var rootVar, Var leftVar, Var rightVar) throws Exception {
         if (leftVar.getDataType() == Var.DataType.COMPOSITE) {
-        } else if (leftVar.getDataType() == Var.DataType.VARRAY) {
+        } else if (leftVar.getDataType() == Var.DataType.VARRAY || leftVar.getDataType() == Var.DataType.NESTED_TABLE) {
             TreeNode expr = rightVar.getExpr();
             if (expr == null)
                 throw new Exception("type constructor get null expr arg");
@@ -123,7 +123,6 @@ public abstract class CallStatement extends ExpressionStatement {
             expr.execute();
             Var varrayVar = (Var) expr.getRs().getObject(0);
             Var.assign(leftVar, varrayVar);
-        } else if (leftVar.getDataType() == Var.DataType.NESTED_TABLE) {
         } else {
             // base type
             Object val = getValueFromVar(rightVar);
