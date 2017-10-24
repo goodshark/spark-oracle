@@ -43,6 +43,10 @@ public class BlockBorder extends TreeNode {
             return null;
     }
 
+    public TreeNode getNode() {
+        return node;
+    }
+
     public int execute() throws Exception {
         return 0;
     }

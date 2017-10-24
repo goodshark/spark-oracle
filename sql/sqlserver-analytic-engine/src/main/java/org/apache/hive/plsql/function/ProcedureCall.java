@@ -107,7 +107,7 @@ public class ProcedureCall extends CallStatement {
         return null;
     }
 
-    private Object getValueFromVar(Var var) throws Exception {
+    /*private Object getValueFromVar(Var var) throws Exception {
         if (var.getValueType() == Var.ValueType.EXPRESSION) {
             TreeNode base = var.getExpr();
             // compatible with sqlserver
@@ -124,11 +124,34 @@ public class ProcedureCall extends CallStatement {
         } else {
             return var.getVarValue();
         }
-    }
+    }*/
+
+    /*private Var getVarFromArg(Var argVar) throws Exception {
+        if (argVar.getValueType() == Var.ValueType.EXPRESSION) {
+            TreeNode base = argVar.getExpr();
+            // compatible with sqlserver
+            if (base == null) {
+                Var realVar = findVar(argVar.getVarValue().toString());
+                if (realVar == null)
+                    throw new NotDeclaredException(argVar.getVarValue().toString());
+                return realVar;
+            }
+            base.setExecSession(getExecSession());
+            base.execute();
+            Var baseVar = (Var) base.getRs().getObject(0);
+            return baseVar;
+        } else {
+            return argVar;
+        }
+    }*/
 
     private void assignToFunc(Var argument, Var funcVar) throws Exception {
-        Object val = getValueFromVar(argument);
-        funcVar.setVarValue(val);
+//        Object val = getValueFromVar(argument);
+//        funcVar.setVarValue(val);
+        // support collection-type argument
+        Var argVar = getVarFromArg(argument);
+        funcVar.setDataType(argVar.getDataType());
+        Var.assign(funcVar, argVar);
         // config proc/func output map name
         if (funcVar.getVarType() == Var.VarType.OUTPUT || funcVar.getVarType() == Var.VarType.INOUT) {
             ExpressionStatement es = (ExpressionStatement) argument.getExpr();

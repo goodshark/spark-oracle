@@ -134,10 +134,17 @@ public class Var implements Serializable {
         }
     }
     private TreeMap<String, Var> assocArray = new TreeMap<>(new StringCmp());
+    // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means VARCHAR(100)
     private Var assocTypeVar;
+    // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means INTEGER
+    private Var assocValueTypeVar;
 
     public void setAssocTypeVar(Var v) {
         assocTypeVar = v;
+    }
+
+    public void setAssocValueTypeVar(Var v) {
+        assocValueTypeVar = v;
     }
 
     public Var getAssocArrayValue(String index) {
@@ -145,7 +152,7 @@ public class Var implements Serializable {
     }
 
     public Var getAssocArrayValue(String index, Var val) {
-        assocArray.put(index, new Var());
+        assocArray.put(index, assocValueTypeVar.clone());
         return assocArray.get(index);
     }
 
@@ -317,6 +324,7 @@ public class Var implements Serializable {
             case VARRAY:
                 throw new Exception("varray can not extend any more");
             case NESTED_TABLE:
+                v.setDataType(getNestedTableTypeVar().getDataType());
                 if (args.length == 0) {
                     nestedTableList.add(v);
                 } else if (args.length == 1) {
@@ -468,7 +476,7 @@ public class Var implements Serializable {
     private void getPrior(List<Var> list, Var v, Object ...args) throws Exception {
         if (args.length == 0)
             return;
-        int index = (int) args[0];
+        int index = (int)Double.parseDouble(args[0].toString());
         for (int i = index-1; i > 0; i--) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
@@ -481,7 +489,7 @@ public class Var implements Serializable {
     private void getNext(List<Var> list, Var v, Object ...args) throws Exception {
         if (args.length == 0)
             return;
-        int index = (int) args[0];
+        int index = (int)Double.parseDouble(args[0].toString());
         for (int i = index+1; i < list.size(); i++) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
@@ -531,6 +539,32 @@ public class Var implements Serializable {
     public Var() {
     }
 
+    public static boolean isNull(Var v) throws Exception {
+        switch ((v.getDataType())) {
+            case COMPOSITE:
+                // TODO may be need check value
+                if (v.compoundVarMap.size() == 0)
+                    return true;
+                break;
+            case VARRAY:
+                if (v.varrayList.size() <= 1)
+                    return true;
+                break;
+            case NESTED_TABLE:
+                if (v.nestedTableList.size() <= 1)
+                    return true;
+                break;
+            case ASSOC_ARRAY:
+                if (v.assocArray.size() == 0)
+                    return true;
+                break;
+            default:
+                if (v.getVarValue() == null)
+                    return true;
+        }
+        return false;
+    }
+
     public static void assign(Var leftVar, Var rightVar) throws Exception {
         // maybe float <- int
         /*if (leftVar.getDataType() != rightVar.getDataType())
@@ -547,6 +581,10 @@ public class Var implements Serializable {
                 leftVar.nestedTableList = new ArrayList<>(rightVar.nestedTableList);
                 break;
             case ASSOC_ARRAY:
+                leftVar.initialized = rightVar.initialized;
+                leftVar.assocArray = new TreeMap<>(rightVar.assocArray);
+                leftVar.assocValueTypeVar = rightVar.assocValueTypeVar.clone();
+                leftVar.assocTypeVar = rightVar.assocTypeVar.clone();
                 break;
             default:
                 leftVar.setVarValue(rightVar.getVarValue());
@@ -579,6 +617,11 @@ public class Var implements Serializable {
                 v.addNestedTableValue(nestedTableInnerVar);
             }
         }
+        // assoc-array
+        if (assocTypeVar != null)
+            v.assocTypeVar = assocTypeVar.clone();
+        if (assocValueTypeVar != null)
+            v.assocValueTypeVar = assocValueTypeVar.clone();
         return v;
     }
 

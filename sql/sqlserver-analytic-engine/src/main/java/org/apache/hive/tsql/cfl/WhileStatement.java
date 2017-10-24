@@ -33,6 +33,12 @@ public class WhileStatement extends BaseStatement {
         setNodeType(t);
     }
 
+    public void refreshConditionNode() {
+        if (condtionNode instanceof LogicNode) {
+            ((LogicNode) condtionNode).resetInit();
+        }
+    }
+
     public void setCondtionNode(TreeNode node) {
         condtionNode = node;
     }

@@ -100,8 +100,9 @@ public class SetStatement extends BaseStatement {
         stm.setExecSession(getExecSession());
         stm.execute();
         Var exprVal = stm.getExpressionValue();
+        Object value = null;
         switch (aop) {
-            case EQ:
+            /*case EQ:
                 v.setVarValue(exprVal.getVarValue());
                 break;
             case ADD_EQ:
@@ -127,10 +128,38 @@ public class SetStatement extends BaseStatement {
                 break;
             case OR_EQ:
                 v.setVarValue(v.operatorOr(exprVal).getVarValue());
+                break;*/
+            case EQ:
+                value = exprVal.getVarValue();
+                break;
+            case ADD_EQ:
+                value = v.operatorAdd(exprVal).getVarValue();
+                break;
+            case SUB_EQ:
+                value = v.operatorSub(exprVal).getVarValue();
+                break;
+            case MUL_EQ:
+                value = v.operatorMultiply(exprVal).getVarValue();
+                break;
+            case DIV_EQ:
+                value = v.operatorDiv(exprVal).getVarValue();
+                break;
+            case MOD_EQ:
+                value = v.operatorMod(exprVal).getVarValue();
+                break;
+            case AND_EQ:
+                value = v.operatorAnd(exprVal).getVarValue();
+                break;
+            case NOT_EQ:
+                value = v.operatorXor(exprVal).getVarValue();
+                break;
+            case OR_EQ:
+                value = v.operatorOr(exprVal).getVarValue();
                 break;
         }
+        exprVal.setVarValue(value);
+        Var.assign(v, exprVal);
         v.setExecuted(true);
-
     }
 
 

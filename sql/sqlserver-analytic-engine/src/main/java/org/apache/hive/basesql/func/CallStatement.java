@@ -1,6 +1,7 @@
 package org.apache.hive.basesql.func;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.plsql.OracleEngine;
 import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.plsql.type.NestedTableTypeDeclare;
 import org.apache.hive.plsql.type.VarrayTypeDeclare;
@@ -14,9 +15,13 @@ import org.apache.hive.tsql.exception.FunctionArgumentException;
 import org.apache.hive.tsql.exception.FunctionNotFound;
 import org.apache.hive.tsql.exception.NotDeclaredException;
 import org.apache.hive.tsql.func.FuncName;
-import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.util.StrUtils;
-import org.apache.spark.sql.catalyst.plans.logical.Except;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.FunctionIdentifier;
+import org.apache.spark.sql.catalyst.expressions.ExpressionInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +30,7 @@ import java.util.List;
  * Created by dengrb1 on 5/24 0024.
  */
 public abstract class CallStatement extends ExpressionStatement {
+    private static final Logger LOG = LoggerFactory.getLogger(CallStatement.class);
     protected List<Var> arguments = new ArrayList<>();
     protected FuncName funcName;
     protected String realFuncName;
@@ -109,7 +115,7 @@ public abstract class CallStatement extends ExpressionStatement {
 
     private void assignmentValue(Var rootVar, Var leftVar, Var rightVar) throws Exception {
         if (leftVar.getDataType() == Var.DataType.COMPOSITE) {
-        } else if (leftVar.getDataType() == Var.DataType.VARRAY) {
+        } else if (leftVar.getDataType() == Var.DataType.VARRAY || leftVar.getDataType() == Var.DataType.NESTED_TABLE) {
             TreeNode expr = rightVar.getExpr();
             if (expr == null)
                 throw new Exception("type constructor get null expr arg");
@@ -117,7 +123,6 @@ public abstract class CallStatement extends ExpressionStatement {
             expr.execute();
             Var varrayVar = (Var) expr.getRs().getObject(0);
             Var.assign(leftVar, varrayVar);
-        } else if (leftVar.getDataType() == Var.DataType.NESTED_TABLE) {
         } else {
             // base type
             Object val = getValueFromVar(rightVar);
@@ -156,8 +161,26 @@ public abstract class CallStatement extends ExpressionStatement {
         }
     }
 
+    protected Var getVarFromArg(Var argVar) throws Exception {
+        if (argVar.getValueType() == Var.ValueType.EXPRESSION) {
+            TreeNode base = argVar.getExpr();
+            // compatible with sqlserver
+            if (base == null) {
+                Var realVar = findVar(argVar.getVarValue().toString());
+                if (realVar == null)
+                    throw new NotDeclaredException(argVar.getVarValue().toString());
+                return realVar;
+            }
+            base.setExecSession(getExecSession());
+            base.execute();
+            Var baseVar = (Var) base.getRs().getObject(0);
+            return baseVar;
+        } else {
+            return argVar;
+        }
+    }
+
     private boolean findTypeConstructor() throws Exception {
-        // TODO only support base type
         LocalTypeDeclare typeDeclare = findType(funcName.getFuncName());
         if (typeDeclare != null) {
             Var resultVar = new Var();
@@ -170,11 +193,13 @@ public abstract class CallStatement extends ExpressionStatement {
                 Var typeVar = ((VarrayTypeDeclare)typeDeclare).getTypeVar();
                 resultVar.addVarrayTypeVar(typeVar);
                 for (Var arg: arguments) {
-                    Var.DataType varrayValueType = ((VarrayTypeDeclare)typeDeclare).getVarrayValueType();
+                    /*Var.DataType varrayValueType = ((VarrayTypeDeclare)typeDeclare).getVarrayValueType();
                     Var varrayVar = new Var();
                     Object val = getValueFromVar(arg);
                     varrayVar.setDataType(varrayValueType);
-                    varrayVar.setVarValue(val);
+                    varrayVar.setVarValue(val);*/
+                    // support complex arg
+                    Var varrayVar = getVarFromArg(arg);
                     resultVar.addVarrayValue(varrayVar);
                 }
             } else if (type == Var.DataType.NESTED_TABLE) {
@@ -184,7 +209,7 @@ public abstract class CallStatement extends ExpressionStatement {
                     Var.DataType nestedTableValueType = ((NestedTableTypeDeclare)typeDeclare).getNestedTableValueType();
                     Var tableVar = new Var();
                     tableVar.setDataType(nestedTableValueType);
-                    // TODO support collection type
+                    // support collection type
                     assignmentValue(resultVar, tableVar, arg);
                     /*Object val = getValueFromVar(arg);
                     tableVar.setVarValue(val);
@@ -212,13 +237,16 @@ public abstract class CallStatement extends ExpressionStatement {
             if (var.getDataType() == Var.DataType.VARRAY) {
                 if (arguments.size() != 1)
                     throw new Exception("var index is more than 1 in VARRAY type");
-                int index = (int) getValueFromVar(arguments.get(0));
+//                int index = (int) getValueFromVar(arguments.get(0));
+                int index = (int) Double.parseDouble(getValueFromVar(arguments.get(0)).toString());
                 setRs(new SparkResultSet().addRow(new Object[] {var.getVarrayInnerVar(index)}));
                 return true;
             } else if (var.getDataType() == Var.DataType.NESTED_TABLE) {
                 if (arguments.size() != 1)
                     throw new Exception("var index is more than 1 in NESTED_TABLE type");
-                int index = (int) getValueFromVar(arguments.get(0));
+                // may be object-value from var is not integer, like float, double
+//                int index = (int) getValueFromVar(arguments.get(0));
+                int index = (int) Double.parseDouble(getValueFromVar(arguments.get(0)).toString());
                 setRs(new SparkResultSet().addRow(new Object[] {var.getNestedTableInnerVar(index)}));
                 return true;
             } else if (var.getDataType() == Var.DataType.ASSOC_ARRAY) {
@@ -259,11 +287,37 @@ public abstract class CallStatement extends ExpressionStatement {
         boolean findVar = findVarSubscript();
         if (findVar)
             return 0;
+        if(findSysFunctionInSpark()){
+            setSysFunctionVales();
+            return  0;
+        }
         preExecute();
         call();
         postExecute();
         return 0;
     }
+
+    private  boolean findSysFunctionInSpark(){
+        SparkSession sparkSession = getExecSession().getSparkSession();
+        ExpressionInfo expressionInfo = sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName()));
+        String classname = expressionInfo.getClassName();
+        if(classname == null || "".equals(classname) || sparkSession.getSessionState().catalog().lookupFunctionBuilder(new FunctionIdentifier(funcName.getFuncName())) == null){
+            return  false;
+        }else {
+            return  true;
+        }
+    }
+
+    private void setSysFunctionVales(){
+        String sql = "select "+ this.getOriginalSql();
+        LOG.info("function name "+ funcName + ", exec sql in spark is "+ sql);
+        SparkSession sparkSession = getExecSession().getSparkSession();
+        Dataset dataset = sparkSession.sql(sql);
+        SparkResultSet rs = new SparkResultSet(dataset);
+        setRs(rs);
+    }
+
+
 
     public abstract void call() throws Exception;
 }
