@@ -279,7 +279,7 @@ public class Var implements Serializable {
                 break;
             case ASSOC_ARRAY:
                 if (args.length == 0)
-                    assocArray = new TreeMap<>();
+                    assocArray = new TreeMap<>(new StringCmp());
                 else if (args.length == 1) {
                     Object key = args[0];
                     assocArray.remove(key);
@@ -287,8 +287,24 @@ public class Var implements Serializable {
                     String fromKey = args[0].toString();
                     String toKey = args[1].toString();
                     try {
-                        Map<String, Var> subMap = assocArray.subMap(fromKey, toKey);
-                        assocArray = new TreeMap<>(subMap);
+                        int compareRes = assocArray.comparator().compare(fromKey, toKey);
+                        if (compareRes > 0)
+                            return;
+                    } catch (Exception e) {
+                        // do nothing, in case comparator of assocArray is NULL
+                    }
+                    String tailKey = assocArray.higherKey(toKey);
+                    try {
+                        TreeMap<String, Var> tmpMap = new TreeMap<>(new StringCmp());
+                        Map<String, Var> headMap = assocArray.headMap(fromKey);
+                        tmpMap.putAll(headMap);
+                        if (tailKey != null) {
+                            Map<String, Var> tailMap = assocArray.tailMap(tailKey);
+                            tmpMap.putAll(tailMap);
+                        }
+                        assocArray = tmpMap;
+                        /*Map<String, Var> subMap = assocArray.subMap(fromKey, toKey);
+                        assocArray = new TreeMap<>(subMap);*/
                     } catch (Exception e) {
                         // do nothing
                         return;
