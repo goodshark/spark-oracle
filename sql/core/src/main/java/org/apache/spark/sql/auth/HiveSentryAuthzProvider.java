@@ -16,8 +16,10 @@ import org.apache.sentry.policy.common.PolicyEngine;
 import org.apache.sentry.provider.common.AuthorizationProvider;
 import org.apache.sentry.provider.common.ProviderBackend;
 import org.apache.sentry.provider.db.service.thrift.TSentryRole;
+import org.apache.spark.sql.catalyst.TableIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Option;
 
 import java.lang.reflect.Constructor;
 import java.util.*;
@@ -105,7 +107,7 @@ public class HiveSentryAuthzProvider {
         for(AuthzEntity entity : tables){
             List<DBModelAuthorizable> inputHierarchy = new ArrayList<DBModelAuthorizable>();
             inputHierarchy.add(authServer);
-            if(entity.table().database() != null && entity.table().database().get() != null){
+            if(entity.table().database().isDefined() && entity.table().database().get() != null){
                 inputHierarchy.add(new Database(entity.table().database().get()));
             } else {
                 inputHierarchy.add(new Database(currentdb));
