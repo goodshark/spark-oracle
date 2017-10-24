@@ -122,8 +122,14 @@ public class Var implements Serializable {
     }
 
     public Var getNestedTableInnerVar(int i) throws Exception {
-        if (nestedTableList.get(i) == null)
-            throw new Exception("nested-table has no data");
+        if (i >= nestedTableList.size())
+            throw new Exception("index out of nested-table");
+        // null is the DELETE placeholder
+        if (nestedTableList.get(i) == null) {
+            Var nestedTableValue = getNestedTableTypeVar().clone();
+            nestedTableList.remove(i);
+            nestedTableList.add(i, nestedTableValue);
+        }
         return nestedTableList.get(i);
     }
 
