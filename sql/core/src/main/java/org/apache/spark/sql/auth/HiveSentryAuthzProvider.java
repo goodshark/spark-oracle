@@ -5,8 +5,6 @@ import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.metadata.AuthorizationException;
-import org.apache.sentry.SentryUserException;
-import org.apache.sentry.binding.hive.HiveAuthzBindingHook;
 import org.apache.sentry.binding.hive.conf.HiveAuthzConf;
 import org.apache.sentry.binding.hive.conf.HiveAuthzConf.AuthzConfVars;
 import org.apache.sentry.core.common.ActiveRoleSet;
@@ -16,12 +14,12 @@ import org.apache.sentry.policy.common.PolicyEngine;
 import org.apache.sentry.provider.common.AuthorizationProvider;
 import org.apache.sentry.provider.common.ProviderBackend;
 import org.apache.sentry.provider.db.service.thrift.TSentryRole;
-import org.apache.spark.sql.catalyst.TableIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
 
 import java.lang.reflect.Constructor;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -53,7 +51,7 @@ public class HiveSentryAuthzProvider {
     }
 
     public HiveSentryAuthzProvider() {
-        this.authzConf = HiveAuthzBindingHook.loadAuthzConf(hiveConf);
+        this.authzConf = loadAuthzConf(hiveConf);
         this.authServer = new Server(authzConf.get(HiveAuthzConf.AuthzConfVars.AUTHZ_SERVER_NAME.getVar()));
         try {
             this.authProvider = getAuthProvider(hiveConf, authzConf, authServer.getName());
@@ -65,13 +63,38 @@ public class HiveSentryAuthzProvider {
         }
     }
 
+    public static HiveAuthzConf loadAuthzConf(HiveConf hiveConf) {
+        boolean depreicatedConfigFile = false;
+        HiveAuthzConf newAuthzConf = null;
+        String hiveAuthzConf = hiveConf.get("hive.sentry.conf.url");
+        if(hiveAuthzConf == null || (hiveAuthzConf = hiveAuthzConf.trim()).isEmpty()) {
+            hiveAuthzConf = hiveConf.get("hive.access.conf.url");
+            depreicatedConfigFile = true;
+        }
+
+        if(hiveAuthzConf != null && !(hiveAuthzConf = hiveAuthzConf.trim()).isEmpty()) {
+            try {
+                newAuthzConf = new HiveAuthzConf(new URL(hiveAuthzConf));
+                return newAuthzConf;
+            } catch (MalformedURLException var5) {
+                if(depreicatedConfigFile) {
+                    throw new IllegalArgumentException("Configuration key hive.access.conf.url specifies a malformed URL '" + hiveAuthzConf + "'", var5);
+                } else {
+                    throw new IllegalArgumentException("Configuration key hive.sentry.conf.url specifies a malformed URL '" + hiveAuthzConf + "'", var5);
+                }
+            }
+        } else {
+            throw new IllegalArgumentException("Configuration key hive.sentry.conf.url value '" + hiveAuthzConf + "' is invalid.");
+        }
+    }
+
     private static ActiveRoleSet parseActiveRoleSet(String name)
-            throws SentryUserException {
+            throws Exception {
         return parseActiveRoleSet(name, null);
     }
 
     private static ActiveRoleSet parseActiveRoleSet(String name,
-                                                    Set<TSentryRole> allowedRoles) throws SentryUserException {
+                                                    Set<TSentryRole> allowedRoles) throws Exception {
         // if unset, then we choose the default of ALL
         if (name.isEmpty()) {
             return ActiveRoleSet.ALL;
@@ -94,7 +117,7 @@ public class HiveSentryAuthzProvider {
                 }
                 if (!foundRole) {
                     //Set the reason for hive binding to pick up
-                    throw new SentryUserException("Not authorized to set role " + name, "Not authorized to set role " + name);
+                    throw new Exception("Not authorized to set role " + name);
 
                 }
             }
