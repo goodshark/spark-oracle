@@ -95,6 +95,12 @@ public class Var implements Serializable {
         varrayList.add(0, v);
     }
 
+    public Var getVarrayTypeVar() throws Exception {
+        if (varrayList.size() < 1)
+            throw new Exception("varray has no type var");
+        return varrayList.get(0);
+    }
+
     public void addVarrayValue(Var v) {
         varrayList.add(v);
     }
@@ -344,7 +350,24 @@ public class Var implements Serializable {
         Var v = new Var(null, DataType.NULL);
         switch (getDataType()) {
             case VARRAY:
-                throw new Exception("varray can not extend any more");
+                v.setDataType(getVarrayTypeVar().getDataType());
+                if (args.length == 0) {
+                    varrayList.add(v);
+                } else if (args.length == 1) {
+                    int n = (int) args[0];
+                    for (int i = 0; i < n; i++)
+                        varrayList.add(v);
+                } else {
+                    int copys = (int) args[0];
+                    int index = (int) args[1];
+                    if (copys <= 0 || index < 1 || index > varrayList.size())
+                        return;
+                    for (int i = 0; i < copys; i++) {
+                        Var copyVar = varrayList.get(index).clone();
+                        varrayList.add(copyVar);
+                    }
+                }
+                break;
             case NESTED_TABLE:
                 v.setDataType(getNestedTableTypeVar().getDataType());
                 if (args.length == 0) {
