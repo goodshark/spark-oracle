@@ -491,6 +491,7 @@ public class Var implements Serializable {
     private Var traverseCollection(String action, Object ...args) throws Exception {
         Var resultVar = new Var();
         resultVar.setVarName(collectionVarName);
+        resultVar.setDataType(DataType.NULL);
         switch (getDataType()) {
             case VARRAY:
                 if (action.equalsIgnoreCase("PRIOR")) {
@@ -558,7 +559,8 @@ public class Var implements Serializable {
         if (args.length == 0)
             return;
         int index = (int)Double.parseDouble(args[0].toString());
-        for (int i = index-1; i > 0; i--) {
+        int lastIndex = Math.min(index, list.size());
+        for (int i = lastIndex-1; i > 0; i--) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
                 v.setDataType(DataType.INT);
@@ -571,7 +573,8 @@ public class Var implements Serializable {
         if (args.length == 0)
             return;
         int index = (int)Double.parseDouble(args[0].toString());
-        for (int i = index+1; i < list.size(); i++) {
+        int firstIndex = Math.max(index, 0);
+        for (int i = firstIndex+1; i < list.size(); i++) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
                 v.setDataType(DataType.INT);
