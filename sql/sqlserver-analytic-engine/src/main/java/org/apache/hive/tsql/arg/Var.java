@@ -282,7 +282,7 @@ public class Var implements Serializable {
                     assocArray = new TreeMap<>(new StringCmp());
                 else if (args.length == 1) {
                     Object key = args[0];
-                    assocArray.remove(key);
+                    assocArray.remove(key.toString());
                 } else {
                     String fromKey = args[0].toString();
                     String toKey = args[1].toString();
