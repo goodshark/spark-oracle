@@ -7,7 +7,7 @@ import java.util.HashSet;
 /**
  * Created by chenfolin on 2017/10/25.
  */
-public interface HiveSentryAuthProviderInterface {
+public interface HiveSentryAuthzProviderInterface {
 
     public void authorize(HashSet<AuthzEntity> tables, String currentdb, String username) throws AuthorizationException;
 
