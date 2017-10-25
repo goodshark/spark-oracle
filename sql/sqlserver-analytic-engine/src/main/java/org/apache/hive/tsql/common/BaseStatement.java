@@ -263,6 +263,7 @@ public abstract class BaseStatement extends TreeNode {
         } else if (typeDeclare.getDeclareType() == Var.DataType.VARRAY) {
             var.setDataType(Var.DataType.VARRAY);
             var.addVarrayTypeVar(((VarrayTypeDeclare)typeDeclare).getTypeVar());
+            var.setVarrayMaxSize(((VarrayTypeDeclare)typeDeclare).getSize());
         } else if (typeDeclare.getDeclareType() == Var.DataType.NESTED_TABLE) {
             var.setDataType(Var.DataType.NESTED_TABLE);
             var.addNestedTableTypeVar(typeDeclare.getTableTypeVar());
@@ -271,6 +272,8 @@ public abstract class BaseStatement extends TreeNode {
         } else if (typeDeclare.getDeclareType() == Var.DataType.ASSOC_ARRAY) {
             var.setDataType(Var.DataType.ASSOC_ARRAY);
             var.setAssocTypeVar(((AssocArrayTypeDeclare)typeDeclare).getIndexTypeVar());
+            // TODO when assoc-array be assigned the new value, need valueTypeVar
+            var.setAssocValueTypeVar(typeDeclare.getTableTypeVar());
         } else {
             var.setDataType(Var.DataType.NESTED_TABLE);
             Var typeVar = typeDeclare.getTableTypeVar();

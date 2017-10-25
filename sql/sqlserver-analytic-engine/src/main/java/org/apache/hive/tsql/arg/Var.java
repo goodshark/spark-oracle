@@ -88,6 +88,11 @@ public class Var implements Serializable {
     }
 
     private List<Var> varrayList = new ArrayList<>();
+    private int varrayMaxSize = 0;
+
+    public void setVarrayMaxSize(int n) {
+        varrayMaxSize = n;
+    }
 
     public void addVarrayTypeVar(Var v) throws Exception {
         if (varrayList.size() != 0)
@@ -223,6 +228,8 @@ public class Var implements Serializable {
             case PRIOR:
             case NEXT:
                 return var.traverseCollection(method.toUpperCase(), args);
+            case LIMIT:
+                return var.limitCollection();
             // do not exists default, just return null;
         }
         return null;
@@ -353,10 +360,12 @@ public class Var implements Serializable {
                 v.setDataType(getVarrayTypeVar().getDataType());
                 if (args.length == 0) {
                     varrayList.add(v);
+                    varrayMaxSize++;
                 } else if (args.length == 1) {
                     int n = (int) args[0];
                     for (int i = 0; i < n; i++)
                         varrayList.add(v);
+                    varrayMaxSize++;
                 } else {
                     int copys = (int) args[0];
                     int index = (int) args[1];
@@ -366,6 +375,7 @@ public class Var implements Serializable {
                         Var copyVar = varrayList.get(index).clone();
                         varrayList.add(copyVar);
                     }
+                    varrayMaxSize += copys;
                 }
                 break;
             case NESTED_TABLE:
@@ -521,6 +531,24 @@ public class Var implements Serializable {
                             nextFlag = true;
                     }
                 }
+                break;
+        }
+        return resultVar;
+    }
+
+    private Var limitCollection() throws Exception {
+        Var resultVar = new Var();
+        resultVar.setVarName(collectionVarName);
+        switch (getDataType()) {
+            case VARRAY:
+                resultVar.setDataType(DataType.INT);
+                resultVar.setVarValue(varrayMaxSize);
+                break;
+            case NESTED_TABLE:
+                resultVar.setDataType(DataType.NULL);
+                break;
+            case ASSOC_ARRAY:
+                resultVar.setDataType(DataType.NULL);
                 break;
         }
         return resultVar;
