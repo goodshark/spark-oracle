@@ -328,7 +328,7 @@ public class Var implements Serializable {
                     return true;
             case NESTED_TABLE:
                 int nIndex = (int)args[0];
-                if (nIndex < 1 || nIndex > nestedTableList.size())
+                if (nIndex < 1 || nIndex >= nestedTableList.size())
                     return false;
                 if (nestedTableList.get(nIndex) != null)
                     return true;
