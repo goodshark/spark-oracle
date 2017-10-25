@@ -380,6 +380,14 @@ public class Var implements Serializable {
                 }
                 break;
             case NESTED_TABLE:
+                if (args.length == 0) {
+                    nestedTableList.remove(nestedTableList.size()-1);
+                } else {
+                    int n = (int) args[0];
+                    if (n > nestedTableList.size()-1 || n < 0)
+                        throw new Exception("TRIM arg is out of range");
+                    nestedTableList = new ArrayList<>(nestedTableList.subList(0, nestedTableList.size()-n));
+                }
                 break;
             case ASSOC_ARRAY:
                 throw new Exception("assoc-array is not support trim");
