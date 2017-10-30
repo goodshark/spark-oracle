@@ -197,6 +197,34 @@ public abstract class BaseStatement extends TreeNode {
     }
 
     private void subsititueType(Var curVar, Var refVar) {
+        curVar.setValueType(refVar.getValueType());
+        curVar.setAliasName(refVar.getAliasName());
+        curVar.setVarType(refVar.getVarType());
+        curVar.setExecuted(refVar.isExecuted());
+        curVar.setExpr(refVar.getExpr());
+        curVar.setRefTypeName(refVar.getRefTypeName());
+        if (refVar.isCompoundResolved())
+            curVar.setCompoundResolved();
+        if (refVar.getDataType() == Var.DataType.REF_COMPOSITE) {
+            for (String innerVarName: refVar.getCompoundVarMap().keySet()) {
+                Var innerVar = refVar.getCompoundVarMap().get(innerVarName).typeClone();
+                curVar.addInnerVar(innerVar);
+            }
+        }
+        if (refVar.getDataType() == Var.DataType.NESTED_TABLE) {
+            // TODO compatible old implement
+            for (Var arrayVar: refVar.getArrayVars()) {
+                curVar.addArrayVar(arrayVar);
+            }
+            for (Var nestedTableInnerVar: refVar.getNestedTableList()) {
+                curVar.addNestedTableValue(nestedTableInnerVar);
+            }
+        }
+        // assoc-array
+        if (refVar.getAssocTypeVar() != null)
+            curVar.setAssocTypeVar(refVar.getAssocTypeVar().clone());
+        if (refVar.getAssocValueTypeVar()!= null)
+            curVar.setAssocValueTypeVar(refVar.getAssocValueTypeVar().clone());
     }
 
     protected void resolveRefSingle(Var var) throws Exception {

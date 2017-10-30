@@ -33,17 +33,9 @@ public class DeclareStatement extends BaseStatement {
 //            }
             if (var.getDataType() == Var.DataType.REF_SINGLE) {
                 resolveRefSingle(var);
-//                findRefType(var);
-                // REF_SINGLE has no default value
-//                continue;
-            }
-            if (var.getDataType() == Var.DataType.REF_COMPOSITE) {
+            } else if (var.getDataType() == Var.DataType.REF_COMPOSITE) {
                 resolveRefComposite(var);
-//                findComplexType(var);
-                // REF_COMPOSITE has no default value
-//                continue;
-            }
-            if (var.getDataType() == Var.DataType.CUSTOM) {
+            } else if (var.getDataType() == Var.DataType.CUSTOM) {
                 resolveCustomType(var);
             }
 
