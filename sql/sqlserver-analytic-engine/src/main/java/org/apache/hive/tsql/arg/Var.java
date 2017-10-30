@@ -71,6 +71,14 @@ public class Var implements Serializable {
     // only for general_element_part x(1).y
     private Var searchIndex = null;
 
+    public Map<String, Var> getCompoundVarMap() {
+        return new HashMap<>(compoundVarMap);
+    }
+
+    public List<Var> getArrayVars() {
+        return new ArrayList<>(arrayVars);
+    }
+
 
     // TODO new custom type start
     // for SetStatement
@@ -116,6 +124,10 @@ public class Var implements Serializable {
 
     private List<Var> nestedTableList = new ArrayList<>();
 
+    public List<Var> getNestedTableList() {
+        return new ArrayList<>(nestedTableList);
+    }
+
     public void addNestedTableTypeVar(Var v) throws Exception {
         if (nestedTableList.size() != 0)
             throw new Exception("nested-table has already the type var");
@@ -153,6 +165,7 @@ public class Var implements Serializable {
     private TreeMap<String, Var> assocArray = new TreeMap<>(new StringCmp());
     // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means VARCHAR(100)
     private Var assocTypeVar;
+
     // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means INTEGER
     private Var assocValueTypeVar;
 
@@ -160,8 +173,17 @@ public class Var implements Serializable {
         assocTypeVar = v;
     }
 
+
+    public Var getAssocTypeVar() {
+        return assocTypeVar;
+    }
+
     public void setAssocValueTypeVar(Var v) {
         assocValueTypeVar = v;
+    }
+
+    public Var getAssocValueTypeVar() {
+        return assocValueTypeVar;
     }
 
     public Var getAssocArrayValue(String index) {
@@ -655,6 +677,8 @@ public class Var implements Serializable {
             throw new Exception("left var and right var is not same type");*/
         switch (leftVar.getDataType()) {
             case COMPOSITE:
+            case REF_COMPOSITE:
+                leftVar.compoundVarMap = new HashMap<>(rightVar.compoundVarMap);
                 break;
             case VARRAY:
                 leftVar.initialized = rightVar.initialized;
