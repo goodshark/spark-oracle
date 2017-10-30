@@ -35,6 +35,7 @@ import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
+import org.apache.spark.sql.auth.{HiveSentryAuthzProvider, SentryAuthUtils}
 import org.apache.spark.sql.catalog.Catalog
 import org.apache.spark.sql.catalyst._
 import org.apache.spark.sql.catalyst.analysis.FunctionRegistry.FunctionBuilder
@@ -91,6 +92,7 @@ class SparkSession private(
 
 
   var sparkSessionUserName: String = ""
+  var username: String = null
 
   /**
     * 用于保存sqlserver模式下的表名称
@@ -670,13 +672,17 @@ class SparkSession private(
     * @since 2.0.0
     */
   def sql(sqlText: String): DataFrame = {
-    // this is a test
+    // this is a testing
     /* val sparkConf = sqlContext.getAllConfs
     sparkConf.keySet.foreach((k: String) => logInfo(s" ACID==> key : $k ," +
       s"value :" + sparkConf.get(k)))
     sparkContext.getConf.getAll.foreach( f => logInfo(s" key:==> ${f._1} value: ==> ${f._2} ")) */
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
+    if (HiveSentryAuthzProvider.useSentryAuth()) {
+      val result = SentryAuthUtils.retriveInputOutputEntities(plan)
+      HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
+    }
     sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "false")
     // for testing
     // sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
