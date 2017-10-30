@@ -71,6 +71,14 @@ public class Var implements Serializable {
     // only for general_element_part x(1).y
     private Var searchIndex = null;
 
+    public Map<String, Var> getCompoundVarMap() {
+        return new HashMap<>(compoundVarMap);
+    }
+
+    public List<Var> getArrayVars() {
+        return new ArrayList<>(arrayVars);
+    }
+
 
     // TODO new custom type start
     // for SetStatement
@@ -88,11 +96,22 @@ public class Var implements Serializable {
     }
 
     private List<Var> varrayList = new ArrayList<>();
+    private int varrayMaxSize = 0;
+
+    public void setVarrayMaxSize(int n) {
+        varrayMaxSize = n;
+    }
 
     public void addVarrayTypeVar(Var v) throws Exception {
         if (varrayList.size() != 0)
             throw new Exception("varray has already the type var");
         varrayList.add(0, v);
+    }
+
+    public Var getVarrayTypeVar() throws Exception {
+        if (varrayList.size() < 1)
+            throw new Exception("varray has no type var");
+        return varrayList.get(0);
     }
 
     public void addVarrayValue(Var v) {
@@ -104,6 +123,10 @@ public class Var implements Serializable {
     }
 
     private List<Var> nestedTableList = new ArrayList<>();
+
+    public List<Var> getNestedTableList() {
+        return new ArrayList<>(nestedTableList);
+    }
 
     public void addNestedTableTypeVar(Var v) throws Exception {
         if (nestedTableList.size() != 0)
@@ -122,8 +145,14 @@ public class Var implements Serializable {
     }
 
     public Var getNestedTableInnerVar(int i) throws Exception {
-        if (nestedTableList.get(i) == null)
-            throw new Exception("nested-table has no data");
+        if (i >= nestedTableList.size())
+            throw new Exception("index out of nested-table");
+        // null is the DELETE placeholder
+        if (nestedTableList.get(i) == null) {
+            Var nestedTableValue = getNestedTableTypeVar().clone();
+            nestedTableList.remove(i);
+            nestedTableList.add(i, nestedTableValue);
+        }
         return nestedTableList.get(i);
     }
 
@@ -136,6 +165,7 @@ public class Var implements Serializable {
     private TreeMap<String, Var> assocArray = new TreeMap<>(new StringCmp());
     // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means VARCHAR(100)
     private Var assocTypeVar;
+
     // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means INTEGER
     private Var assocValueTypeVar;
 
@@ -143,8 +173,17 @@ public class Var implements Serializable {
         assocTypeVar = v;
     }
 
+
+    public Var getAssocTypeVar() {
+        return assocTypeVar;
+    }
+
     public void setAssocValueTypeVar(Var v) {
         assocValueTypeVar = v;
+    }
+
+    public Var getAssocValueTypeVar() {
+        return assocValueTypeVar;
     }
 
     public Var getAssocArrayValue(String index) {
@@ -211,6 +250,8 @@ public class Var implements Serializable {
             case PRIOR:
             case NEXT:
                 return var.traverseCollection(method.toUpperCase(), args);
+            case LIMIT:
+                return var.limitCollection();
             // do not exists default, just return null;
         }
         return null;
@@ -273,16 +314,32 @@ public class Var implements Serializable {
                 break;
             case ASSOC_ARRAY:
                 if (args.length == 0)
-                    assocArray = new TreeMap<>();
+                    assocArray = new TreeMap<>(new StringCmp());
                 else if (args.length == 1) {
                     Object key = args[0];
-                    assocArray.remove(key);
+                    assocArray.remove(key.toString());
                 } else {
                     String fromKey = args[0].toString();
                     String toKey = args[1].toString();
                     try {
-                        Map<String, Var> subMap = assocArray.subMap(fromKey, toKey);
-                        assocArray = new TreeMap<>(subMap);
+                        int compareRes = assocArray.comparator().compare(fromKey, toKey);
+                        if (compareRes > 0)
+                            return;
+                    } catch (Exception e) {
+                        // do nothing, in case comparator of assocArray is NULL
+                    }
+                    String tailKey = assocArray.higherKey(toKey);
+                    try {
+                        TreeMap<String, Var> tmpMap = new TreeMap<>(new StringCmp());
+                        Map<String, Var> headMap = assocArray.headMap(fromKey);
+                        tmpMap.putAll(headMap);
+                        if (tailKey != null) {
+                            Map<String, Var> tailMap = assocArray.tailMap(tailKey);
+                            tmpMap.putAll(tailMap);
+                        }
+                        assocArray = tmpMap;
+                        /*Map<String, Var> subMap = assocArray.subMap(fromKey, toKey);
+                        assocArray = new TreeMap<>(subMap);*/
                     } catch (Exception e) {
                         // do nothing
                         return;
@@ -306,7 +363,7 @@ public class Var implements Serializable {
                     return true;
             case NESTED_TABLE:
                 int nIndex = (int)args[0];
-                if (nIndex < 1 || nIndex > nestedTableList.size())
+                if (nIndex < 1 || nIndex >= nestedTableList.size())
                     return false;
                 if (nestedTableList.get(nIndex) != null)
                     return true;
@@ -322,7 +379,27 @@ public class Var implements Serializable {
         Var v = new Var(null, DataType.NULL);
         switch (getDataType()) {
             case VARRAY:
-                throw new Exception("varray can not extend any more");
+                v.setDataType(getVarrayTypeVar().getDataType());
+                if (args.length == 0) {
+                    varrayList.add(v);
+                    varrayMaxSize++;
+                } else if (args.length == 1) {
+                    int n = (int) args[0];
+                    for (int i = 0; i < n; i++)
+                        varrayList.add(v);
+                    varrayMaxSize++;
+                } else {
+                    int copys = (int) args[0];
+                    int index = (int) args[1];
+                    if (copys <= 0 || index < 1 || index > varrayList.size())
+                        return;
+                    for (int i = 0; i < copys; i++) {
+                        Var copyVar = varrayList.get(index).clone();
+                        varrayList.add(copyVar);
+                    }
+                    varrayMaxSize += copys;
+                }
+                break;
             case NESTED_TABLE:
                 v.setDataType(getNestedTableTypeVar().getDataType());
                 if (args.length == 0) {
@@ -358,6 +435,14 @@ public class Var implements Serializable {
                 }
                 break;
             case NESTED_TABLE:
+                if (args.length == 0) {
+                    nestedTableList.remove(nestedTableList.size()-1);
+                } else {
+                    int n = (int) args[0];
+                    if (n > nestedTableList.size()-1 || n < 0)
+                        throw new Exception("TRIM arg is out of range");
+                    nestedTableList = new ArrayList<>(nestedTableList.subList(0, nestedTableList.size()-n));
+                }
                 break;
             case ASSOC_ARRAY:
                 throw new Exception("assoc-array is not support trim");
@@ -428,6 +513,7 @@ public class Var implements Serializable {
     private Var traverseCollection(String action, Object ...args) throws Exception {
         Var resultVar = new Var();
         resultVar.setVarName(collectionVarName);
+        resultVar.setDataType(DataType.NULL);
         switch (getDataType()) {
             case VARRAY:
                 if (action.equalsIgnoreCase("PRIOR")) {
@@ -473,11 +559,30 @@ public class Var implements Serializable {
         return resultVar;
     }
 
+    private Var limitCollection() throws Exception {
+        Var resultVar = new Var();
+        resultVar.setVarName(collectionVarName);
+        switch (getDataType()) {
+            case VARRAY:
+                resultVar.setDataType(DataType.INT);
+                resultVar.setVarValue(varrayMaxSize);
+                break;
+            case NESTED_TABLE:
+                resultVar.setDataType(DataType.NULL);
+                break;
+            case ASSOC_ARRAY:
+                resultVar.setDataType(DataType.NULL);
+                break;
+        }
+        return resultVar;
+    }
+
     private void getPrior(List<Var> list, Var v, Object ...args) throws Exception {
         if (args.length == 0)
             return;
         int index = (int)Double.parseDouble(args[0].toString());
-        for (int i = index-1; i > 0; i--) {
+        int lastIndex = Math.min(index, list.size());
+        for (int i = lastIndex-1; i > 0; i--) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
                 v.setDataType(DataType.INT);
@@ -490,7 +595,8 @@ public class Var implements Serializable {
         if (args.length == 0)
             return;
         int index = (int)Double.parseDouble(args[0].toString());
-        for (int i = index+1; i < list.size(); i++) {
+        int firstIndex = Math.max(index, 0);
+        for (int i = firstIndex+1; i < list.size(); i++) {
             if (list.get(i) != null) {
                 v.setVarValue(i);
                 v.setDataType(DataType.INT);
@@ -571,6 +677,8 @@ public class Var implements Serializable {
             throw new Exception("left var and right var is not same type");*/
         switch (leftVar.getDataType()) {
             case COMPOSITE:
+            case REF_COMPOSITE:
+                leftVar.compoundVarMap = new HashMap<>(rightVar.compoundVarMap);
                 break;
             case VARRAY:
                 leftVar.initialized = rightVar.initialized;

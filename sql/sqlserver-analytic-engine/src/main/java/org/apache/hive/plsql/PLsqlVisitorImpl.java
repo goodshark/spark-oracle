@@ -1302,6 +1302,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             String value = ctx.getText();
             if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))
                 var = new Var("", Boolean.parseBoolean(value), Var.DataType.BOOLEAN);
+            else if (value.equalsIgnoreCase("null"))
+                var = new Var("", null, Var.DataType.NULL);
             else
                 var = new Var("", value, Var.DataType.STRING);
         }

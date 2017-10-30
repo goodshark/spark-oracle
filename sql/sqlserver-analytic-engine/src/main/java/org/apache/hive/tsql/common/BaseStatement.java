@@ -197,6 +197,34 @@ public abstract class BaseStatement extends TreeNode {
     }
 
     private void subsititueType(Var curVar, Var refVar) {
+        curVar.setValueType(refVar.getValueType());
+        curVar.setAliasName(refVar.getAliasName());
+        curVar.setVarType(refVar.getVarType());
+        curVar.setExecuted(refVar.isExecuted());
+        curVar.setExpr(refVar.getExpr());
+        curVar.setRefTypeName(refVar.getRefTypeName());
+        if (refVar.isCompoundResolved())
+            curVar.setCompoundResolved();
+        if (refVar.getDataType() == Var.DataType.REF_COMPOSITE) {
+            for (String innerVarName: refVar.getCompoundVarMap().keySet()) {
+                Var innerVar = refVar.getCompoundVarMap().get(innerVarName).typeClone();
+                curVar.addInnerVar(innerVar);
+            }
+        }
+        if (refVar.getDataType() == Var.DataType.NESTED_TABLE) {
+            // TODO compatible old implement
+            for (Var arrayVar: refVar.getArrayVars()) {
+                curVar.addArrayVar(arrayVar);
+            }
+            for (Var nestedTableInnerVar: refVar.getNestedTableList()) {
+                curVar.addNestedTableValue(nestedTableInnerVar);
+            }
+        }
+        // assoc-array
+        if (refVar.getAssocTypeVar() != null)
+            curVar.setAssocTypeVar(refVar.getAssocTypeVar().clone());
+        if (refVar.getAssocValueTypeVar()!= null)
+            curVar.setAssocValueTypeVar(refVar.getAssocValueTypeVar().clone());
     }
 
     protected void resolveRefSingle(Var var) throws Exception {
@@ -263,6 +291,7 @@ public abstract class BaseStatement extends TreeNode {
         } else if (typeDeclare.getDeclareType() == Var.DataType.VARRAY) {
             var.setDataType(Var.DataType.VARRAY);
             var.addVarrayTypeVar(((VarrayTypeDeclare)typeDeclare).getTypeVar());
+            var.setVarrayMaxSize(((VarrayTypeDeclare)typeDeclare).getSize());
         } else if (typeDeclare.getDeclareType() == Var.DataType.NESTED_TABLE) {
             var.setDataType(Var.DataType.NESTED_TABLE);
             var.addNestedTableTypeVar(typeDeclare.getTableTypeVar());
@@ -271,6 +300,8 @@ public abstract class BaseStatement extends TreeNode {
         } else if (typeDeclare.getDeclareType() == Var.DataType.ASSOC_ARRAY) {
             var.setDataType(Var.DataType.ASSOC_ARRAY);
             var.setAssocTypeVar(((AssocArrayTypeDeclare)typeDeclare).getIndexTypeVar());
+            // TODO when assoc-array be assigned the new value, need valueTypeVar
+            var.setAssocValueTypeVar(typeDeclare.getTableTypeVar());
         } else {
             var.setDataType(Var.DataType.NESTED_TABLE);
             Var typeVar = typeDeclare.getTableTypeVar();
