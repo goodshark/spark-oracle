@@ -14,8 +14,6 @@ import java.util.*;
  */
 public class HiveSentryAuthzProvider {
 
-    public static final String SELECT = "SELECT";
-    public static final String INSERT = "INSERT";
     public static final String SENTRY_HOOK_KEY = "hive.server2.session.hook";
     public static final String SENTRY_HOOK = "org.apache.sentry.binding.hive.HiveAuthzBindingSessionHook";
 
