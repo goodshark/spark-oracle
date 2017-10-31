@@ -2655,10 +2655,14 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitOpen_for_statement(PlsqlParser.Open_for_statementContext ctx) {
-        // TODO open for cursor is the custom type
-        OracleOpenCursorStmt openCursorStmt = new OracleOpenCursorStmt();
-        treeBuilder.pushStatement(openCursorStmt);
-        return openCursorStmt;
+        OracleOpenForStmt oracleOpenForStmt = new OracleOpenForStmt();
+        OracleCursor cursor = new OracleCursor(ctx.variable_name().getText());
+        oracleOpenForStmt.setCursor(cursor);
+        visit(ctx.select_statement());
+        TreeNode sqlBlock = treeBuilder.popStatement();
+        cursor.setTreeNode(sqlBlock);
+        treeBuilder.pushStatement(oracleOpenForStmt);
+        return oracleOpenForStmt;
     }
     //======================================update===============================
 
