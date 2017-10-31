@@ -160,15 +160,23 @@ object SentryAuthUtils {
         val dbName = createTableLike.targetTable.database.getOrElse {null}
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName))
         createTableLike
-      case createView: CreateViewCommand =>
-        val tableName = createView.name.table
-        val dbName = createView.name.database.getOrElse {null}
+      case createView2: CreateViewCommand =>
+        val tableName = createView2.name.table
+        val dbName = createView2.name.database.getOrElse {null}
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName))
-        createView
+        if (createView2.child != null) {
+          val createAs = retriveInputOutputEntities(createView2.child)
+          result.addAll(createAs)
+        }
+        createView2
       case alterView: AlterViewAsCommand =>
         val tableName = alterView.name.table
         val dbName = alterView.name.database.getOrElse {null}
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName))
+        if (alterView.query != null) {
+          val createAs = retriveInputOutputEntities(alterView.query)
+          result.addAll(createAs)
+        }
         alterView
     }
     result
