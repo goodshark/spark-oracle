@@ -92,6 +92,10 @@ object SentryAuthUtils {
         val dbName = createDb.databaseName
         result.add(AuthzEntity(PrivilegeType.CREATE, null, dbName))
         createDb
+      case alterDb: AlterDatabasePropertiesCommand =>
+        val dbName = alterDb.databaseName
+        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, null, dbName))
+        alterDb
       case dropDb: DropDatabaseCommand =>
         val dbName = dropDb.databaseName
         result.add(AuthzEntity(PrivilegeType.DROP, null, dbName))
