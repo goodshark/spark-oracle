@@ -1,6 +1,7 @@
 package org.apache.hive.plsql.cursor;
 
 import org.apache.hive.tsql.common.BaseStatement;
+import org.apache.hive.tsql.common.SparkResultSet;
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.cursor.Cursor;
 
@@ -24,7 +25,9 @@ public class OracleOpenForStmt extends BaseStatement {
         sqlStmt.setExecSession(getExecSession());
         sqlStmt.setAddResult(false);
         sqlStmt.execute();
-        cursor.setRs(sqlStmt.getRs());
+        SparkResultSet rs = (SparkResultSet) sqlStmt.getRs();
+        cursor.setRs(rs);
+        cursor.setSchema(rs.getColumns());
         // add cursor variable into variable-scope
         addCursor(cursor);
         return 0;
