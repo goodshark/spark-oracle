@@ -70,6 +70,7 @@ import org.apache.hive.service.cli.operation.Operation;
 import org.apache.hive.service.cli.operation.OperationManager;
 import org.apache.hive.service.cli.thrift.TProtocolVersion;
 import org.apache.hive.service.server.ThreadWithGarbageCleanup;
+import org.apache.spark.sql.hive.thriftserver.HiveThriftServer2;
 
 /**
  * HiveSession
@@ -85,6 +86,9 @@ public class HiveSessionImpl implements HiveSession {
   private static final String FETCH_WORK_SERDE_CLASS =
       "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe";
   private static final Log LOG = LogFactory.getLog(HiveSessionImpl.class);
+  public static final String AUDIT_FORMAT = "ugi=%s\t" + "ip=%s\t" + "cmd=%s";
+  public static final Log auditLog = LogFactory.getLog(
+          HiveThriftServer2.class.getName() + ".audit");
   private SessionManager sessionManager;
   private OperationManager operationManager;
   private final Set<OperationHandle> opHandleSet = new HashSet<OperationHandle>();
@@ -378,6 +382,7 @@ public class HiveSessionImpl implements HiveSession {
   private OperationHandle executeStatementInternal(String statement, Map<String, String> confOverlay,
       boolean runAsync)
           throws HiveSQLException {
+    auditLog.info(String.format(AUDIT_FORMAT, username, ipAddress, statement));
     acquire(true);
 
     OperationManager operationManager = getOperationManager();
