@@ -22,6 +22,8 @@
 package org.apache.spark.sql.auth
 
 import org.apache.hadoop.hive.ql.security.authorization.PrivilegeType
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedAttribute, UnresolvedRelation, UnresolvedStar}
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan, Project}
@@ -30,7 +32,8 @@ import org.apache.spark.sql.execution.datasources.{AcidDelCommand, AcidUpdateCom
 
 object SentryAuthUtils {
 
-  def retriveInputOutputEntities(plan: LogicalPlan): java.util.HashSet[AuthzEntity] = {
+  def retriveInputOutputEntities(plan: LogicalPlan,
+                                 sparkSession: SparkSession): java.util.HashSet[AuthzEntity] = {
     val result: java.util.HashSet[AuthzEntity] = new java.util.HashSet[AuthzEntity]()
     var currentProject: Project = null
     if (plan.isInstanceOf[Project]) {
@@ -57,7 +60,7 @@ object SentryAuthUtils {
         result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
         if (currentProject != null) {
           val alis = readTable.alias.getOrElse(null)
-          val columns = retriveInputEntities(currentProject.projectList, alis)
+          val columns = retriveInputEntities(currentProject.projectList, alis, sparkSession, readTable.tableIdentifier)
           val ir = columns.iterator()
           while (ir.hasNext) {
             result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, ir.next()))
@@ -70,7 +73,7 @@ object SentryAuthUtils {
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
         val logicalPlan: LogicalPlan = createTable.query.getOrElse {null}
         if (logicalPlan != null) {
-          val createAs = retriveInputOutputEntities(logicalPlan)
+          val createAs = retriveInputOutputEntities(logicalPlan, sparkSession)
           result.addAll(createAs)
         }
         createTable
@@ -185,7 +188,7 @@ object SentryAuthUtils {
         val dbName = createView2.name.database.getOrElse {null}
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
         if (createView2.child != null) {
-          val createAs = retriveInputOutputEntities(createView2.child)
+          val createAs = retriveInputOutputEntities(createView2.child, sparkSession)
           result.addAll(createAs)
         }
         createView2
@@ -194,7 +197,7 @@ object SentryAuthUtils {
         val dbName = alterView.name.database.getOrElse {null}
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
         if (alterView.query != null) {
-          val createAs = retriveInputOutputEntities(alterView.query)
+          val createAs = retriveInputOutputEntities(alterView.query, sparkSession)
           result.addAll(createAs)
         }
         alterView
@@ -202,7 +205,9 @@ object SentryAuthUtils {
     result
   }
 
-  def retriveInputEntities(plans: Seq[NamedExpression], alis: String): java.util.HashSet[String] = {
+  def retriveInputEntities(plans: Seq[NamedExpression], alis: String,
+                           sparkSession: SparkSession, tableIdent: TableIdentifier
+                          ): java.util.HashSet[String] = {
     val result: java.util.HashSet[String] = new java.util.HashSet[String]()
     plans.foreach(plan => {
       plan.transformDown{
@@ -216,7 +221,8 @@ object SentryAuthUtils {
           }
           attr
         case attr: UnresolvedStar =>
-          result.add("*")
+          val columns: Seq[String] = sparkSession.getColumnForSelectStar(tableIdent)
+          columns.foreach(result.add)
           attr
       }
     })
