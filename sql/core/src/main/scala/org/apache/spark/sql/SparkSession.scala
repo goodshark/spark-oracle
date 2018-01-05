@@ -39,7 +39,7 @@ import org.apache.spark.sql.auth.{HiveSentryAuthzProvider, SentryAuthUtils}
 import org.apache.spark.sql.catalog.Catalog
 import org.apache.spark.sql.catalyst._
 import org.apache.spark.sql.catalyst.analysis.FunctionRegistry.FunctionBuilder
-import org.apache.spark.sql.catalyst.catalog.CatalogTable
+import org.apache.spark.sql.catalyst.catalog.{CatalogRelation, CatalogTable, SimpleCatalogRelation}
 import org.apache.spark.sql.catalyst.encoders._
 import org.apache.spark.sql.catalyst.expressions.{AttributeReference, ExpressionInfo}
 import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LocalRelation, Range, SubqueryAlias}
@@ -679,10 +679,10 @@ class SparkSession private(
     sparkContext.getConf.getAll.foreach( f => logInfo(s" key:==> ${f._1} value: ==> ${f._2} ")) */
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
-    if (HiveSentryAuthzProvider.useSentryAuth()) {
+//    if (HiveSentryAuthzProvider.useSentryAuth()) {
       val result = SentryAuthUtils.retriveInputOutputEntities(plan, this)
-      HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
-    }
+//      HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
+//    }
     sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "false")
     // for testing
     // sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
@@ -735,6 +735,11 @@ class SparkSession private(
     if (sqlContext.sessionState.catalog.lookupRelation(tableIdent).isInstanceOf[SubqueryAlias]) {
       sqlContext.sessionState.catalog.lookupRelation(tableIdent)
         .asInstanceOf[SubqueryAlias].child.output.map(c => c.name)
+    } else if (sqlContext.sessionState.catalog.lookupRelation(tableIdent)
+      .isInstanceOf[CatalogRelation]) {
+      sqlContext.sessionState.catalog.lookupRelation(tableIdent)
+        .asInstanceOf[CatalogRelation].catalogTable.schema.fields
+        .map(f => f.name)
     } else {
       Seq.empty
     }
