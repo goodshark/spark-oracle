@@ -57,13 +57,15 @@ object SentryAuthUtils {
           && readTable.tableIdentifier.database.get != null) {
           readTable.tableIdentifier.database.get
         } else null
-        result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
         if (currentProject != null) {
           val alis = readTable.alias.getOrElse(null)
           val columns = retriveInputEntities(currentProject.projectList, alis, sparkSession, readTable.tableIdentifier)
           val ir = columns.iterator()
           while (ir.hasNext) {
             result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, ir.next()))
+          }
+          if (columns.size() == 0) {
+            result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
           }
         }
         readTable

@@ -679,10 +679,10 @@ class SparkSession private(
     sparkContext.getConf.getAll.foreach( f => logInfo(s" key:==> ${f._1} value: ==> ${f._2} ")) */
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
-//    if (HiveSentryAuthzProvider.useSentryAuth()) {
+    if (HiveSentryAuthzProvider.useSentryAuth()) {
       val result = SentryAuthUtils.retriveInputOutputEntities(plan, this)
-//      HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
-//    }
+      HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
+    }
     sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "false")
     // for testing
     // sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
