@@ -23,15 +23,14 @@ import java.util
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.hive.ql.metadata.HiveException
 import org.apache.thrift.TException
-
 import org.apache.spark.{SparkConf, SparkException}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.auth.HiveSentryAuthzProvider
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.catalog._
@@ -171,11 +170,19 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
   }
 
   override def listDatabases(): Seq[String] = withClient {
-    client.listDatabases("*")
+    if (HiveSentryAuthzProvider.useSentryAuth()) {
+      HiveSentryAuthzProvider.getInstance().filterDatabase(client.listDatabases("*").toArray)
+    } else {
+      client.listDatabases("*")
+    }
   }
 
   override def listDatabases(pattern: String): Seq[String] = withClient {
-    client.listDatabases(pattern)
+    if (HiveSentryAuthzProvider.useSentryAuth()) {
+      HiveSentryAuthzProvider.getInstance().filterDatabase(client.listDatabases(pattern).toArray)
+    } else {
+      client.listDatabases(pattern)
+    }
   }
 
   override def setCurrentDatabase(db: String): Unit = withClient {
@@ -727,12 +734,21 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
 
   override def listTables(db: String): Seq[String] = withClient {
     requireDbExists(db)
-    client.listTables(db)
+    if (HiveSentryAuthzProvider.useSentryAuth()) {
+      HiveSentryAuthzProvider.getInstance().filterTable(client.listTables(db).toArray, db)
+    } else {
+      client.listTables(db)
+    }
   }
 
   override def listTables(db: String, pattern: String): Seq[String] = withClient {
     requireDbExists(db)
-    client.listTables(db, pattern)
+    if (HiveSentryAuthzProvider.useSentryAuth()) {
+      HiveSentryAuthzProvider.getInstance().filterTable(
+        client.listTables(db, pattern).toArray, db)
+    } else {
+      client.listTables(db, pattern)
+    }
   }
 
   override def loadTable(

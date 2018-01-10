@@ -680,6 +680,7 @@ class SparkSession private(
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
     if (HiveSentryAuthzProvider.useSentryAuth()) {
+      HiveSentryAuthzProvider.setUser(username)
       val result = SentryAuthUtils.retriveInputOutputEntities(plan, this)
       HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
     }

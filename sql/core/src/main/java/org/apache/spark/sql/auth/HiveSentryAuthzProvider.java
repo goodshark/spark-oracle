@@ -29,6 +29,16 @@ public class HiveSentryAuthzProvider {
 
     private HiveSentryAuthzProviderInterface pinstance;
 
+    public static ThreadLocal<String> cuser = new ThreadLocal<String>();
+
+    public static void setUser(String user) {
+        cuser.set(user);
+    }
+
+    public static String getUser() {
+        return cuser.get();
+    }
+
     static{
         hiveConf = new HiveConf();
     }
@@ -51,6 +61,14 @@ public class HiveSentryAuthzProvider {
 
     public void authorize(HashSet<AuthzEntity> tables, String currentdb, String username) throws AuthorizationException{
         pinstance.authorize(tables, currentdb, username);
+    }
+
+    public String[] filterDatabase(String[] databases) {
+        return pinstance.filterDatabase(cuser.get(), databases);
+    }
+
+    public String[] filterTable(String[] tables, String db) {
+        return pinstance.filterTable(cuser.get(), tables, db);
     }
 
     public static boolean useSentryAuth(){
