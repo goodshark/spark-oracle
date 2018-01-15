@@ -21,12 +21,14 @@
 
 package org.apache.spark.sql.auth
 
+import java.util
+
 import org.apache.hadoop.hive.ql.security.authorization.PrivilegeType
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedAttribute, UnresolvedRelation, UnresolvedStar}
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
-import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan, Project}
+import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan, Project, With}
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.{AcidDelCommand, AcidUpdateCommand, CreateTable, CreateTempViewUsing}
 
@@ -35,11 +37,19 @@ object SentryAuthUtils {
   def retriveInputOutputEntities(plan: LogicalPlan,
                                  sparkSession: SparkSession): java.util.HashSet[AuthzEntity] = {
     val result: java.util.HashSet[AuthzEntity] = new java.util.HashSet[AuthzEntity]()
+    val cteRs: java.util.HashSet[String] = new util.HashSet[String]()
     var currentProject: Project = null
     if (plan.isInstanceOf[Project]) {
       currentProject = plan.asInstanceOf[Project]
     }
     plan.transformDown {
+      case withas: With =>
+        withas.cteRelations.foreach(cte => {
+          cteRs.add(cte._1)
+          val createAs = retriveInputOutputEntities(cte._2, sparkSession)
+          result.addAll(createAs)
+        })
+        withas
       case project: Project =>
         currentProject = project
         project
@@ -57,15 +67,18 @@ object SentryAuthUtils {
           && readTable.tableIdentifier.database.get != null) {
           readTable.tableIdentifier.database.get
         } else null
-        if (currentProject != null) {
-          val alis = readTable.alias.getOrElse(null)
-          val columns = retriveInputEntities(currentProject.projectList, alis, sparkSession, readTable.tableIdentifier)
-          val ir = columns.iterator()
-          while (ir.hasNext) {
-            result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, ir.next()))
-          }
-          if (columns.size() == 0) {
-            result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
+        if (!(!readTable.tableIdentifier.database.isDefined && cteRs.contains(tableName))) {
+          if (currentProject != null) {
+            val alis = readTable.alias.getOrElse(null)
+            val columns = retriveInputEntities(currentProject.projectList,
+              alis, sparkSession, readTable.tableIdentifier)
+            val ir = columns.iterator()
+            while (ir.hasNext) {
+              result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, ir.next()))
+            }
+            if (columns.size() == 0) {
+              result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
+            }
           }
         }
         readTable
