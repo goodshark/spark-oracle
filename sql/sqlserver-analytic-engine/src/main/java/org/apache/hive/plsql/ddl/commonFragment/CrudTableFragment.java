@@ -31,7 +31,7 @@ public class CrudTableFragment extends SqlStatement {
         sql.append("INTO ");
         sql.append(bucketNumber);
         sql.append(" BUCKETS STORED AS ORC TBLPROPERTIES" +
-                " (\"TRANSACTIONAL\" = \"TRUE\")");
+                " (\"transactional\" = \"true\")");
         return sql.toString();
     }
 

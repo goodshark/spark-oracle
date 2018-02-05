@@ -532,4 +532,9 @@ public class ProcedureCall extends CallStatement {
         sb.append(")");
         return sb.toString();
     }
+
+    @Override
+    public String getFinalSql() throws Exception {
+        return getOriginalSql();
+    }
 }
