@@ -11,4 +11,8 @@ public interface HiveSentryAuthzProviderInterface {
 
     public void authorize(HashSet<AuthzEntity> tables, String currentdb, String username) throws AuthorizationException;
 
+    public String[] filterDatabase(String username, String[] datases);
+
+    public String[] filterTable(String username, String[] tables, String db);
+
 }

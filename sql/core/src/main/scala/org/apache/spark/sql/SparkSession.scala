@@ -39,10 +39,10 @@ import org.apache.spark.sql.auth.{HiveSentryAuthzProvider, SentryAuthUtils}
 import org.apache.spark.sql.catalog.Catalog
 import org.apache.spark.sql.catalyst._
 import org.apache.spark.sql.catalyst.analysis.FunctionRegistry.FunctionBuilder
-import org.apache.spark.sql.catalyst.catalog.CatalogTable
+import org.apache.spark.sql.catalyst.catalog.{CatalogRelation, CatalogTable, SimpleCatalogRelation}
 import org.apache.spark.sql.catalyst.encoders._
 import org.apache.spark.sql.catalyst.expressions.{AttributeReference, ExpressionInfo}
-import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LocalRelation, Range}
+import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LocalRelation, Range, SubqueryAlias}
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.command.{CacheTableCommand, UncacheTableCommand}
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
@@ -680,7 +680,8 @@ class SparkSession private(
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
     if (HiveSentryAuthzProvider.useSentryAuth()) {
-      val result = SentryAuthUtils.retriveInputOutputEntities(plan)
+      HiveSentryAuthzProvider.setUser(username)
+      val result = SentryAuthUtils.retriveInputOutputEntities(plan, this)
       HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
     }
     sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "false")
@@ -729,6 +730,20 @@ class SparkSession private(
     }
     return Dataset.ofRows(self, sessionState.sqlParser.parsePlan(sql))
 
+  }
+
+  def getColumnForSelectStar(tableIdent: TableIdentifier): Seq[String] = {
+    if (sqlContext.sessionState.catalog.lookupRelation(tableIdent).isInstanceOf[SubqueryAlias]) {
+      sqlContext.sessionState.catalog.lookupRelation(tableIdent)
+        .asInstanceOf[SubqueryAlias].child.output.map(c => c.name)
+    } else if (sqlContext.sessionState.catalog.lookupRelation(tableIdent)
+      .isInstanceOf[CatalogRelation]) {
+      sqlContext.sessionState.catalog.lookupRelation(tableIdent)
+        .asInstanceOf[CatalogRelation].catalogTable.schema.fields
+        .map(f => f.name)
+    } else {
+      Seq.empty
+    }
   }
 
   def getFullTableName(tableIdent: TableIdentifier): String = {
