@@ -191,6 +191,8 @@ public class Var implements Serializable {
     }
 
     public Var getAssocArrayValue(String index, Var val) {
+        if (val == null && assocArray.containsKey(index))
+            return assocArray.get(index);
         assocArray.put(index, assocValueTypeVar.clone());
         return assocArray.get(index);
     }
