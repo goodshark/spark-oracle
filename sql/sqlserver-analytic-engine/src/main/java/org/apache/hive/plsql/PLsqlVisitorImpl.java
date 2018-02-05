@@ -2658,9 +2658,16 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         OracleOpenForStmt oracleOpenForStmt = new OracleOpenForStmt();
         OracleCursor cursor = new OracleCursor(ctx.variable_name().getText());
         oracleOpenForStmt.setCursor(cursor);
-        visit(ctx.select_statement());
-        TreeNode sqlBlock = treeBuilder.popStatement();
-        cursor.setTreeNode(sqlBlock);
+        if (ctx.select_statement() != null) {
+            visit(ctx.select_statement());
+            TreeNode sqlBlock = treeBuilder.popStatement();
+            cursor.setTreeNode(sqlBlock);
+        } else {
+            // TODO select statement in variable
+            visit(ctx.expression());
+            TreeNode expr = treeBuilder.popStatement();
+            oracleOpenForStmt.setExpr(expr);
+        }
         treeBuilder.pushStatement(oracleOpenForStmt);
         return oracleOpenForStmt;
     }
