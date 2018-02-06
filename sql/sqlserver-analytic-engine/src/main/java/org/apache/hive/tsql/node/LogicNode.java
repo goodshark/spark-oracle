@@ -8,6 +8,7 @@ import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dml.ExpressionStatement;
 import org.apache.spark.sql.catalyst.plfunc.PlFunctionRegistry;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -15,7 +16,8 @@ import java.util.List;
  */
 public class LogicNode extends ExpressionStatement {
 
-    public static class IndexIterator {
+    public static class IndexIterator implements Serializable {
+        private static final long serialVersionUID = -7592904882563118467L;
         private Var indexVar = null;
         private Var originalLower = null;
         private Var lower = null;
