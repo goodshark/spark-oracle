@@ -156,11 +156,14 @@ public class Var implements Serializable {
         return nestedTableList.get(i);
     }
 
-    private static class StringCmp implements Comparator<String> {
+    private static class StringCmp implements Comparator<String>,Serializable  {
+
         @Override
         public int compare(String o1, String o2) {
             return o1.compareTo(o2);
         }
+
+        private static final long serialVersionUID = -1631515791432303303L;
     }
     private TreeMap<String, Var> assocArray = new TreeMap<>(new StringCmp());
     // TYPE a is TABLE OF INTEGER INDEX BY VARCHAR(100), means VARCHAR(100)

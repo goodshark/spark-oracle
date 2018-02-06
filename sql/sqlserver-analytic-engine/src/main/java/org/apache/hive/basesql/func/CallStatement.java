@@ -19,6 +19,7 @@ import org.apache.hive.tsql.util.StrUtils;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.FunctionIdentifier;
+import org.apache.spark.sql.catalyst.analysis.NoSuchFunctionException;
 import org.apache.spark.sql.catalyst.expressions.ExpressionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -298,14 +299,22 @@ public abstract class CallStatement extends ExpressionStatement {
     }
 
     private  boolean findSysFunctionInSpark(){
-        SparkSession sparkSession = getExecSession().getSparkSession();
+        try{
+            SparkSession sparkSession = getExecSession().getSparkSession();
+            ExpressionInfo expressionInfo = sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName()));
+            String classname = expressionInfo.getClassName();
+            if(classname == null || "".equals(classname) || sparkSession.getSessionState().catalog().lookupFunctionBuilder(new FunctionIdentifier(funcName.getFuncName())) == null){
+                return  false;
+            }else {
+                return  true;
+            }
+        }catch (Exception e){
+            return  false;
+        }
+        /*SparkSession sparkSession = getExecSession().getSparkSession();
         ExpressionInfo expressionInfo = sparkSession.getSessionState().catalog().lookupFunctionInfo(new FunctionIdentifier(funcName.getFuncName()));
         String classname = expressionInfo.getClassName();
-        if(classname == null || "".equals(classname) || sparkSession.getSessionState().catalog().lookupFunctionBuilder(new FunctionIdentifier(funcName.getFuncName())) == null){
-            return  false;
-        }else {
-            return  true;
-        }
+       */
     }
 
     private void setSysFunctionVales(){
