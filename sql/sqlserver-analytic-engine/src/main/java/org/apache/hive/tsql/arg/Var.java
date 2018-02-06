@@ -1211,14 +1211,14 @@ public class Var implements Serializable {
     public String getFinalSql() throws Exception {
         if (StringUtils.isNotBlank(varName)) {
             if (isExecuted && varValue != null)
-                return varValue.toString();
+                return getExecString();
             else if (expr != null) {
                 return ((ExpressionStatement) expr).getFinalSql();
             } else {
                 return varName;
             }
         } else if (varValue != null) {
-            return varValue.toString();
+            return getExecString();
         } else if (expr != null) {
             return ((ExpressionStatement) expr).getFinalSql();
         }
