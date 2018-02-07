@@ -221,7 +221,8 @@ public class CreateFunctionStatement extends BaseStatement {
         } else {
             db = function.getName().getDatabase();
         }
-        sb.append("final class " + db + "_" + function.getName().getFuncName() + " implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{\n");
+        db = db == null ? db : db.toLowerCase();
+        sb.append("final class " + db + "_" + function.getName().getFuncName().toLowerCase() + " implements org.apache.spark.sql.catalyst.expressions.PlFunctionExecutor{\n");
         StringBuilder sb2 = new StringBuilder();
         sb2.append("public Object eval(Object[");
         List<Var> paras = function.getInAndOutputs();

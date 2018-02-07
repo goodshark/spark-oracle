@@ -125,7 +125,8 @@ public class PlFunctionRegistry {
     }
 
     public boolean registerOrReplaceOraclePlFunc(PlFunctionDescription function) {
-        logger.info("register function : " + function.getCode());
+        logger.info("register function : db = " + function.getFunc().getDb() + " name = "
+                + function.getFunc().getName() + " . " + function.getCode());
         writeLock();
         try {
             if(function != null){
@@ -148,7 +149,8 @@ public class PlFunctionRegistry {
     }
 
     public boolean registerOraclePlFunc(PlFunctionDescription function) {
-        logger.info("register oracle function : " + function.getCode());
+        logger.info("register oracle function : db = " + function.getFunc().getDb() + " name = "
+                + function.getFunc().getName() + " . " + function.getCode());
         writeLock();
         try {
             if(function != null){
@@ -268,8 +270,8 @@ public class PlFunctionRegistry {
         private String name;
         private String db;
         public PlFunctionIdentify(String name, String db){
-            this.name = name;
-            this.db = db;
+            this.name = name == null ? name : name.toLowerCase();
+            this.db = db == null ? db : db.toLowerCase();
         }
         public String getName(){
             return name;
