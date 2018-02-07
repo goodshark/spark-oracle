@@ -940,7 +940,7 @@ close_statement
 
 open_statement
     //: OPEN cursor_name expression_list?
-    : OPEN cursor_name '(' expression? (',' expression)* ')'
+    : OPEN cursor_name '('? expression? (',' expression)* ')'?
     ;
 
 fetch_statement
