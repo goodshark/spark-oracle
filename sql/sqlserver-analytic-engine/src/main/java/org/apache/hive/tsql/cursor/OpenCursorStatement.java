@@ -25,6 +25,11 @@ public class OpenCursorStatement extends CommonOpenCursorStmt {
     }
 
     @Override
+    public int preSqlExecute() throws Exception {
+        return 0;
+    }
+
+    @Override
     public int postExecute() throws Exception {
         ResultSet rs = cursor.getRs();
         if (rs != null && rs.getRow() > 0) {

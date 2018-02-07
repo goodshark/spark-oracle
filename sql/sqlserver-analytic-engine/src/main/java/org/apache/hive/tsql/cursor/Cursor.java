@@ -30,6 +30,11 @@ public class Cursor extends CommonCursor {
         super(name.toUpperCase());
     }
 
+    @Override
+    public int execute() throws Exception {
+        return 0;
+    }
+
     public boolean isInsensitive() {
         return isInsensitive;
     }

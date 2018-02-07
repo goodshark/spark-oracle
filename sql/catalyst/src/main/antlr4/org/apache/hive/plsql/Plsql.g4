@@ -681,9 +681,10 @@ subtype_declaration
 
 //cursor_declaration incorportates curscursor_body and cursor_spec
 cursor_declaration
-    : CURSOR cursor_name ('(' parameter_spec (',' parameter_spec)* ')' )? (RETURN type_spec)? (IS select_statement)? ';'?
+    : CURSOR cursor_name ('(' parameter (',' parameter)* ')' )? (RETURN type_spec)? (IS select_statement)? ';'?
     ;
 
+// parameter_spec is used for cursor_declaration parameters, is replaced by parameter
 parameter_spec
     : parameter_name (IN? type_spec)? default_value_part?
     ;
@@ -938,7 +939,8 @@ close_statement
     ;
 
 open_statement
-    : OPEN cursor_name expression_list?
+    //: OPEN cursor_name expression_list?
+    : OPEN cursor_name '(' expression? (',' expression)* ')'
     ;
 
 fetch_statement

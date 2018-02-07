@@ -1065,7 +1065,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             var.setVarValue(Math.round(n));
             var.setDataType(Var.DataType.INT);
         } catch (Exception e) {
-            // nothing
+            // TODO mark nothing
             e.printStackTrace();
         }
     }
@@ -2611,9 +2611,8 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         OracleCursor cursor = new OracleCursor(ctx.cursor_name().getText());
         // TODO cursor return Type
         // TODO cursor parameter
-        for (PlsqlParser.Parameter_specContext para : ctx.parameter_spec()) {
-            visit(para);
-            treeBuilder.popStatement();
+        for (PlsqlParser.ParameterContext para : ctx.parameter()) {
+            cursor.addParameter((Var) visit(para));
         }
         if (ctx.select_statement() != null) {
             visit(ctx.select_statement());
@@ -2635,6 +2634,10 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
     public Object visitOpen_statement(PlsqlParser.Open_statementContext ctx) {
         OracleOpenCursorStmt openCursorStmt = new OracleOpenCursorStmt(ctx.cursor_name().getText(), false);
         // TODO open expression list
+        for (PlsqlParser.ExpressionContext expressionContext: ctx.expression()) {
+            visit(expressionContext);
+            openCursorStmt.addArg((ExpressionStatement) treeBuilder.popStatement());
+        }
         treeBuilder.pushStatement(openCursorStmt);
         return openCursorStmt;
     }

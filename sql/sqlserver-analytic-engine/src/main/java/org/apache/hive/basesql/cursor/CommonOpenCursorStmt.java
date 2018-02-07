@@ -35,6 +35,7 @@ public abstract class CommonOpenCursorStmt extends BaseStatement {
             throw new RuntimeException("Cursor already opened # " + cursorName);
         }
         cursor.setStatus(Cursor.CursorStatus.OPENING);
+        preSqlExecute();
         TreeNode selectStm = cursor.getTreeNode();
         selectStm.setExecSession(getExecSession());
         selectStm.setAddResult(false);
@@ -44,6 +45,8 @@ public abstract class CommonOpenCursorStmt extends BaseStatement {
         postExecute();
         return 0;
     }
+
+    public abstract int preSqlExecute() throws Exception;
 
     public abstract int postExecute() throws Exception;
 

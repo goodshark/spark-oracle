@@ -1210,7 +1210,7 @@ public class Var implements Serializable {
 
     public String getFinalSql() throws Exception {
         if (StringUtils.isNotBlank(varName)) {
-            if (isExecuted && varValue != null)
+            if (isExecuted || varValue != null)
                 return getExecString();
             else if (expr != null) {
                 return ((ExpressionStatement) expr).getFinalSql();

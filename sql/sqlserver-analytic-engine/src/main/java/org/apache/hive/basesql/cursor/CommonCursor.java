@@ -7,7 +7,9 @@ import java.sql.ResultSet;
 /**
  * Created by dengrb1 on 7/12 0012.
  */
-public abstract class CommonCursor {
+
+// CommonCursor is NOT TreeNode, but for parameter-cursor (sql find var), we need push cursor into scope(TreeNodes)
+public abstract class CommonCursor extends TreeNode {
     public enum CursorStatus {
         DECLARED(1), OPENING(2), FETCHING(3), CLOSED(4), DEALLOCATED(5);
 
