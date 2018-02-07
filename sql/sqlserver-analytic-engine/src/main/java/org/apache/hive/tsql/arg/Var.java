@@ -1221,7 +1221,8 @@ public class Var implements Serializable {
             return getExecString();
         } else if (expr != null) {
             return ((ExpressionStatement) expr).getFinalSql();
-        }
+        } else if (getDataType() == DataType.NULL)
+            return "NULL";
         return "";
     }
 
