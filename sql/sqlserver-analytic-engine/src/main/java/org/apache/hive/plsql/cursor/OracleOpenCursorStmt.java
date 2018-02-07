@@ -59,6 +59,7 @@ public class OracleOpenCursorStmt extends CommonOpenCursorStmt {
             throw new Exception("parameter-cursor parameter counts is NOT match");
         List<Var> paras = ((OracleCursor)cursor).getCursorParaCopys();
         for (ExpressionStatement es: expressions) {
+            es.setExecSession(getExecSession());
             es.execute();
         }
         for (int i = 0; i < expressions.size(); i++) {
