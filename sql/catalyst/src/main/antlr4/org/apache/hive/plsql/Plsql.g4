@@ -272,7 +272,7 @@ column_constraint
     ;
 
 drop_procedure
-    : DROP PROCEDURE procedure_name ';'
+    : DROP PROCEDURE procedure_name ';'?
     ;
 
 alter_procedure
