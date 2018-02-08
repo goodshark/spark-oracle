@@ -317,8 +317,8 @@ public abstract class CallStatement extends ExpressionStatement {
        */
     }
 
-    private void setSysFunctionVales(){
-        String sql = "select "+ this.getOriginalSql();
+    private void setSysFunctionVales() throws Exception {
+        String sql = "select "+ this.getFinalSql();
         LOG.info("function name "+ funcName + ", exec sql in spark is "+ sql);
         SparkSession sparkSession = getExecSession().getSparkSession();
         Dataset dataset = sparkSession.sql(sql);
