@@ -392,10 +392,10 @@ public class ExpressionStatement extends SqlStatement implements Serializable {
                     if(CreateFunctionStatement.SupportDataTypes.STRING.equals(dataType) || CreateFunctionStatement.SupportDataTypes.CHAR.equals(dataType)){
                         String data = obj.toString();
                         if('\'' == data.charAt(0)){
-                            data = data.substring(1, data.length() - 1);
+                            data = data.substring(1, data.length());
                         }
                         if('\'' == data.charAt(data.length()-1)){
-                            data = data.substring(0, data.length() - 2);
+                            data = data.substring(0, data.length() - 1);
                         }
                         sb.append("\"");
                         sb.append(data);
