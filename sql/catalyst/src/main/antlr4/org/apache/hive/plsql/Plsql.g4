@@ -105,7 +105,7 @@ anonymous_block
 // $<Function DDLs
 
 drop_function
-    : DROP FUNCTION function_name ';'
+    : DROP FUNCTION function_name ';'?
     ;
 drop_pl_function
     : DROP PL FUNCTION function_name ';'?
