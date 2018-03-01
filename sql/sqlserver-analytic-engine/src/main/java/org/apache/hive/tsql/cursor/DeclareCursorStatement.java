@@ -27,7 +27,7 @@ public class DeclareCursorStatement extends BaseStatement {
     @Override
     public int execute() throws Exception {
 
-        if (null != findCursor(cursor.getName(), cursor.isGlobal())) {
+        if (null != findCursor(cursor.getName(), cursor.isGlobal()) && cursor.isGlobal()) {
             throw new AlreadyDeclaredException(cursor.getName());
         }
 
