@@ -746,6 +746,10 @@ class SparkSession private(
     }
   }
 
+  def isTemporaryTable(tableIdent: TableIdentifier): Boolean = {
+    sessionState.catalog.isTemporaryTable(tableIdent)
+  }
+
   def getFullTableName(tableIdent: TableIdentifier): String = {
     val tb: String = sqlContext.sessionState.catalog.getTableName(tableIdent)
     val db: String = sqlContext.sessionState.catalog.getDbName(tableIdent)

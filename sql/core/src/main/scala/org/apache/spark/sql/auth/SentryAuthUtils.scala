@@ -58,8 +58,11 @@ object SentryAuthUtils {
         val dbName = if (insertTable.dbName.isDefined && insertTable.dbName.get != null) {
           insertTable.dbName.get
         } else null
-        result.add(AuthzEntity(PrivilegeType.INSERT
-          , tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(TableIdentifier.apply(
+          insertTable.tableName, insertTable.dbName))) {
+          result.add(AuthzEntity(PrivilegeType.INSERT
+            , tableName, dbName, null))
+        }
         insertTable
       case readTable: UnresolvedRelation =>
         val tableName = readTable.tableIdentifier.table
@@ -69,15 +72,17 @@ object SentryAuthUtils {
         } else null
         if (!(!readTable.tableIdentifier.database.isDefined && cteRs.contains(tableName))) {
           if (currentProject != null) {
-            val alis = readTable.alias.getOrElse(null)
-            val columns = retriveInputEntities(currentProject.projectList,
-              alis, sparkSession, readTable.tableIdentifier)
-            val ir = columns.iterator()
-            while (ir.hasNext) {
-              result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, ir.next()))
-            }
-            if (columns.size() == 0) {
-              result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
+            if (!sparkSession.isTemporaryTable(readTable.tableIdentifier)) {
+              val alis = readTable.alias.getOrElse(null)
+              val columns = retriveInputEntities(currentProject.projectList,
+                alis, sparkSession, readTable.tableIdentifier)
+              val ir = columns.iterator()
+              while (ir.hasNext) {
+                result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, ir.next()))
+              }
+              if (columns.size() == 0) {
+                result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
+              }
             }
           }
         }
@@ -95,12 +100,16 @@ object SentryAuthUtils {
       case delete: AcidDelCommand =>
         val tableName = delete.tableIdentifier.table
         val dbName = delete.tableIdentifier.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.DELETE, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(delete.tableIdentifier)) {
+          result.add(AuthzEntity(PrivilegeType.DELETE, tableName, dbName, null))
+        }
         delete
       case update: AcidUpdateCommand =>
         val tableName = update.tableIdent.table
         val dbName = update.tableIdent.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_DATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(update.tableIdent)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_DATA, tableName, dbName, null))
+        }
         update
       case createView: CreateTempViewUsing =>
         val tableName = createView.tableIdent.table
@@ -110,17 +119,23 @@ object SentryAuthUtils {
       case loadData: LoadDataCommand =>
         val tableName = loadData.table.table
         val dbName = loadData.table.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_DATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(loadData.table)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_DATA, tableName, dbName, null))
+        }
         loadData
       case truncateTable: TruncateTableCommand =>
         val tableName = truncateTable.tableName.table
         val dbName = truncateTable.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.DROP, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(truncateTable.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.DROP, tableName, dbName, null))
+        }
         truncateTable
       case repairTable: AlterTableRecoverPartitionsCommand =>
         val tableName = repairTable.tableName.table
         val dbName = repairTable.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(repairTable.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         repairTable
       case createDb: CreateDatabaseCommand =>
         val dbName = createDb.databaseName
@@ -137,61 +152,83 @@ object SentryAuthUtils {
       case dropTable: DropTableCommand =>
         val tableName = dropTable.tableName.table
         val dbName = dropTable.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.DROP, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(dropTable.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.DROP, tableName, dbName, null))
+        }
         dropTable
       case renameTable: AlterTableRenameCommand =>
         val tableName1 = renameTable.oldName.table
         val dbName1 = renameTable.oldName.database.getOrElse {null}
         val tableName2 = renameTable.newName.table
         val dbName2 = renameTable.newName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.DROP, tableName1, dbName1, null))
-        result.add(AuthzEntity(PrivilegeType.CREATE, tableName2, dbName2, null))
+        if (!sparkSession.isTemporaryTable(renameTable.oldName)) {
+          result.add(AuthzEntity(PrivilegeType.DROP, tableName1, dbName1, null))
+          result.add(AuthzEntity(PrivilegeType.CREATE, tableName2, dbName2, null))
+        }
         renameTable
       case atp: AlterTableSetPropertiesCommand =>
         val tableName = atp.tableName.table
         val dbName = atp.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(atp.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         atp
       case atup: AlterTableUnsetPropertiesCommand =>
         val tableName = atup.tableName.table
         val dbName = atup.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(atup.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         atup
       case atsp: AlterTableSerDePropertiesCommand =>
         val tableName = atsp.tableName.table
         val dbName = atsp.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(atsp.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         atsp
       case addP: AlterTableAddPartitionCommand =>
         val tableName = addP.tableName.table
         val dbName = addP.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(addP.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         addP
       case addC: AlterTableAddColumnsCommand =>
         val tableName = addC.tableName.table
         val dbName = addC.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(addC.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         addC
       case atcc: AlterTableChangeColumnsCommand =>
         val tableName = atcc.tableName.table
         val dbName = atcc.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(atcc.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         atcc
       case renameP: AlterTableRenamePartitionCommand =>
         val tableName = renameP.tableName.table
         val dbName = renameP.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(renameP.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         renameP
       case dropP: AlterTableDropPartitionCommand =>
         val tableName = dropP.tableName.table
         val dbName = dropP.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
-        result.add(AuthzEntity(PrivilegeType.DROP, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(dropP.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+          result.add(AuthzEntity(PrivilegeType.DROP, tableName, dbName, null))
+        }
         dropP
       case atsl: AlterTableSetLocationCommand =>
         val tableName = atsl.tableName.table
         val dbName = atsl.tableName.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        if (!sparkSession.isTemporaryTable(atsl.tableName)) {
+          result.add(AuthzEntity(PrivilegeType.ALTER_METADATA, tableName, dbName, null))
+        }
         atsl
       case createTableLike: CreateTableLikeCommand =>
         val tableName = createTableLike.targetTable.table
@@ -210,10 +247,12 @@ object SentryAuthUtils {
       case alterView: AlterViewAsCommand =>
         val tableName = alterView.name.table
         val dbName = alterView.name.database.getOrElse {null}
-        result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
-        if (alterView.query != null) {
-          val createAs = retriveInputOutputEntities(alterView.query, sparkSession)
-          result.addAll(createAs)
+        if (!sparkSession.isTemporaryTable(alterView.name)) {
+          result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
+          if (alterView.query != null) {
+            val createAs = retriveInputOutputEntities(alterView.query, sparkSession)
+            result.addAll(createAs)
+          }
         }
         alterView
     }
