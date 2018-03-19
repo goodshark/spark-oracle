@@ -35,9 +35,10 @@ import org.apache.spark.sql.execution.datasources.{AcidDelCommand, AcidUpdateCom
 object SentryAuthUtils {
 
   def retriveInputOutputEntities(plan: LogicalPlan,
-                                 sparkSession: SparkSession): java.util.HashSet[AuthzEntity] = {
+                                 sparkSession: SparkSession,
+                                 cteRs: java.util.HashSet[String] =
+                                 new util.HashSet[String]()): java.util.HashSet[AuthzEntity] = {
     val result: java.util.HashSet[AuthzEntity] = new java.util.HashSet[AuthzEntity]()
-    val cteRs: java.util.HashSet[String] = new util.HashSet[String]()
     var currentProject: Project = null
     if (plan.isInstanceOf[Project]) {
       currentProject = plan.asInstanceOf[Project]
@@ -46,7 +47,7 @@ object SentryAuthUtils {
       case withas: With =>
         withas.cteRelations.foreach(cte => {
           cteRs.add(cte._1)
-          val createAs = retriveInputOutputEntities(cte._2, sparkSession)
+          val createAs = retriveInputOutputEntities(cte._2, sparkSession, cteRs)
           result.addAll(createAs)
         })
         withas
@@ -93,7 +94,7 @@ object SentryAuthUtils {
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
         val logicalPlan: LogicalPlan = createTable.query.getOrElse {null}
         if (logicalPlan != null) {
-          val createAs = retriveInputOutputEntities(logicalPlan, sparkSession)
+          val createAs = retriveInputOutputEntities(logicalPlan, sparkSession, cteRs)
           result.addAll(createAs)
         }
         createTable
@@ -240,7 +241,7 @@ object SentryAuthUtils {
         val dbName = createView2.name.database.getOrElse {null}
         result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
         if (createView2.child != null) {
-          val createAs = retriveInputOutputEntities(createView2.child, sparkSession)
+          val createAs = retriveInputOutputEntities(createView2.child, sparkSession, cteRs)
           result.addAll(createAs)
         }
         createView2
@@ -250,7 +251,7 @@ object SentryAuthUtils {
         if (!sparkSession.isTemporaryTable(alterView.name)) {
           result.add(AuthzEntity(PrivilegeType.CREATE, tableName, dbName, null))
           if (alterView.query != null) {
-            val createAs = retriveInputOutputEntities(alterView.query, sparkSession)
+            val createAs = retriveInputOutputEntities(alterView.query, sparkSession, cteRs)
             result.addAll(createAs)
           }
         }
