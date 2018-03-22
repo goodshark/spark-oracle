@@ -47,6 +47,8 @@ object SentryAuthUtils {
       case withas: With =>
         withas.cteRelations.foreach(cte => {
           cteRs.add(cte._1)
+        })
+        withas.cteRelations.foreach(cte => {
           val createAs = retriveInputOutputEntities(cte._2, sparkSession, cteRs)
           result.addAll(createAs)
         })
