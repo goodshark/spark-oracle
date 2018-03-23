@@ -77,8 +77,16 @@ object SentryAuthUtils {
           if (currentProject != null) {
             if (!sparkSession.isTemporaryTable(readTable.tableIdentifier)) {
               val alis = readTable.alias.getOrElse(null)
-              val columns = retriveInputEntities(currentProject.projectList,
-                alis, sparkSession, readTable.tableIdentifier)
+              val columns = retriveInputEntities(currentProject.projectList.filter(f => {
+                f match {
+                  case attr: UnresolvedStar =>
+                    if (None.equals(attr.target)) {
+                      true
+                    } else false
+                  case _ => true
+                }
+              }),
+                alis, readTable.tableName, sparkSession, readTable.tableIdentifier)
               val ir = columns.iterator()
               while (ir.hasNext) {
                 result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, ir.next()))
@@ -86,6 +94,18 @@ object SentryAuthUtils {
               if (columns.size() == 0) {
                 result.add(AuthzEntity(PrivilegeType.SELECT, tableName, dbName, null))
               }
+
+              val dd = retriveInputEntities(currentProject.projectList.filter(f => {
+                f match {
+                  case attr: UnresolvedStar =>
+                    if (None.equals(attr.target)) {
+                      false
+                    } else true
+                  case _ => false
+                }
+              }),
+                sparkSession, cteRs)
+              result.addAll(dd)
             }
           }
         }
@@ -262,7 +282,7 @@ object SentryAuthUtils {
     result
   }
 
-  def retriveInputEntities(plans: Seq[NamedExpression], alis: String,
+  def retriveInputEntities(plans: Seq[NamedExpression], alis: String, tableName: String,
                            sparkSession: SparkSession, tableIdent: TableIdentifier
                           ): java.util.HashSet[String] = {
     val result: java.util.HashSet[String] = new java.util.HashSet[String]()
@@ -270,7 +290,7 @@ object SentryAuthUtils {
       plan.transformDown{
         case attr: UnresolvedAttribute =>
           if (attr.nameParts.size == 2) {
-            if ((attr.nameParts)(0).equals(alis)) {
+            if ((attr.nameParts)(0).equals(alis) || (attr.nameParts)(0).equals(tableName)) {
               result.add((attr.nameParts)(1))
             }
           } else if (attr.nameParts.size == 1) {
@@ -280,6 +300,39 @@ object SentryAuthUtils {
         case attr: UnresolvedStar =>
           val columns: Seq[String] = sparkSession.getColumnForSelectStar(tableIdent)
           columns.foreach(result.add)
+          attr
+      }
+    })
+    result
+  }
+
+  def retriveInputEntities(plans: Seq[NamedExpression],
+                           sparkSession: SparkSession,
+                           cteRs: java.util.HashSet[String]): java.util.HashSet[AuthzEntity] = {
+    val result: java.util.HashSet[AuthzEntity] = new java.util.HashSet[AuthzEntity]()
+    plans.foreach(plan => {
+      plan.transformDown{
+        case attr: UnresolvedAttribute =>
+          attr
+        case attr: UnresolvedStar =>
+          val dt: (String, String) = {
+            if (attr.target.get.size == 2) {
+              (attr.target.get(0), attr.target.get(1))
+            } else {
+              (sparkSession.sessionState.catalog.getCurrentDatabase, attr.target.get(0))
+            }
+          }
+          if (!cteRs.contains(dt._2)) {
+            val columns: Seq[String] = sparkSession.getColumnForSelectStar(
+              TableIdentifier.apply(dt._2, Some(dt._1)))
+            val ir = columns.iterator
+            while (ir.hasNext) {
+              result.add(AuthzEntity(PrivilegeType.SELECT, dt._2, dt._1, ir.next()))
+            }
+            if (columns.size == 0) {
+              result.add(AuthzEntity(PrivilegeType.SELECT, dt._2, dt._1, null))
+            }
+          }
           attr
       }
     })
