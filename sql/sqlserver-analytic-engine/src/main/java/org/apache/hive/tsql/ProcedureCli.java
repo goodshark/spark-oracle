@@ -34,6 +34,7 @@ public class ProcedureCli {
     public ProcedureCli(SparkSession sparkSession) {
         listener = new ParserErrorListener();
         session = new ExecSession(sparkSession);
+        session.bindVariableContainer();
         this.sparkSession = sparkSession;
     }
 
