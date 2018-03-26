@@ -153,7 +153,7 @@ alter_package
     : ALTER PACKAGE package_name COMPILE DEBUG? (PACKAGE | BODY | SPECIFICATION)? compiler_parameters_clause* (REUSE SETTINGS)? ';'
     ;
 create_package
-    : CREATE (OR REPLACE)? PACKAGE (package_spec | package_body)? ';'
+    : CREATE (OR REPLACE)? PACKAGE (package_spec | package_body)? ';'?
     ;
 
 // $<Create Package - Specific Clauses
