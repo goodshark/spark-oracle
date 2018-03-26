@@ -26,7 +26,8 @@ class SqlSessionListener(sqlContext: SQLContext) extends SparkListener with Logg
     try {
       logDebug(s"session listener $sessionId created")
       sessionToTable(sessionId) = new HashSet[String]()
-      sqlContext.sparkContext.oraclePackageVars.put(sqlContext.sparkSession, new ConcurrentHashMap[String, List[Object]]())
+      var tmpPackMap = new ConcurrentHashMap[String, ConcurrentHashMap[String, Object]]()
+      sqlContext.sparkContext.oraclePackageVars.put(sqlContext.sparkSession, tmpPackMap)
     } catch {
       case e: Exception =>
         logError(s"session $sessionId opening get exception: $e")
