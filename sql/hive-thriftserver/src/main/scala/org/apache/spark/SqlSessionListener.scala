@@ -1,12 +1,17 @@
 package org.apache.spark
 
+import java.lang.Object
+import java.util.concurrent.ConcurrentHashMap
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.SparkListener
 import org.apache.spark.sql.SQLContext
 
 import scala.collection.mutable._
-
 import java.util.{Set => javaSet}
+
+import org.apache.hive.tsql.arg.Var
+
 import scala.collection.JavaConversions._
 
 /**
@@ -21,6 +26,7 @@ class SqlSessionListener(sqlContext: SQLContext) extends SparkListener with Logg
     try {
       logDebug(s"session listener $sessionId created")
       sessionToTable(sessionId) = new HashSet[String]()
+      sqlContext.sparkContext.oraclePackageVars.put(sqlContext.sparkSession, new ConcurrentHashMap[String, List[Object]]())
     } catch {
       case e: Exception =>
         logError(s"session $sessionId opening get exception: $e")
@@ -38,6 +44,7 @@ class SqlSessionListener(sqlContext: SQLContext) extends SparkListener with Logg
           logDebug(s"session listener sqlContext is null, do nothing with table $table")
       }
       sessionToTable.remove(sessionId)
+      sqlContext.sparkContext.oraclePackageVars.remove(sqlContext.sparkSession)
     } catch {
       case e: Exception =>
         logError(s"session $sessionId closeing get exception: $e")
@@ -65,6 +72,20 @@ class SqlSessionListener(sqlContext: SQLContext) extends SparkListener with Logg
     } catch {
       case e: Exception =>
         logError(s"session $sessionId del table get exception: $e")
+    }
+  }
+
+  def mergePackageVars(packVars: ConcurrentHashMap[String, ConcurrentHashMap[String, Var]]): Unit = {
+    for (packName <- packVars.keys()) {
+      val tmpPackMap = sqlContext.sparkContext.oraclePackageVars.get(sqlContext.sparkSession)
+      if (tmpPackMap.containsKey(packName)) {
+        val localVarMap = packVars.get(packName)
+        val varMap = new ConcurrentHashMap[String, Object]()
+        for (vName <- localVarMap.keys()) {
+          varMap.put(vName, localVarMap.get(vName))
+        }
+        tmpPackMap.put(packName, varMap)
+      }
     }
   }
 

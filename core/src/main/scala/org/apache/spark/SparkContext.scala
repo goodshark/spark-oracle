@@ -90,6 +90,9 @@ class SparkContext(config: SparkConf) extends Logging {
   // record the operation  for crud table ,key:tableName values: operation
   var crudTbOperationRecordMap: ConcurrentHashMap[String, String] = new ConcurrentHashMap[String, String]()
 
+  // oracle package
+  var oraclePackageVars: ConcurrentHashMap[Object, ConcurrentHashMap[String, ConcurrentHashMap[String, Object]]] = new ConcurrentHashMap()
+
 
   private[spark] val stopped: AtomicBoolean = new AtomicBoolean(false)
 

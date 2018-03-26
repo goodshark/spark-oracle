@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.basesql.TreeBuilder;
+import org.apache.hive.pack.CreatePackage;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.cfl.LoopAnonyCursorCodition;
@@ -2674,6 +2675,44 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         treeBuilder.pushStatement(oracleOpenForStmt);
         return oracleOpenForStmt;
     }
+
+    @Override
+    public Object visitCreate_package(PlsqlParser.Create_packageContext ctx) {
+        String sourcePackage = ctx.start.getInputStream().getText(
+                new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        CreatePackage createPackage = new CreatePackage();
+        createPackage.setPackageSql(sourcePackage);
+        createPackage.setMd5(MD5Util.md5Hex(sourcePackage));
+        if (ctx.REPLACE() != null)
+            createPackage.setReplace();
+        if (ctx.package_spec() != null) {
+            String packName = ctx.package_spec().package_name().get(0).getText();
+            createPackage.setPackageName(packName);
+            for (PlsqlParser.Package_obj_specContext obj_specContext: ctx.package_spec().package_obj_spec()){
+                visit(obj_specContext);
+                createPackage.addPackageBlock(treeBuilder.popStatement());
+            }
+        }
+        if (ctx.package_body() != null) {
+            createPackage.setPackageBody();
+            String packName = ctx.package_body().package_name().get(0).getText();
+            createPackage.setPackageName(packName);
+            for (PlsqlParser.Package_obj_bodyContext packageObjBodyContext: ctx.package_body().package_obj_body()) {
+                visit(packageObjBodyContext);
+                createPackage.addPackageBlock(treeBuilder.popStatement());
+            }
+        }
+
+        treeBuilder.pushStatement(createPackage);
+        return createPackage;
+    }
+
+    @Override
+    public Object visitDrop_package(PlsqlParser.Drop_packageContext ctx) {
+        return visitChildren(ctx);
+    }
+
+
     //======================================update===============================
 
     /**
@@ -3816,7 +3855,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      * @param ctx
      * @return
      */
-    @Override
+    /*@Override
     public CreatePackageStatement visitCreate_package(PlsqlParser.Create_packageContext ctx) {
         CreatePackageStatement createPackageStatement = new CreatePackageStatement();
         if (null != ctx.REPLACE()) {
@@ -3834,7 +3873,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         treeBuilder.pushStatement(createPackageStatement);
         return createPackageStatement;
-    }
+    }*/
 
     /**
      * package_spec
@@ -3911,7 +3950,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
      * @param ctx
      * @return
      */
-    @Override
+    /*@Override
     public DropPackageStatement visitDrop_package(PlsqlParser.Drop_packageContext ctx) {
         DropPackageStatement dropPackageStatement = new DropPackageStatement();
         visit(ctx.package_name());
@@ -3922,7 +3961,7 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         }
         treeBuilder.pushStatement(dropPackageStatement);
         return dropPackageStatement;
-    }
+    }*/
 
     /**
      * alter_package

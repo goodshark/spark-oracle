@@ -2,6 +2,7 @@ package org.apache.hive.tsql;
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.tsql.arg.Var;
 import org.apache.hive.tsql.arg.VariableContainer;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.RootNode;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by zhongdg1 on 2016/11/29.
@@ -32,6 +34,27 @@ public class ExecSession {
     private boolean isReset = true;
     private String errorStr = "";
     private String database = "default";
+
+    private boolean packageScope = false;
+    private String packageName = "";
+
+    public void setPackageScope(String name) {
+        packageScope = true;
+        packageName = name;
+    }
+
+    public void clearePackageScope() {
+        packageScope = false;
+        packageName = "";
+    }
+
+    public boolean isPackageScope() {
+        return packageScope;
+    }
+
+    public String getPackageName() {
+        return packageName;
+    }
 
 
     // mark break/continue/goto/return/raise/throw cmd
@@ -195,5 +218,8 @@ public class ExecSession {
         return scopesArray;
     }
 
+    public ConcurrentHashMap<String, ConcurrentHashMap<String, Var>> getPackageVars() {
+        return variableContainer.getPackageVars();
+    }
 
 }

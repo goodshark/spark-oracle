@@ -273,6 +273,8 @@ private[hive] class SparkExecuteStatementOperation(
           parentSession.getSessionHandle.getSessionId.toString,
           allTable)
 
+        HiveThriftServer2.sqlSessionListenr.mergePackageVars(procCli.getExecSession.getPackageVars)
+
         if (!sqlServerPlans.isEmpty) {
           logInfo("logical is " + sqlServerPlans.get(0))
           sqlServerPlans.get(0) match {

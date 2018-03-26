@@ -6,13 +6,15 @@ import org.apache.hive.plsql.type.LocalTypeDeclare;
 import org.apache.hive.tsql.ExecSession;
 import org.apache.hive.tsql.common.BaseStatement;
 import org.apache.hive.tsql.common.TreeNode;
+import org.apache.hive.tsql.dbservice.ProcService;
+import org.apache.spark.SparkContext;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.plans.logical.Except;
 
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.hive.tsql.execute.Executor;
 
 /**
  * Created by zhongdg1 on 2016/12/8.
@@ -23,6 +25,9 @@ public class VariableContainer {
     //保存变量, 作用域仅限为go
     private ConcurrentHashMap<String, Var> vars = new ConcurrentHashMap<String, Var>();
     private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, Var>> newVars = new ConcurrentHashMap<>();
+    // vars in oracle package only
+    private final int PACKAGE_TYPE = 5;
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, Var>> packageVars = new ConcurrentHashMap<>();
     //保存表变量,作用域一个GO
     private ConcurrentHashMap<String, Var> tableVars = new ConcurrentHashMap<String, Var>();
     //保存临时表，作用域多个GO之间,<##temp, AliasName>
@@ -31,6 +36,8 @@ public class VariableContainer {
     //保存func/proc
     private ConcurrentHashMap<String, CommonProcedureStatement> functions = new ConcurrentHashMap<String, CommonProcedureStatement>();
     private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, List<CommonProcedureStatement>>> newFunctions = new ConcurrentHashMap<>();
+    // func/proc in oracle package only
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, TreeNode>> packageFunctions = new ConcurrentHashMap<>();
     //保存cursor
     private ConcurrentHashMap<String, CommonCursor> localCursors = new ConcurrentHashMap<>();//本地游标
     private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, CommonCursor>> newLocalCursors =
@@ -43,11 +50,14 @@ public class VariableContainer {
 
     private ExecSession session;
 
+    private ProcService dbService;
+
     public VariableContainer(ExecSession ss) {
         //init system variables
         addOrUpdateSys(new Var(SystemVName.FETCH_STATUS, 0, Var.DataType.INT));
         addOrUpdateSys(new Var(SystemVName.CURSOR_ROWS, 0, Var.DataType.INT));
         session = ss;
+        dbService = new ProcService(ss.getSparkSession());
     }
 
     private ConcurrentHashMap<String, Var> getNormalVars() {
@@ -245,6 +255,14 @@ public class VariableContainer {
     }
 
     public void addVar(Var var) {
+        if (session.isPackageScope()) {
+            if (!packageVars.containsKey(session.getPackageName())) {
+                ConcurrentHashMap<String, Var> tmpMap = new ConcurrentHashMap<>();
+                packageVars.put(session.getPackageName(), tmpMap);
+            }
+            packageVars.get(session.getPackageName()).put(var.getVarName(), var);
+            return;
+        }
         TreeNode curBlock = session.getCurrentScope();
         if (curBlock != null) {
             if (newVars.containsKey(curBlock)) {
@@ -276,6 +294,64 @@ public class VariableContainer {
             oldVar.setVarValue(var.getVarValue());
         }
 
+    }
+
+    public ConcurrentHashMap<String, ConcurrentHashMap<String, Var>> getPackageVars() {
+        return packageVars;
+    }
+
+    private boolean loadPackFromSc(String packName) {
+        SparkSession ss = session.getSparkSession();
+        SparkContext sc = ss.sparkContext();
+        Map<String, ConcurrentHashMap<String, Object>> tmpPackMap = sc.oraclePackageVars().get(ss);
+        if (tmpPackMap == null)
+            return false;
+        else {
+            ConcurrentHashMap<String, Object> tmpVarMap = tmpPackMap.get(packName);
+            if (tmpVarMap == null)
+                return false;
+            else {
+                // transform Object-Vars into Vars
+                ConcurrentHashMap<String, Var> tranMap = new ConcurrentHashMap<>();
+                for (String varName: tmpVarMap.keySet()) {
+                    tranMap.put(varName, (Var)(tmpVarMap.get(varName)));
+                }
+                packageVars.put(packName, tranMap);
+                return true;
+            }
+        }
+    }
+
+    private boolean loadPackFromDb(String packName) {
+        try {
+            List<TreeNode> treeNodes = dbService.getPackageObj(packName, PACKAGE_TYPE);
+            // TODO restrict all vars into package scope
+            session.setPackageScope(packName);
+            for (TreeNode treeNode: treeNodes)
+                new Executor(session, treeNode).run();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            session.clearePackageScope();
+        }
+        return false;
+    }
+
+    private Var findVarInPackage(String packageName, String vName) {
+        boolean loadSuccess = false;
+        if (!packageVars.containsKey(packageName)) {
+            loadSuccess = loadPackFromSc(packageName) || loadPackFromDb(packageName);
+        }
+        if (packageVars.containsKey(packageName) || loadSuccess) {
+            ConcurrentHashMap<String, Var> pack = packageVars.get(packageName);
+            if (pack.containsKey(vName))
+                return pack.get(vName);
+            else
+                return null;
+        } else {
+            return null;
+        }
     }
 
     private Var searchDotVar(Var rootVar, String[] tagNames, Object ...args) {
@@ -388,7 +464,9 @@ public class VariableContainer {
                         return null;
                 }
             }
-            return null;
+            // x.y, x is the package name
+            Var packageVar = findVarInPackage(scopeName, varName);
+            return packageVar;
         }
     }
 

@@ -3,8 +3,10 @@ package org.apache.hive.tsql.dbservice;
 
 import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.commons.lang.StringUtils;
+import org.apache.hive.pack.CreatePackage;
 import org.apache.hive.tsql.ProcedureCli;
 import org.apache.hive.tsql.common.Common;
+import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.func.Procedure;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
@@ -12,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.sql.*;
+import java.util.List;
 
 /**
  * Created by wangsm9 on 2017/1/19.
@@ -28,6 +31,8 @@ public class ProcService {
     private String userName;
     private String password;
     private ProcedureCli procedureCli;
+
+    private final static int PACKGE_TYPE = 5;
 
 
     public ProcService(SparkSession sparkSession) {
@@ -392,5 +397,168 @@ public class ProcService {
         return rs;
     }
 
+    private int insertPackageObj(CreatePackage pack) throws Exception {
+        int rs = 0;
+        StringBuffer sql = new StringBuffer();
+        sql.append("  INSERT INTO ").append(TABLE_NAME);
+        sql.append("(");
+        sql.append("PROC_NAME,")
+                .append("PROC_CONTENT,")
+                .append("PROC_OBJECT,")
+                .append("CREATE_TIME,")
+                .append("MD5,")
+                .append("DB_NAME,")
+                .append("USE_NAME,")
+                .append("TYPE,")
+                .append("PROC_ORC_NAME");
+        sql.append(") ");
+        sql.append(" VALUES");
+        sql.append(" (");
+        sql.append(" ?,?,?,?,?,?,?,?,?");
+        sql.append(" )");
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        ObjectOutputStream out = null;
+        try {
+            DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
+            connection = dbUtils.getConn();
+            stmt = connection.prepareStatement(sql.toString());
+            stmt.setString(1, pack.getPackageName());
+            stmt.setString(2, pack.getPackageSql());
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            out = new ObjectOutputStream(baos);
+            out.writeObject(pack.getPackageBlocks());
+            stmt.setBytes(3, baos.toByteArray());
+            stmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            stmt.setString(5, pack.getMd5());
+
+            // TODO db
+            stmt.setString(6, "");
+            stmt.setString(7, sparkSession.sparkSessionUserName());
+            stmt.setInt(8, PACKGE_TYPE);
+            stmt.setString(9, pack.getPackageName());
+
+            rs = stmt.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        } finally {
+            close(connection, stmt);
+            out.close();
+        }
+        return rs;
+    }
+
+    public int updatePackageObj(CreatePackage pack) throws Exception {
+        int rs = 0;
+        StringBuffer sql = new StringBuffer();
+        sql.append("  UPDATE ").append(TABLE_NAME);
+        sql.append(" SET  ");
+        sql.append(" PROC_OBJECT = ?");
+        sql.append(" ,PROC_CONTENT = ?");
+        sql.append(" WHERE ");
+        sql.append("PROC_NAME =");
+        sql.append("?");
+        sql.append(" AND  DEL_FLAG= 1");
+        sql.append(" AND TYPE = " + PACKGE_TYPE);
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        ObjectOutputStream out = null;
+        try {
+            DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
+            connection = dbUtils.getConn();
+            stmt = connection.prepareStatement(sql.toString());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            out = new ObjectOutputStream(baos);
+            out.writeObject(pack.getPackageBlocks());
+            stmt.setBytes(1, baos.toByteArray());
+            stmt.setString(2, pack.getPackageSql());
+            stmt.setString(3, pack.getPackageName());
+            rs = stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOG.error(" update package sql : " + sql.toString() + " error.", e);
+            throw e;
+        } finally {
+            close(connection, stmt);
+            out.close();
+        }
+        return rs;
+    }
+
+    public int createPackageObj(CreatePackage pack, boolean replace) throws Exception {
+        int num = getCountByName(pack.getPackageName(), PACKGE_TYPE);
+        if (!replace) {
+            if (num > 0)
+                throw new Exception(pack.getPackageName() + " already exists");
+        } else {
+            if (num <= 0) {
+                insertPackageObj(pack);
+            } else {
+                updatePackageObj(pack);
+            }
+        }
+        return 0;
+    }
+
+    public int delPackageObj() throws Exception {
+        return 0;
+    }
+
+    public List<TreeNode> getPackageObj(String packageName, int type) throws Exception {
+        // the initial value in package is across session, need store the value in sparkSession
+        ResultSet rs;
+        List<TreeNode> blocks = null;
+        StringBuffer sql = new StringBuffer();
+        sql.append("  SELECT PROC_OBJECT, PROC_CONTENT FROM ").append(TABLE_NAME);
+        sql.append(" WHERE ");
+        sql.append("PROC_NAME =");
+        sql.append("?");
+        sql.append(" AND DEL_FLAG =1");
+        sql.append(" AND TYPE = " + PACKGE_TYPE);
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        ObjectInputStream in = null;
+        try {
+            DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
+            connection = dbUtils.getConn();
+            stmt = connection.prepareStatement(sql.toString());
+            stmt.setString(1, packageName);
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                byte[] procedureObject = rs.getBytes("PROC_OBJECT");
+                ByteArrayInputStream bais = new ByteArrayInputStream(procedureObject);
+                in = new ObjectInputStream(bais);
+                try {
+                    blocks = (List<TreeNode>) in.readObject();//从流中读取对象
+                } catch (Exception ine) {
+                    LOG.warn("SerialVersionUID (package) is change, run proc again .");
+                    try {
+                        String sqlContent = rs.getString("PROC_CONTENT");
+                        LOG.debug("query sql is " + sql.toString() + ", packagename is " + packageName + ", get sql is ==>" + sqlContent);
+                        updateProSerialVersionUID(packageName, type);
+                        if (!StringUtils.isBlank(sqlContent)) {
+                            procedureCli.callProcedure(sqlContent, sparkSession.conf().get(ENGINE_NAME, "oracle"));
+                            blocks = getPackageObj(packageName, type);
+                        } else {
+                            throw new Exception("packagname: " + packageName + ".the package sql is null");
+                        }
+                    } catch (Throwable e) {
+                        LOG.error("reRun proc again error .", e);
+                        throw new Exception(e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.error(" execute getCountByName sql : " + sql.toString() + " error.", e);
+            throw e;
+        } finally {
+            close(connection, stmt);
+            if (null != in) {
+                in.close();
+            }
+        }
+        return blocks;
+    }
 
 }
