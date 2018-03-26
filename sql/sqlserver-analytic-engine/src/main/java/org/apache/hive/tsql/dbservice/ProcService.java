@@ -30,7 +30,7 @@ public class ProcService {
     private String dbUrl;
     private String userName;
     private String password;
-    private ProcedureCli procedureCli;
+//    private ProcedureCli procedureCli;
 
     private final static int PACKGE_TYPE = 5;
 
@@ -44,7 +44,7 @@ public class ProcService {
         dbUrl = sparkSession.sparkContext().hadoopConfiguration().get(Common.DBURL);
         userName = sparkSession.sparkContext().hadoopConfiguration().get(Common.USER_NAME);
         password = sparkSession.sparkContext().hadoopConfiguration().get(Common.PASSWORD);
-        procedureCli = new ProcedureCli(sparkSession);
+//        procedureCli = new ProcedureCli(sparkSession);
     }
 
     public int createProc(CommonProcedureStatement procedure, int type) throws Exception {
@@ -343,7 +343,8 @@ public class ProcService {
                         LOG.debug("query sql is " + sql.toString() + ",procName is " + procName + ",get sql is ==>" + sqlContent);
                         updateProSerialVersionUID(procName, type);
                         if (!StringUtils.isBlank(sqlContent)) {
-                            procedureCli.callProcedure(sqlContent, sparkSession.conf().get(ENGINE_NAME, "sqlserver"));
+//                            procedureCli.callProcedure(sqlContent, sparkSession.conf().get(ENGINE_NAME, "sqlserver"));
+                            new ProcedureCli(sparkSession).callProcedure(sqlContent, sparkSession.conf().get(ENGINE_NAME, "sqlserver"));
                             procedure = getProcContent(procName, type);
                         } else {
                             throw new Exception("procName:" + procName + ".the proc sql is null");
@@ -538,7 +539,8 @@ public class ProcService {
                         LOG.debug("query sql is " + sql.toString() + ", packagename is " + packageName + ", get sql is ==>" + sqlContent);
                         updateProSerialVersionUID(packageName, type);
                         if (!StringUtils.isBlank(sqlContent)) {
-                            procedureCli.callProcedure(sqlContent, sparkSession.conf().get(ENGINE_NAME, "oracle"));
+//                            procedureCli.callProcedure(sqlContent, sparkSession.conf().get(ENGINE_NAME, "oracle"));
+                            new ProcedureCli(sparkSession).callProcedure(sqlContent, sparkSession.conf().get(ENGINE_NAME, "oracle"));
                             blocks = getPackageObj(packageName, type);
                         } else {
                             throw new Exception("packagname: " + packageName + ".the package sql is null");
