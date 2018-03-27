@@ -260,6 +260,7 @@ public class VariableContainer {
 
     public void addVar(Var var) {
         if (session.isPackageScope()) {
+            LOG.info("variable container add var in package scope: " + session.getPackageName() + ", var: " + var.getVarName());
             if (!packageVars.containsKey(session.getPackageName())) {
                 ConcurrentHashMap<String, Var> tmpMap = new ConcurrentHashMap<>();
                 packageVars.put(session.getPackageName(), tmpMap);
@@ -346,7 +347,7 @@ public class VariableContainer {
         } finally {
             session.clearePackageScope();
         }
-        return false;
+        return true;
     }
 
     private Var findVarInPackage(String packageName, String vName) {
@@ -358,6 +359,11 @@ public class VariableContainer {
         if (packageVars.containsKey(packageName) || loadSuccess) {
             LOG.info("package vars already in local packageVars");
             ConcurrentHashMap<String, Var> pack = packageVars.get(packageName.toUpperCase());
+            // TODO testonly
+            LOG.info("package vars in package name: " + packageName.toUpperCase());
+            for (Var v: pack.values()) {
+                LOG.info("package var name: " + v.getVarName() + ", vName: " + vName);
+            }
             if (pack.containsKey(vName))
                 return pack.get(vName);
             else
@@ -484,7 +490,7 @@ public class VariableContainer {
                 }
             }
             // x.y, x is the package name
-            Var packageVar = findVarInPackage(scopeName, varName);
+            Var packageVar = findVarInPackage(scopeName, varName.toUpperCase());
             return packageVar;
         }
     }
