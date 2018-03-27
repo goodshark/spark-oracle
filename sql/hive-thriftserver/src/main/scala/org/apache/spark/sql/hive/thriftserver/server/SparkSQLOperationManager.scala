@@ -51,6 +51,8 @@ private[thriftserver] class SparkSQLOperationManager()
       s" initialized or had already closed.")
     val sessionState = sqlContext.sessionState.asInstanceOf[HiveSessionState]
     val runInBackground = async && sessionState.hiveThriftServerAsync
+
+    sqlContext.sparkSession.sessionId = parentSession.getSessionHandle.getSessionId.toString
     val operation = new SparkExecuteStatementOperation(parentSession, statement, confOverlay,
       runInBackground)(sqlContext, sessionToActivePool)
     handleToOperation.put(operation.getHandle, operation)

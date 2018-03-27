@@ -24,10 +24,10 @@ class SqlSessionListener(sqlContext: SQLContext) extends SparkListener with Logg
 
   def onSessionCreated(sessionId: String): Unit = synchronized {
     try {
-      logDebug(s"session listener $sessionId created")
+      logDebug(s"session listener $sessionId created, ss: ${sqlContext.sparkSession}, hash: ${sqlContext.sparkSession.hashCode()}")
       sessionToTable(sessionId) = new HashSet[String]()
       var tmpPackMap = new ConcurrentHashMap[String, ConcurrentHashMap[String, Object]]()
-      sqlContext.sparkContext.oraclePackageVars.put(sqlContext.sparkSession, tmpPackMap)
+      sqlContext.sparkContext.oraclePackageVars.put(sessionId, tmpPackMap)
     } catch {
       case e: Exception =>
         logError(s"session $sessionId opening get exception: $e")
@@ -76,17 +76,22 @@ class SqlSessionListener(sqlContext: SQLContext) extends SparkListener with Logg
     }
   }
 
-  def mergePackageVars(packVars: ConcurrentHashMap[String, ConcurrentHashMap[String, Var]]): Unit = {
+  def mergePackageVars(packVars: ConcurrentHashMap[String, ConcurrentHashMap[String, Var]], sessionId: String): Unit = {
+    logDebug(s"session start merge package vars, ss: ${sqlContext.sparkSession}, hash: ${sqlContext.sparkSession.hashCode()}" +
+    s", id: ${sessionId}")
     for (packName <- packVars.keys()) {
-      val tmpPackMap = sqlContext.sparkContext.oraclePackageVars.get(sqlContext.sparkSession)
-      if (tmpPackMap.containsKey(packName)) {
-        val localVarMap = packVars.get(packName)
-        val varMap = new ConcurrentHashMap[String, Object]()
-        for (vName <- localVarMap.keys()) {
-          varMap.put(vName, localVarMap.get(vName))
-        }
-        tmpPackMap.put(packName, varMap)
+      logDebug(s"session listener start merge package ${packVars.size()} vars")
+      logDebug(s"session listener sc packVars: ${sqlContext.sparkContext.oraclePackageVars.size()}")
+      val tmpPackMap = sqlContext.sparkContext.oraclePackageVars.get(sessionId)
+      if (!tmpPackMap.containsKey(packName))
+        tmpPackMap.put(packName, new ConcurrentHashMap[String, Object]())
+      val localVarMap = packVars.get(packName)
+      val varMap = new ConcurrentHashMap[String, Object]()
+      for (vName <- localVarMap.keys()) {
+        varMap.put(vName, localVarMap.get(vName))
+        logDebug(s"session listener merge var $vName  ${localVarMap.get(vName)}")
       }
+      tmpPackMap.put(packName, varMap)
     }
   }
 

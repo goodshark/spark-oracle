@@ -249,6 +249,8 @@ private[hive] class SparkExecuteStatementOperation(
       conf.getConfString(SQL_ENGINE, "spark")
     try {
       if (!checkSparkEngin(engineName)) {
+        logDebug(s"spark execute start procedure cli, ss: ${sqlContext.sparkSession}, hash: ${sqlContext.sparkSession.hashCode()}, " +
+          s"id: ${sqlContext.sparkSession.sessionId}")
         val procCli: ProcedureCli = new ProcedureCli(sqlContext.sparkSession)
         procCli.callProcedure(statement, engineName)
         val sqlServerRs = procCli.getExecSession().getResultSets()
@@ -273,7 +275,8 @@ private[hive] class SparkExecuteStatementOperation(
           parentSession.getSessionHandle.getSessionId.toString,
           allTable)
 
-        HiveThriftServer2.sqlSessionListenr.mergePackageVars(procCli.getExecSession.getPackageVars)
+        // TODO
+        HiveThriftServer2.sqlSessionListenr.mergePackageVars(procCli.getExecSession.getPackageVars, sqlContext.sparkSession.sessionId)
 
         if (!sqlServerPlans.isEmpty) {
           logInfo("logical is " + sqlServerPlans.get(0))

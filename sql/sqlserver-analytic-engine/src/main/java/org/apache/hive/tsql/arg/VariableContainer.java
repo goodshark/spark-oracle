@@ -16,11 +16,15 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hive.tsql.execute.Executor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Created by zhongdg1 on 2016/12/8.
  * 一般变量容器
  */
 public class VariableContainer {
+    private static final Logger LOG = LoggerFactory.getLogger(VariableContainer.class);
 
     //保存变量, 作用域仅限为go
     private ConcurrentHashMap<String, Var> vars = new ConcurrentHashMap<String, Var>();
@@ -302,21 +306,27 @@ public class VariableContainer {
 
     private boolean loadPackFromSc(String packName) {
         SparkSession ss = session.getSparkSession();
+        LOG.info("variable container load package info from sc, ss: " + ss + ", hash: " + ss.hashCode() + ", id: " + ss.sessionId());
         SparkContext sc = ss.sparkContext();
-        Map<String, ConcurrentHashMap<String, Object>> tmpPackMap = sc.oraclePackageVars().get(ss);
-        if (tmpPackMap == null)
+        Map<String, ConcurrentHashMap<String, Object>> tmpPackMap = sc.oraclePackageVars().get(ss.sessionId());
+        if (tmpPackMap == null) {
+            LOG.info("variable container load package from sc, ss bind val is null");
             return false;
-        else {
-            ConcurrentHashMap<String, Object> tmpVarMap = tmpPackMap.get(packName);
-            if (tmpVarMap == null)
+        } else {
+            LOG.info("variable container load package from sc, ss bind val is not null");
+            ConcurrentHashMap<String, Object> tmpVarMap = tmpPackMap.get(packName.toUpperCase());
+            if (tmpVarMap == null) {
+                LOG.info("variable container load package from sc, package name bind val is null");
                 return false;
-            else {
+            } else {
+                LOG.info("variable container load package from sc, package name bind val is not null");
                 // transform Object-Vars into Vars
                 ConcurrentHashMap<String, Var> tranMap = new ConcurrentHashMap<>();
                 for (String varName: tmpVarMap.keySet()) {
+                    LOG.info("variable container load package from sc, var name: " + varName + ", value: " + tmpVarMap.get(varName));
                     tranMap.put(varName, (Var)(tmpVarMap.get(varName)));
                 }
-                packageVars.put(packName, tranMap);
+                packageVars.put(packName.toUpperCase(), tranMap);
                 return true;
             }
         }
@@ -324,6 +334,7 @@ public class VariableContainer {
 
     private boolean loadPackFromDb(String packName) {
         try {
+            LOG.info("variable container load package info from db");
             List<TreeNode> treeNodes = dbService.getPackageObj(packName, PACKAGE_TYPE);
             // TODO restrict all vars into package scope
             session.setPackageScope(packName);
