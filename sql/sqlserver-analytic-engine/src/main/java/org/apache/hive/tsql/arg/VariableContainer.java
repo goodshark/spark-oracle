@@ -351,11 +351,13 @@ public class VariableContainer {
 
     private Var findVarInPackage(String packageName, String vName) {
         boolean loadSuccess = false;
-        if (!packageVars.containsKey(packageName)) {
-            loadSuccess = loadPackFromSc(packageName) || loadPackFromDb(packageName);
+        if (!packageVars.containsKey(packageName.toUpperCase())) {
+            loadSuccess = loadPackFromSc(packageName.toUpperCase()) || loadPackFromDb(packageName.toUpperCase());
         }
+        LOG.info("package vars load status: " + loadSuccess);
         if (packageVars.containsKey(packageName) || loadSuccess) {
-            ConcurrentHashMap<String, Var> pack = packageVars.get(packageName);
+            LOG.info("package vars already in local packageVars");
+            ConcurrentHashMap<String, Var> pack = packageVars.get(packageName.toUpperCase());
             if (pack.containsKey(vName))
                 return pack.get(vName);
             else
@@ -370,7 +372,13 @@ public class VariableContainer {
         Var methodVar = null;
         for (int i = 0; i < tagNames.length; i++) {
             if (i == 0 && rootVar == null) {
-                curVar = getVarInBlocks(tagNames[i].toUpperCase());
+                if (session.isPackageScope()) {
+                    // only for complex-var in package
+                    ConcurrentHashMap<String, Var> packVarMap = packageVars.get(session.getPackageName());
+                    curVar = packVarMap.get(tagNames[i].toUpperCase());
+                } else {
+                    curVar = getVarInBlocks(tagNames[i].toUpperCase());
+                }
                 if (curVar == null) {
                     break;
                 }
