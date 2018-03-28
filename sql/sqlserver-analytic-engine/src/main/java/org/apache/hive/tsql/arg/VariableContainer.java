@@ -51,6 +51,7 @@ public class VariableContainer {
     private ConcurrentHashMap<String,Var> systemVariables = new ConcurrentHashMap<>();
     // custom type
     private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, LocalTypeDeclare>> types = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, LocalTypeDeclare>> packageTypes = new ConcurrentHashMap<>();
 
     private ExecSession session;
 
@@ -598,6 +599,15 @@ public class VariableContainer {
     }
 
     public void addType(LocalTypeDeclare typeDeclare) {
+        if (session.isPackageScope()) {
+            LOG.info("variable container add type in package scope: " + session.getPackageName() + ", type: " + typeDeclare.getTypeName());
+            if (!packageTypes.containsKey(session.getPackageName())) {
+                ConcurrentHashMap<String, LocalTypeDeclare> tmpMap = new ConcurrentHashMap<>();
+                packageTypes.put(session.getPackageName(), tmpMap);
+            }
+            packageTypes.get(session.getPackageName()).put(typeDeclare.getTypeName().toUpperCase(), typeDeclare);
+            return;
+        }
         TreeNode curBlock = session.getCurrentScope();
         ConcurrentHashMap<String, LocalTypeDeclare> typeMap = new ConcurrentHashMap<>();
         typeMap.put(typeDeclare.getTypeName().toUpperCase(), typeDeclare);
@@ -640,7 +650,24 @@ public class VariableContainer {
                     return null;
             }
         }
-        return null;
+        // x.y, x is the package name
+        LocalTypeDeclare packageType = findTypeInPackage(scopeName.toUpperCase(), name.toUpperCase());
+        return packageType;
+    }
+
+    private LocalTypeDeclare findTypeInPackage(String packageName, String typeName) {
+        boolean loadSuccess = false;
+        if (!packageTypes.containsKey(packageName.toUpperCase())) {
+            // types will not persist in sc for crossing session, only need store into db
+            loadSuccess = loadPackFromDb(packageName.toUpperCase());
+        }
+        LOG.info("package types load status: " + loadSuccess);
+        if (packageTypes.containsKey(packageName) || loadSuccess) {
+            LOG.info("package types already in local packageTypes");
+            return packageTypes.get(packageName).get(typeName);
+        } else {
+            return null;
+        }
     }
 
 }
