@@ -337,6 +337,8 @@ public class VariableContainer {
         try {
             LOG.info("variable container load package info from db");
             List<TreeNode> treeNodes = dbService.getPackageObj(packName, PACKAGE_TYPE);
+            if (treeNodes == null)
+                return false;
             // TODO restrict all vars into package scope
             session.setPackageScope(packName);
             for (TreeNode treeNode: treeNodes)
