@@ -526,6 +526,19 @@ public class VariableContainer {
         return getVarInGlobal(varName);
     }
 
+    private CommonProcedureStatement findProcedureInPackage(String funcName) {
+        try {
+            String[] tags = funcName.split("\\.");
+            if (tags.length < 2)
+                return null;
+            LOG.info("find procedure in package: " + tags[0]);
+            loadPackFromDb(tags[0]);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public CommonProcedureStatement findFunc(String varName) {
         String funcName = varName.toUpperCase();
         TreeNode[] blocks = session.getCurrentScopes();
@@ -541,12 +554,15 @@ public class VariableContainer {
         TreeNode rootScope = session.getRootNode();
         if (rootScope != null) {
             ConcurrentHashMap<String, List<CommonProcedureStatement>> procMap = newFunctions.get(rootScope);
-            if (procMap == null)
-                return null;
-            List<CommonProcedureStatement> procs = newFunctions.get(rootScope).get(funcName);
-            return (procs.size() >= 1) ? procs.get(0) : null;
+            if (procMap != null) {
+                List<CommonProcedureStatement> procs = newFunctions.get(rootScope).get(funcName);
+                if (procs.size() >= 1)
+                    return procs.get(0);
+//            return (procs.size() >= 1) ? procs.get(0) : null;
+            }
         }
-        return null;
+        // for procedure in package
+        return findProcedureInPackage(funcName);
     }
 
     // check all procedure signature belong to current scope

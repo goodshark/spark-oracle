@@ -77,6 +77,7 @@ import org.apache.hive.tsql.func.Procedure;
 import org.apache.hive.tsql.node.LogicNode;
 import org.apache.hive.tsql.node.PredicateNode;
 import org.apache.spark.sql.SparkSession;
+import scala.reflect.internal.Trees;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -2689,9 +2690,13 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
         if (ctx.package_spec() != null) {
             String packName = ctx.package_spec().package_name().get(0).getText();
             createPackage.setPackageName(packName);
-            for (PlsqlParser.Package_obj_specContext obj_specContext: ctx.package_spec().package_obj_spec()){
+            for (PlsqlParser.Package_obj_specContext obj_specContext: ctx.package_spec().package_obj_spec()) {
                 visit(obj_specContext);
-                createPackage.addPackageBlock(treeBuilder.popStatement());
+                // cursor/func/procedure spec is skip, that implement in body
+                TreeNode block = treeBuilder.popStatement();
+                if (block == null)
+                    continue;
+                createPackage.addPackageBlock(block);
             }
         }
         if (ctx.package_body() != null) {

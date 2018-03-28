@@ -62,6 +62,8 @@ public class CreatePackage extends TreeNode {
     @Override
     public int execute() throws Exception {
         // store package into database
+        if (packageBlocks == null || packageBlocks.size() == 0)
+            return 0;
         ProcService procService = new ProcService(getExecSession().getSparkSession());
         procService.createPackageObj(this, replace);
         return 0;

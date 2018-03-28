@@ -487,16 +487,27 @@ public class ProcService {
         return rs;
     }
 
+    private void mergePackageObj(CreatePackage pack) throws Exception {
+        List<TreeNode> blocks = getPackageObj(pack.getPackageName(), PACKGE_TYPE);
+        pack.getPackageBlocks().addAll(0, blocks);
+        createPackageObj(pack, true);
+    }
+
     public int createPackageObj(CreatePackage pack, boolean replace) throws Exception {
         int num = getCountByName(pack.getPackageName(), PACKGE_TYPE);
-        if (!replace) {
-            if (num > 0)
-                throw new Exception(pack.getPackageName() + " already exists");
+        if (pack.isBody()) {
+            // TODO only merge, new package need DROP first
+            mergePackageObj(pack);
         } else {
-            if (num <= 0) {
-                insertPackageObj(pack);
+            if (!replace) {
+                if (num > 0)
+                    throw new Exception(pack.getPackageName() + " already exists");
             } else {
-                updatePackageObj(pack);
+                if (num <= 0) {
+                    insertPackageObj(pack);
+                } else {
+                    updatePackageObj(pack);
+                }
             }
         }
         return 0;
