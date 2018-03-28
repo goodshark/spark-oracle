@@ -339,16 +339,16 @@ public class VariableContainer {
             List<TreeNode> treeNodes = dbService.getPackageObj(packName, PACKAGE_TYPE);
             if (treeNodes == null)
                 return false;
-            // TODO restrict all vars into package scope
+            // restrict all vars into package scope
             session.setPackageScope(packName);
             for (TreeNode treeNode: treeNodes)
                 new Executor(session, treeNode).run();
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
-        } finally {
             session.clearePackageScope();
+            return false;
         }
+        session.clearePackageScope();
         return true;
     }
 
