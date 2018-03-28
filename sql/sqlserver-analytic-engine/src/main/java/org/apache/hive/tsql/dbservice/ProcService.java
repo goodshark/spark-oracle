@@ -3,7 +3,7 @@ package org.apache.hive.tsql.dbservice;
 
 import org.apache.hive.basesql.func.CommonProcedureStatement;
 import org.apache.commons.lang.StringUtils;
-import org.apache.hive.pack.CreatePackage;
+import org.apache.hive.plsql.pack.CreatePackage;
 import org.apache.hive.tsql.ProcedureCli;
 import org.apache.hive.tsql.common.Common;
 import org.apache.hive.tsql.common.TreeNode;
@@ -502,8 +502,31 @@ public class ProcService {
         return 0;
     }
 
-    public int delPackageObj() throws Exception {
-        return 0;
+    public int delPackageObj(String packName) throws Exception {
+        LOG.info(" del package by packName:" + packName);
+        StringBuffer sql = new StringBuffer();
+        sql.append("  UPDATE ").append(TABLE_NAME);
+        sql.append(" SET DEL_FLAG =-1 ");
+        sql.append(" WHERE ");
+        sql.append("PROC_NAME =");
+        sql.append("?");
+        sql.append(" AND TYPE = " + PACKGE_TYPE);
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        int rs = 0;
+        try {
+            DbUtils dbUtils = new DbUtils(dbUrl, userName, password);
+            connection = dbUtils.getConn();
+            stmt = connection.prepareStatement(sql.toString());
+            stmt.setString(1, packName);
+            rs = stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOG.error(" set DEL_FLAG for package object sql : " + sql.toString() + " error.", e);
+            throw e;
+        } finally {
+            close(connection, stmt);
+        }
+        return rs;
     }
 
     public List<TreeNode> getPackageObj(String packageName, int type) throws Exception {

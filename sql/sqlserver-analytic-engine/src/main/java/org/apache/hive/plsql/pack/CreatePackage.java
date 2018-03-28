@@ -1,4 +1,4 @@
-package org.apache.hive.pack;
+package org.apache.hive.plsql.pack;
 
 import org.apache.hive.tsql.common.TreeNode;
 import org.apache.hive.tsql.dbservice.ProcService;

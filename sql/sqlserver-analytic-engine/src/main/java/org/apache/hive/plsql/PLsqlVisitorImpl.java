@@ -6,7 +6,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hive.basesql.TreeBuilder;
-import org.apache.hive.pack.CreatePackage;
+import org.apache.hive.plsql.pack.CreatePackage;
 import org.apache.hive.plsql.block.AnonymousBlock;
 import org.apache.hive.plsql.block.ExceptionHandler;
 import org.apache.hive.plsql.cfl.LoopAnonyCursorCodition;
@@ -56,6 +56,7 @@ import org.apache.hive.plsql.expression.RelationUnaryExpression;
 import org.apache.hive.plsql.function.FakeFunction;
 import org.apache.hive.plsql.function.Function;
 import org.apache.hive.plsql.function.ProcedureCall;
+import org.apache.hive.plsql.pack.DropPackage;
 import org.apache.hive.plsql.type.*;
 import org.apache.hive.tsql.another.DeclareStatement;
 import org.apache.hive.tsql.another.SetStatement;
@@ -2709,8 +2710,16 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
 
     @Override
     public Object visitDrop_package(PlsqlParser.Drop_packageContext ctx) {
-        return visitChildren(ctx);
+        DropPackage dropPackage = new DropPackage();
+        dropPackage.setPackageName(ctx.package_name().getText());
+        treeBuilder.pushStatement(dropPackage);
+        return dropPackage;
     }
+
+    /*@Override
+    public Object visitDrop_package(PlsqlParser.Drop_packageContext ctx) {
+        return visitChildren(ctx);
+    }*/
 
 
     //======================================update===============================

@@ -657,6 +657,11 @@ public class VariableContainer {
 
     private LocalTypeDeclare findTypeInPackage(String packageName, String typeName) {
         boolean loadSuccess = false;
+        if (packageName.isEmpty()) {
+            // for ref-type in package
+            if (session.isPackageScope())
+                packageName = session.getPackageName().toUpperCase();
+        }
         if (!packageTypes.containsKey(packageName.toUpperCase())) {
             // types will not persist in sc for crossing session, only need store into db
             loadSuccess = loadPackFromDb(packageName.toUpperCase());
