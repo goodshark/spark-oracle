@@ -146,7 +146,7 @@ streaming_clause
 // $<Package DDLs
 
 drop_package
-    : DROP PACKAGE BODY? package_name ';'
+    : DROP PACKAGE BODY? package_name ';'?
     ;
 
 alter_package
@@ -2582,7 +2582,7 @@ regular_id
     | RESTRICT_REFERENCES
     | RESULT
     | RESULT_CACHE
-    | RETURN
+//    | RETURN
     | RETURNING
     | REUSE
     | REVERSE
