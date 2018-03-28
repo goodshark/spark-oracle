@@ -62,7 +62,7 @@
                     <target>1.7</target>
                 </configuration>
             </plugin>
-            <plugin>
+            <!--<plugin>
                 <groupId>com.pyx4me</groupId>
                 <artifactId>proguard-maven-plugin</artifactId>
                 <version>2.0.4</version>
@@ -79,29 +79,29 @@
                     <obfuscate>true</obfuscate>
 
                     <options>
-                        <!-- JDK目标版本1.7-->
+                        &lt;!&ndash; JDK目标版本1.7&ndash;&gt;
                         <option>-target 1.7</option>
-                        <!-- 不做收缩（删除注释、未被引用代码）-->
+                        &lt;!&ndash; 不做收缩（删除注释、未被引用代码）&ndash;&gt;
                         <option>-dontshrink</option>
-                        <!-- 不做优化（变更代码实现逻辑）-->
+                        &lt;!&ndash; 不做优化（变更代码实现逻辑）&ndash;&gt;
                         <option>-dontoptimize</option>
-                        <!-- 不路过非公用类文件及成员-->
+                        &lt;!&ndash; 不路过非公用类文件及成员&ndash;&gt;
                         <option>-dontskipnonpubliclibraryclasses</option>
                         <option>-dontskipnonpubliclibraryclassmembers</option>
-                        <!-- 优化时允许访问并修改有修饰符的类和类的成员 -->
+                        &lt;!&ndash; 优化时允许访问并修改有修饰符的类和类的成员 &ndash;&gt;
                         <option>-allowaccessmodification</option>
-                        <!-- 确定统一的混淆类的成员名称来增加混淆,防止冲突-->
+                        &lt;!&ndash; 确定统一的混淆类的成员名称来增加混淆,防止冲突&ndash;&gt;
                         <option>-useuniqueclassmembernames</option>
-                        <!-- 不混淆所有包名，Spring配置中有大量固定写法的包名-->
+                        &lt;!&ndash; 不混淆所有包名，Spring配置中有大量固定写法的包名&ndash;&gt;
                         <option>-keeppackagenames</option>
-                        <!-- 不混淆所有特殊的类-->
+                        &lt;!&ndash; 不混淆所有特殊的类&ndash;&gt;
                         <option>-keepattributes
                             Var,Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,LocalVariable*Table,*Annotation*,Synthetic,EnclosingMethod
                         </option>
-                        <!-- 不混淆所有的set/get方法，毕竟项目中使用的部分第三方框架（例如Shiro）会用到大量的set/get映射-->
+                        &lt;!&ndash; 不混淆所有的set/get方法，毕竟项目中使用的部分第三方框架（例如Shiro）会用到大量的set/get映射&ndash;&gt;
                         <option>-keepclassmembers public class * {void set*(***);*** get*();}</option>
 
-                        <!-- 不混淆包下的所有类名，且类中的方法也不混淆-->
+                        &lt;!&ndash; 不混淆包下的所有类名，且类中的方法也不混淆&ndash;&gt;
                         <option>-keep class org.apache.hive.tsql.ProcedureCli { *; }</option>
                         <option>-keep class org.apache.hive.tsql.ExecSession {*;}</option>
                         <option>-keep class org.apache.hive.tsql.common.SparkResultSet {*;}</option>
@@ -112,9 +112,9 @@
                         <option>-keep class org.apache.hive.tsql.udf.**{*;}</option>
                         <option>-keep class org.apache.hive.tsql.arg.**{*;}</option>
                         <option>-keep class org.apache.hive.tsql.util.**{*;}</option>
-                       <!-- <option>-keepnames enum org.apache.hive.tsql.arg.Var {*;}</option>-->
-                        <!-- <option>-keepnames class org.apache.hive.tsql.var.*{*;}</option>-->
-                        <!--<option>-keepnames class * implements java.io.Serializable</option>
+                       &lt;!&ndash; <option>-keepnames enum org.apache.hive.tsql.arg.Var {*;}</option>&ndash;&gt;
+                        &lt;!&ndash; <option>-keepnames class org.apache.hive.tsql.var.*{*;}</option>&ndash;&gt;
+                        &lt;!&ndash;<option>-keepnames class * implements java.io.Serializable</option>
                         <option>-keepclassmembers class * implements java.io.Serializable {
                             static final long serialVersionUID;
                           &lt;!&ndash;  private static final java.io.ObjectStreamField[] serialPersistentFields;
@@ -123,21 +123,21 @@
                             java.lang.Object writeReplace();
                             java.lang.Object readResolve();&ndash;&gt;
                             }
-                        </option>-->
+                        </option>&ndash;&gt;
                         <option>-keepclassmembers enum * {*;}</option>
 
                     </options>
-                    <!-- 添加依赖，这里你可以按你的需要修改 -->
+                    &lt;!&ndash; 添加依赖，这里你可以按你的需要修改 &ndash;&gt;
                     <libs>
                         <lib>${java.home}/lib/rt.jar</lib>
                     </libs>
-                    <!-- <injar>classes</injar>-->
+                    &lt;!&ndash; <injar>classes</injar>&ndash;&gt;
                     <addMavenDescriptor>false</addMavenDescriptor>
                     <outjar>${project.build.finalName}.jar</outjar>
                     <outputDirectory>${project.build.directory}</outputDirectory>
                 </configuration>
                 <dependencies>
-                    <!-- 使用4.11版本来混淆 -->
+                    &lt;!&ndash; 使用4.11版本来混淆 &ndash;&gt;
                     <dependency>
                         <groupId>net.sf.proguard</groupId>
                         <artifactId>proguard</artifactId>
@@ -145,7 +145,7 @@
                         <scope>runtime</scope>
                     </dependency>
                 </dependencies>
-            </plugin>
+            </plugin>-->
         </plugins>
     </build>
 </project>
