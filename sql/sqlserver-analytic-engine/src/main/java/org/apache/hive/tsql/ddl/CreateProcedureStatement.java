@@ -34,8 +34,11 @@ public class CreateProcedureStatement extends BaseStatement {
         if (StringUtils.isBlank(function.getName().getDatabase())) {
             function.getName().setDatabase(getExecSession().getDatabase());
         }
-        // oracle procedure can be created in block
-        if (getExecSession().getCurrentScope() != null) {
+        if (getExecSession().isPackageScope()) {
+            function.getName().setSchema(getExecSession().getPackageName());
+        }
+        // oracle procedure can be created in block, also procedure inside package
+        if (getExecSession().getCurrentScope() != null || getExecSession().isPackageScope()) {
             addFunc(function);
             return 0;
         }

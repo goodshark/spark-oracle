@@ -153,7 +153,7 @@ alter_package
     : ALTER PACKAGE package_name COMPILE DEBUG? (PACKAGE | BODY | SPECIFICATION)? compiler_parameters_clause* (REUSE SETTINGS)? ';'
     ;
 create_package
-    : CREATE (OR REPLACE)? PACKAGE (package_spec | package_body)? ';'?
+    : CREATE (OR REPLACE)? PACKAGE (package_spec | package_body) ';'?
     ;
 
 // $<Create Package - Specific Clauses
@@ -180,11 +180,11 @@ package_obj_spec
     ;
 
 procedure_spec
-    : PROCEDURE procedure_name ('(' parameter ( ',' parameter )* ')')? ';'
+    : PROCEDURE procedure_name ('(' parameter ( ',' parameter )* ')')? ';'?
     ;
 
 function_spec
-    : FUNCTION function_name ('(' parameter ( ',' parameter)* ')')? RETURN type_spec (DETERMINISTIC)? (RESULT_CACHE)? ';'
+    : FUNCTION function_name ('(' parameter ( ',' parameter)* ')')? RETURN type_spec (DETERMINISTIC)? (RESULT_CACHE)? ';'?
     ;
 
 package_obj_body

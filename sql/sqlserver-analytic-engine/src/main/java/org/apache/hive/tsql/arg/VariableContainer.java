@@ -41,7 +41,7 @@ public class VariableContainer {
     private ConcurrentHashMap<String, CommonProcedureStatement> functions = new ConcurrentHashMap<String, CommonProcedureStatement>();
     private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, List<CommonProcedureStatement>>> newFunctions = new ConcurrentHashMap<>();
     // func/proc in oracle package only
-    private ConcurrentHashMap<String, ConcurrentHashMap<String, TreeNode>> packageFunctions = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, CommonProcedureStatement>> packageFunctions = new ConcurrentHashMap<>();
     //保存cursor
     private ConcurrentHashMap<String, CommonCursor> localCursors = new ConcurrentHashMap<>();//本地游标
     private ConcurrentHashMap<TreeNode, ConcurrentHashMap<String, CommonCursor>> newLocalCursors =
@@ -216,6 +216,12 @@ public class VariableContainer {
         if (function == null)
             return;
         String functionName = function.getName().getFullFuncName().toUpperCase();
+        if (session.isPackageScope()) {
+            if (!packageFunctions.containsKey(session.getPackageName()))
+                packageFunctions.put(session.getPackageName(), new ConcurrentHashMap<String, CommonProcedureStatement>());
+            packageFunctions.get(session.getPackageName()).put(functionName, function);
+            return;
+        }
 
         TreeNode curBlock = session.getCurrentScope();
         if (curBlock != null) {
@@ -526,13 +532,22 @@ public class VariableContainer {
         return getVarInGlobal(varName);
     }
 
-    private CommonProcedureStatement findProcedureInPackage(String funcName) {
+    private CommonProcedureStatement findProcedureInPackage(String name) {
+        // procedure inside package will rename as x.y.z => DB.PACKAGE.NAME
         try {
-            String[] tags = funcName.split("\\.");
-            if (tags.length < 2)
+            String[] tags = name.split("\\.");
+            if (tags.length < 3)
                 return null;
-            LOG.info("find procedure in package: " + tags[0]);
-            loadPackFromDb(tags[0]);
+            String dbName = tags[0];
+            String packName = tags[1];
+            String funcName = tags[2];
+            LOG.info("find procedure in package: " + packName);
+            if (packageFunctions.containsKey(packName)) {
+                LOG.info("procedure already in local package");
+                LOG.info("procedure full name: " + name);
+                return packageFunctions.get(packName).get(name);
+            } else
+                loadPackFromDb(tags[0]);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -683,7 +698,7 @@ public class VariableContainer {
             loadSuccess = loadPackFromDb(packageName.toUpperCase());
         }
         LOG.info("package types load status: " + loadSuccess);
-        if (packageTypes.containsKey(packageName) || loadSuccess) {
+        if (packageTypes.containsKey(packageName)) {
             LOG.info("package types already in local packageTypes");
             return packageTypes.get(packageName).get(typeName);
         } else {

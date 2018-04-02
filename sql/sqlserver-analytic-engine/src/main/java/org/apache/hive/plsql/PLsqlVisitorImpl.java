@@ -2691,12 +2691,13 @@ public class PLsqlVisitorImpl extends PlsqlBaseVisitor<Object> {
             String packName = ctx.package_spec().package_name().get(0).getText();
             createPackage.setPackageName(packName);
             for (PlsqlParser.Package_obj_specContext obj_specContext: ctx.package_spec().package_obj_spec()) {
-                visit(obj_specContext);
                 // cursor/func/procedure spec is skip, that implement in body
-                TreeNode block = treeBuilder.popStatement();
-                if (block == null)
-                    continue;
-                createPackage.addPackageBlock(block);
+                if (obj_specContext.variable_declaration() != null ||
+                    obj_specContext.record_declaration() != null ||
+                    obj_specContext.table_declaration() != null) {
+                    visit(obj_specContext);
+                    createPackage.addPackageBlock(treeBuilder.popStatement());
+                }
             }
         }
         if (ctx.package_body() != null) {

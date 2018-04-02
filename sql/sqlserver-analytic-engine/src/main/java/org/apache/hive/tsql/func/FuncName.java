@@ -42,6 +42,10 @@ public class FuncName implements Serializable {
         this.database = database;
     }
 
+    public void setServer(String str) {
+        server = str;
+    }
+
     public String getFuncName() {
         return funcName;
     }

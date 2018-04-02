@@ -489,8 +489,11 @@ public class ProcService {
 
     private void mergePackageObj(CreatePackage pack) throws Exception {
         List<TreeNode> blocks = getPackageObj(pack.getPackageName(), PACKGE_TYPE);
-        pack.getPackageBlocks().addAll(0, blocks);
-        createPackageObj(pack, true);
+        if (blocks != null && blocks.size() > 0) {
+            pack.getPackageBlocks().addAll(0, blocks);
+        }
+        delPackageObj(pack.getPackageName());
+        insertPackageObj(pack);
     }
 
     public int createPackageObj(CreatePackage pack, boolean replace) throws Exception {
