@@ -23,15 +23,14 @@ import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.control.NonFatal
-
 import org.apache.commons.lang3.StringUtils
-
 import org.apache.spark.annotation.{DeveloperApi, Experimental, InterfaceStability}
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.function._
 import org.apache.spark.api.python.{PythonRDD, SerDeUtil}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.auth.{HiveSentryAuthzProvider, SentryAuthUtils}
 import org.apache.spark.sql.catalyst._
 import org.apache.spark.sql.catalyst.analysis._
 import org.apache.spark.sql.catalyst.encoders._
@@ -61,6 +60,12 @@ private[sql] object Dataset {
   def ofRows(sparkSession: SparkSession, logicalPlan: LogicalPlan): DataFrame = {
     val qe = sparkSession.sessionState.executePlan(logicalPlan)
     qe.assertAnalyzed()
+    if (HiveSentryAuthzProvider.useSentryAuth()) {
+      HiveSentryAuthzProvider.setUser(sparkSession.username)
+      val result = SentryAuthUtils.retriveInputOutputEntities(logicalPlan, sparkSession)
+      HiveSentryAuthzProvider.getInstance().authorize(result,
+        sparkSession.sessionState.catalog.getCurrentDatabase, sparkSession.username)
+    }
     new Dataset[Row](sparkSession, qe, RowEncoder(qe.analyzed.schema))
   }
 }
