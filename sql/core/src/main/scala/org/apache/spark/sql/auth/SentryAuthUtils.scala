@@ -27,7 +27,7 @@ import org.apache.hadoop.hive.ql.security.authorization.PrivilegeType
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedAttribute, UnresolvedRelation, UnresolvedStar}
-import org.apache.spark.sql.catalyst.expressions.{Expression, NamedExpression}
+import org.apache.spark.sql.catalyst.expressions.{Expression, NamedExpression, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.{AcidDelCommand, AcidUpdateCommand, CreateTable, CreateTempViewUsing}
@@ -48,6 +48,13 @@ object SentryAuthUtils {
       currentAggregate = plan.asInstanceOf[Aggregate]
     }
     plan.transformDown {
+      case subqueryFilter: Filter =>
+        subqueryFilter.condition.transformDown{
+          case subq: ScalarSubquery =>
+            result.addAll(retriveInputOutputEntities(subq.plan, sparkSession, cteRs))
+            subq
+        }
+        subqueryFilter
       case withas: With =>
         withas.cteRelations.foreach(cte => {
           cteRs.add(cte._1)
@@ -122,7 +129,7 @@ object SentryAuthUtils {
                     case _ => false
                   }
                 }),
-                  sparkSession, cteRs, readTable.tableName, alis)
+                  sparkSession, cteRs, readTable.tableIdentifier, alis)
                 val filters: util.HashSet[String] = retriveInputEntities(currentAggregate,
                   alis, readTable.tableName, sparkSession, readTable.tableIdentifier)
                 val ir2 = filters.iterator()
@@ -157,7 +164,7 @@ object SentryAuthUtils {
                     case _ => false
                   }
                 }),
-                  sparkSession, cteRs, readTable.tableName, alis)
+                  sparkSession, cteRs, readTable.tableIdentifier, alis)
                 val filters: util.HashSet[String] = {
                   if (currentProject != null) {
                     retriveInputEntities(currentProject, alis, readTable.tableName, sparkSession, readTable.tableIdentifier)
@@ -370,7 +377,8 @@ object SentryAuthUtils {
       plan.transformDown{
         case attr: UnresolvedAttribute =>
           if (attr.nameParts.size == 2) {
-            if ((attr.nameParts)(0).equals(alis) || (attr.nameParts)(0).equals(tableName)) {
+            if ((attr.nameParts)(0).equals(alis) || (attr.nameParts)(0).equals(tableName)
+              || (attr.nameParts)(0).equals(tableIdent.table)) {
               result.add((attr.nameParts)(1))
             }
           } else if (attr.nameParts.size == 1) {
@@ -392,7 +400,7 @@ object SentryAuthUtils {
   def retriveInputEntities(plans: Seq[NamedExpression],
                            sparkSession: SparkSession,
                            cteRs: java.util.HashSet[String],
-                           tableName: String,
+                           table: TableIdentifier,
                            alis: String): java.util.HashSet[AuthzEntity] = {
     val result: java.util.HashSet[AuthzEntity] = new java.util.HashSet[AuthzEntity]()
     plans.foreach(plan => {
@@ -412,20 +420,19 @@ object SentryAuthUtils {
               dt._2
             } else {
               if (alis.equals(dt._2)) {
-                tableName
+                table.table
               } else {
                 null
               }
             }
-            if (tableN != null) {
-              val columns: Seq[String] = sparkSession.getColumnForSelectStar(
-                TableIdentifier.apply(tableN, Some(dt._1)))
+            if (tableN != null && table.table.equals(tableN)) {
+              val columns: Seq[String] = sparkSession.getColumnForSelectStar(table)
               val ir = columns.iterator
               while (ir.hasNext) {
-                result.add(AuthzEntity(PrivilegeType.SELECT, tableN, dt._1, ir.next()))
+                result.add(AuthzEntity(PrivilegeType.SELECT, tableN, table.database.getOrElse(null), ir.next()))
               }
               if (columns.size == 0) {
-                result.add(AuthzEntity(PrivilegeType.SELECT, tableN, dt._1, null))
+                result.add(AuthzEntity(PrivilegeType.SELECT, tableN, table.database.getOrElse(null), null))
               }
             }
           }
