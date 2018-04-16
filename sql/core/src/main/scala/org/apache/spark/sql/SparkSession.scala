@@ -680,11 +680,6 @@ class SparkSession private(
     sparkContext.getConf.getAll.foreach( f => logInfo(s" key:==> ${f._1} value: ==> ${f._2} ")) */
     var sql = sqlText
     val plan = sessionState.sqlParser.parsePlan(sql)
-    if (HiveSentryAuthzProvider.useSentryAuth()) {
-      HiveSentryAuthzProvider.setUser(username)
-      val result = SentryAuthUtils.retriveInputOutputEntities(plan, this)
-      HiveSentryAuthzProvider.getInstance().authorize(result, getSessionState.catalog.getCurrentDatabase, username)
-    }
     sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "false")
     // for testing
     // sessionState.conf.setConfString(SPARK_TRANSACTION_ACID, "true")
@@ -745,6 +740,10 @@ class SparkSession private(
     } else {
       Seq.empty
     }
+  }
+
+  def isTemporaryTable(tableIdent: TableIdentifier): Boolean = {
+    sessionState.catalog.isTemporaryTable(tableIdent)
   }
 
   def getFullTableName(tableIdent: TableIdentifier): String = {
